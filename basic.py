@@ -1,21 +1,27 @@
 import bpy
 
 # Function to create a triangle mesh
+
+
 def create_triangle():
     verts = [(0, 0, 0), (1, 0, 0), (0.5, 1, 0)]  # Vertices of the triangle
     edges = []  # Edges (not needed for a simple triangle)
-    faces = [(0, 1, 2)]  # Faces, connecting vertices in a counter-clockwise order
+    # Faces, connecting vertices in a counter-clockwise order
+    faces = [(0, 1, 2)]
     mesh = bpy.data.meshes.new("TriangleMesh")  # Create a new mesh
-    mesh.from_pydata(verts, edges, faces)  # Load vertices, edges, and faces to the mesh
+    # Load vertices, edges, and faces to the mesh
+    mesh.from_pydata(verts, edges, faces)
     mesh.update()
     return mesh
 
+
 # Remove all existing objects
 for obj in bpy.data.objects:
-   bpy.data.objects.remove(obj, do_unlink=True)
+    bpy.data.objects.remove(obj, do_unlink=True)
 
 # Create a new plane object (square)
-bpy.ops.mesh.primitive_plane_add(size=10, enter_editmode=False, align='WORLD', location=(0, 0, 0))
+bpy.ops.mesh.primitive_plane_add(
+    size=10, enter_editmode=False, align='WORLD', location=(0, 0, 0))
 
 # Create a triangle
 triangle_mesh = create_triangle()
