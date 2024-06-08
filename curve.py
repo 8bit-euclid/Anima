@@ -1,7 +1,7 @@
 import bpy
 
 # sample data
-coords = [(0,0,0), (1,0,0), (1,1,0)]
+coords = [(0, 0, 0), (1, 0, 0), (1, 1, 0)]
 
 # create the Curve Datablock
 curveData = bpy.data.curves.new('myCurve', type='CURVE')
@@ -14,7 +14,7 @@ curveData.bevel_depth = 0.0
 polyline = curveData.splines.new('POLY')
 polyline.points.add(len(coords))
 for i, coord in enumerate(coords):
-    x,y,z = coord
+    x, y, z = coord
     polyline.points[i].co = (x, y, z, 1)
 
 # create Object
