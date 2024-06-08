@@ -1,6 +1,8 @@
 from general import *
 
 # Function to create a circle
+
+
 def create_circle(num_verts, radius):
     verts = []
     for i in range(num_verts):
@@ -11,10 +13,14 @@ def create_circle(num_verts, radius):
     return verts
 
 # Function to create a mesh from vertices
+
+
 def create_mesh(verts):
     mesh = bpy.data.meshes.new(name="Circle")
-    mesh.from_pydata(verts, [], [(i, i+1) for i in range(len(verts)-1)] + [(len(verts)-1, 0)])
+    mesh.from_pydata(verts, [], [(i, i+1)
+                     for i in range(len(verts)-1)] + [(len(verts)-1, 0)])
     return mesh
+
 
 clear_scene()
 

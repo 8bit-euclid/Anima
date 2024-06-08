@@ -6,7 +6,8 @@ bpy.ops.object.select_by_type(type='MESH')
 bpy.ops.object.delete()
 
 # Define vertices of the polygon
-vertices = [(0, 0, 0), (2, 0, 0), (2, 2, 0), (0, 2, 0), (0, 0, 0)]  # Adjust these coordinates as needed
+vertices = [(0, 0, 0), (2, 0, 0), (2, 2, 0), (0, 2, 0),
+            (0, 0, 0)]  # Adjust these coordinates as needed
 
 # Create new mesh
 mesh = bpy.data.meshes.new("Polygon")
