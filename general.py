@@ -7,7 +7,13 @@ from datetime import timedelta
 from typing import List
 
 
+UnitZ = Vector([0.0, 0.0, 1.0])
+
 Interval = namedtuple("Interval", ['start', 'stop'])
+
+
+def assert_2d(dim):
+    assert dim == 2, "Can only handle 2D, currently."
 
 
 def clear_scene():
@@ -15,7 +21,7 @@ def clear_scene():
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-def create_mesh(name: str, verts, edges, faces):
+def create_mesh(name: str, verts, faces, edges=[]):
     mesh = bpy.data.meshes.new(name)  # Create a new mesh
     # Load vertices, edges, and faces to the mesh
     mesh.from_pydata(verts, edges, faces)
