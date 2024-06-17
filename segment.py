@@ -86,22 +86,28 @@ class SegmentChain:
                 direc = direc / direc.dot(norm)
 
             # Position object vertices, considering end-directions, width, and bias.
-            j = 2 * i  # Object vertex index
-            obj_verts[j + 0].co = verts[i] + (bias - 1.0) * half_width * direc
-            obj_verts[j + 1].co = verts[i] + (bias + 1.0) * half_width * direc
+            j = 4 * i  # Object vertex index
+            v0 = verts[i] + (bias - 1.0) * half_width * direc
+            v1 = verts[i] + (bias + 1.0) * half_width * direc
+            if i > 0:
+                obj_verts[j - 2].co = v0.copy()
+                obj_verts[j - 1].co = v1.copy()
+            if i < n_verts - 1:
+                obj_verts[j + 0].co = v0.copy()
+                obj_verts[j + 1].co = v1.copy()
 
     def _create_mesh(self):
         n_verts = len(self.vertices)
 
         obj_verts = []  # Note: different to the segment vertices
         obj_faces = []
-        for i in range(n_verts):
-            for _ in range(2):
+        for i in range(n_verts - 1):
+            for _ in range(4):  # 4 vertices per segment
                 obj_verts.append((0, 0, 0))
-            if i < n_verts - 1:
-                k = 2 * i  # Object vertex index
-                obj_faces.append((k + 0, k + 1, k + 2))
-                obj_faces.append((k + 1, k + 3, k + 2))
+
+            k = 4 * i  # Object vertex index
+            obj_faces.append((k + 0, k + 1, k + 2))
+            obj_faces.append((k + 1, k + 3, k + 2))
 
         # Create new bpy mesh and update base object.
         mesh = create_mesh("mesh", obj_verts, obj_faces)
@@ -122,14 +128,14 @@ class SegmentChain:
         # Set vertices 2 and 3 to be driven by the 'load_ratio'.
         total_len = self.total_length
         cumu_seg_len = 0.0
-        for i in range(1, len(self.vertices)):
+        for i in range(len(self.vertices) - 1):
             obj_verts = self.obj.data.vertices
-            curr_seg_len = self.segment_lengths[i - 1]
+            curr_seg_len = self.segment_lengths[i]
 
             a = cumu_seg_len / total_len
             b = curr_seg_len / total_len
 
-            for j in [2*i, 2*i + 1]:
+            for j in [4*i + 2, 4*i + 3]:
                 vert0 = obj_verts[j - 2].co
                 vert1 = obj_verts[j].co
 
@@ -137,7 +143,7 @@ class SegmentChain:
                 drivers = add_driver(obj_verts[j], "co")
                 for k, driver in enumerate(drivers):
                     # Linearly interpolate between the two vertices based on the 'load_ratio'.
-                    driver_expr = f"0.0 if t < {a} else ({vert1[k]} if t > {a + b} else {vert0[k]} * (1 - (t - {a}) / {b}) + {vert1[k]} * (t - {a}) / {b})"
+                    driver_expr = f"{vert0[k]} if t < {a} else ({vert1[k]} if t > {a + b} else {vert0[k]} * (1 - (t - {a}) / {b}) + {vert1[k]} * (t - {a}) / {b})"
 
                     # Add driver script.
                     add_driver_script(driver, self.obj,
