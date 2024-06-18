@@ -156,6 +156,14 @@ class SegmentChain:
         assert self.outro, "The outro animation interval was not set."
         assert self.obj, "The blender object has not been initialised."
 
+        # Set load ratio keyframes.
+        self.obj["load_ratio"] = 1.0
+        self.obj.keyframe_insert(
+            data_path='["load_ratio"]', frame=to_frame(self.outro.start))
+        self.obj["load_ratio"] = 0.0
+        self.obj.keyframe_insert(
+            data_path='["load_ratio"]', frame=to_frame(self.outro.stop))
+
 
 class Segment(SegmentChain):
     def __init__(self, vert0: Vector, vert1: Vector, width: float = 0.05, bias: float = 0.0,
