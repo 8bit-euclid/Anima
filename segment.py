@@ -1,9 +1,14 @@
 from general import *
+import time
 
 MAX_SEGMENT_ANGLE_OFFSET = math.radians(75)
 
 
 class SegmentChain:
+    """
+    This forms the basis for all curves and compund objects constructed from curves. Currently specialised for 2D curves only.
+    """
+
     def __init__(self, vertices: List[Vector], width: float = 0.05, bias: float = 0.0,
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
                  outro: Interval = None, dimension=2):
@@ -125,29 +130,35 @@ class SegmentChain:
         self.obj.keyframe_insert(
             data_path='["load_ratio"]', frame=to_frame(self.intro.stop))
 
-        # Set vertices 2 and 3 to be driven by the 'load_ratio'.
+        # Set vertices 2 and 3 of each segment to be driven by the 'load_ratio'.
+        obj_verts = self.obj.data.vertices
         total_len = self.total_length
         cumu_seg_len = 0.0
+        shape_key_basis = self.obj.shape_key_add(name="Basis")
+        shape_keys = []
         for i in range(len(self.vertices) - 1):
-            obj_verts = self.obj.data.vertices
             curr_seg_len = self.segment_lengths[i]
 
             a = cumu_seg_len / total_len
             b = curr_seg_len / total_len
 
+            # Create new shape key for this segment and add to list.
+            shape_key = self.obj.shape_key_add(name=f"Loaded_{i}")
+            shape_keys.append(shape_key)
+
+            # Set shape key vertices.
             for j in [4*i + 2, 4*i + 3]:
-                vert0 = obj_verts[j - 2].co
-                vert1 = obj_verts[j].co
+                shape_key_basis.data[j].co = obj_verts[j - 2].co
 
-                # Get the drivers for the 3 vertex coordinates.
-                drivers = add_driver(obj_verts[j], "co")
-                for k, driver in enumerate(drivers):
-                    # Linearly interpolate between the two vertices based on the 'load_ratio'.
-                    driver_expr = f"{vert0[k]} if t < {a} else ({vert1[k]} if t > {a + b} else {vert0[k]} * (1 - (t - {a}) / {b}) + {vert1[k]} * (t - {a}) / {b})"
+                for sk in shape_keys:
+                    sk.data[j].co = obj_verts[j - 2].co
+                shape_key.data[j].co = obj_verts[j].co
 
-                    # Add driver script.
-                    add_driver_script(driver, self.obj,
-                                      '["load_ratio"]', 't', driver_expr)
+            # Set current shape key value to be driven by the load ratio.
+            driver = add_driver(shape_key, "value")
+            driver_expr = f"max(0.0, min(1.0, (t - {a}) / {b}))"
+            add_driver_script(driver, self.obj,
+                              '["load_ratio"]', 't', driver_expr)
 
             # Update cumulative segment length.
             cumu_seg_len += curr_seg_len
@@ -170,4 +181,38 @@ class Segment(SegmentChain):
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
                  outro: Interval = None):
         super().__init__([vert0, vert1], width, bias,
+                         angle_offs0, angle_offs1, intro, outro)
+
+
+class ParametricCurve(SegmentChain):
+    def __init__(self, point_func, param0: float, param1: float, width: float = 0.05, bias: float = 0.0,
+                 angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
+                 outro: Interval = None, n_subdiv: int = 200):
+
+        # Compute vertices at each subdivision.
+        verts = []
+        n_verts = n_subdiv + 1
+        delta = (param1 - param0) / n_subdiv
+        param = param0
+        for _ in range(n_verts):
+            vert = point_func(param)
+            verts.append(vert)
+            param += delta
+
+        super().__init__(verts, width, bias, angle_offs0, angle_offs1, intro, outro)
+
+
+class Ellipse(ParametricCurve):
+    def __init__(self, centre: Vector, x_radius: float, y_radius: float, width: float = 0.05,
+                 bias: float = 0.0, angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None, outro: Interval = None):
+
+        self.centre = Vector(centre).resized(3)
+        assert x_radius > 0.0 and y_radius > 0.0
+        self.x_radius = x_radius
+        self.y_radius = y_radius
+
+        def point(t) -> Vector:
+            return self.centre + Vector([x_radius * cos(t), y_radius * sin(t), 0.0])
+
+        super().__init__(point, 0.0, 2.0*pi, width, bias,
                          angle_offs0, angle_offs1, intro, outro)
