@@ -1,4 +1,4 @@
-from segment import *
+from curves import *
 from general import *
 
 
