@@ -204,7 +204,7 @@ class ParametricCurve(SegmentChain):
 
 class Ellipse(ParametricCurve):
     def __init__(self, centre: Vector, x_radius: float, y_radius: float, width: float = 0.05,
-                 bias: float = 0.0, angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None, outro: Interval = None):
+                 bias: float = 0.0, intro: Interval = None, outro: Interval = None):
 
         self.centre = Vector(centre).resized(3)
         assert x_radius > 0.0 and y_radius > 0.0
@@ -214,5 +214,12 @@ class Ellipse(ParametricCurve):
         def point(t) -> Vector:
             return self.centre + Vector([x_radius * cos(t), y_radius * sin(t), 0.0])
 
-        super().__init__(point, 0.0, 2.0*pi, width, bias,
+        super().__init__(point, 0.0, 2.0*pi, width, bias, 0.0, 0.0, intro, outro)
+
+
+class Circle(Ellipse):
+    def __init__(self, centre: Vector, radius: float, width: float = 0.05,
+                 bias: float = 0.0, angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None, outro: Interval = None):
+
+        super().__init__(centre, radius, radius, width, bias,
                          angle_offs0, angle_offs1, intro, outro)
