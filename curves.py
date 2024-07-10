@@ -2,6 +2,7 @@ from general import *
 import time
 
 MAX_SEGMENT_ANGLE_OFFSET = math.radians(75)
+MIN_DETACHED_ANGLE_OFFSET = math.radians(30)
 
 
 # region Segments
@@ -80,27 +81,37 @@ class SegmentChain:
             assert_2d(self.dim)
             norm = tang.cross(UnitZ)
 
-            # Compute the end-direction at this vertex by applying the angle offset to the normal.
-            direc = norm.copy()
             assert abs(angle_offs[i]) < MAX_SEGMENT_ANGLE_OFFSET, \
                 "The offset angle is out of range."
+
+            # Compute the end-direction at this vertex by applying the angle offset to the normal.
+            direc = norm.copy()
             if angle_offs[i] != 0.0:
                 eul = Euler((0.0, 0.0, angle_offs[i]), 'XYZ')
                 direc.rotate(eul)
 
-                # Normalise to have unit length orthogonal to the tangent.
+                # Normalise to have unit length along the normal direction.
                 direc = direc / direc.dot(norm)
 
             # Position object vertices, considering end-directions, width, and bias.
             j = 4 * i  # Object vertex index
             v0 = verts[i] + (bias - 1.0) * half_width * direc
             v1 = verts[i] + (bias + 1.0) * half_width * direc
+
+            detached = 0 < i < (
+                n_verts - 1) and abs(angle_offs[i]) >= MIN_DETACHED_ANGLE_OFFSET
+            if detached:
+                # Compute next tangent and normalise in the same manner as for direc.
+                tang2 = verts[i + 1] - verts[i]
+                tang2 = -tang2 / tang2.dot(norm)
+                v2 = v1 + self.width * tang2
+
             if i > 0:
-                obj_verts[j - 2].co = v0.copy()
+                obj_verts[j - 2].co = v2.copy() if detached else v0.copy()
                 obj_verts[j - 1].co = v1.copy()
             if i < n_verts - 1:
                 obj_verts[j + 0].co = v0.copy()
-                obj_verts[j + 1].co = v1.copy()
+                obj_verts[j + 1].co = v2.copy() if detached else v1.copy()
 
     def _create_mesh(self):
         n_verts = len(self.vertices)
