@@ -164,3 +164,7 @@ cython_debug/
 # Blender
 blend/
 .blend
+~/.config/blender/*
+
+# Other
+*.pdf

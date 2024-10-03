@@ -1,0 +1,12 @@
+{
+   "version": "1.0.0",
+   "configurations": [
+      {
+         "name": "Apeiron",
+         "type": "debugpy",
+         "request": "launch",
+         "module": "apeiron.main",
+         "justMyCode": true
+      }
+   ]
+}
