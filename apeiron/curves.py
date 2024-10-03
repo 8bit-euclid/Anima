@@ -1,14 +1,80 @@
-from general import *
-import time
+from apeiron.general import *
+from apeiron.startup.customs import *
 
 MAX_SEGMENT_ANGLE_OFFSET = math.radians(75)
 MIN_DETACHED_ANGLE_OFFSET = math.radians(30)
 
 
+class Rectangle:
+    def __init__(self, width, height):
+        self.obj = None
+        self.width = width
+        self.height = height
+        self.hook = []
+
+        self._build()
+
+    def animate(self):
+        # Set load ratio keyframes.
+        self.obj["R"] = 0.0
+        self.obj.keyframe_insert(data_path='["R"]', frame=0)
+        self.obj["R"] = 2.0
+        self.obj.keyframe_insert(data_path='["R"]', frame=400)
+
+        i = 1
+        hook = self.hook[i].object
+
+        # Set current shape key value to be driven by the load ratio.
+        driver = add_driver(hook, "location", 0)
+        driver_expr = f"halves(t)"
+        add_driver_script(driver, self.obj, '["R"]', 't', driver_expr)
+
+        # for i in range(4):
+        # hook = self.hook[i].object
+
+        # def mod(i, v):
+        #     # hook.location[i] = 0.0
+        #     hook.keyframe_insert(data_path="location", index=i, frame=0)
+        #     hook.location[i] += v
+        #     hook.keyframe_insert(data_path="location", index=i, frame=400)
+
+        # if i == 0:
+        #     mod(1, -1)
+        # elif i == 1:
+        #     mod(0, 1)
+        # elif i == 2:
+        #     mod(0, -1)
+        # elif i == 3:
+        #     mod(1, 1)
+
+    def _create_mesh(self):
+        obj_verts = []
+        obj_faces = []
+        obj_verts.append((0, 0, 0))
+        obj_verts.append((1, 0, 0))
+        obj_verts.append((0, 1, 0))
+        obj_verts.append((1, 1, 0))
+
+        obj_faces.append((0, 1, 2))
+        obj_faces.append((1, 3, 2))
+
+        # Create new bpy mesh and update base object.
+        mesh = create_mesh("mesh", obj_verts, obj_faces)
+        self.obj = add_object("mesh", mesh)
+
+    def _build(self):
+        self._create_mesh()
+
+        for i in range(4):
+            self.hook.append(add_empty_hook(self.obj, i))
+
 # region Segments
+
+
 class SegmentChain:
     """
-    This forms the basis for all curves and compund objects constructed from curves. Currently specialised for 2D curves only.
+    This forms the basis for all curves and compund objects constructed from curves. 
+    It is currently specialised for 2D curves only.
     """
 
     def __init__(self, vertices: List[Vector], width: float = 0.05, bias: float = 0.0,

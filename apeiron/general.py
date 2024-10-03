@@ -1,10 +1,10 @@
 import bpy
 from collections import namedtuple
-from easybpy import *
 from math import *
 from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
 from typing import List
+from apeiron.easybpy import *
 
 
 UnitZ = Vector([0.0, 0.0, 1.0])
@@ -39,9 +39,24 @@ def add_object(name: str, mesh):
     return obj
 
 
-def add_rectangle():
+def add_empty(location=(0, 0, 0)):
+    bpy.ops.object.empty_add(type='PLAIN_AXES', location=location)
+    return bpy.context.view_layer.objects.active
+
+
+def add_empty_hook(object, index):
+    hook = add_hook(object)
+    hook.object = add_empty(object.data.vertices[index].co)
+    hook.object.parent = object
+    hook.object.hide_viewport = True
+    hook.object.hide_render = True
+    hook.vertex_indices_set([index])
+    return hook
+
+
+def add_rectangle(location=(0, 0, 0)):
     bpy.ops.mesh.primitive_plane_add(
-        size=1, enter_editmode=False, align='WORLD', location=(0, 0, 0))
+        size=1, enter_editmode=False, align='WORLD', location=location)
     return bpy.context.view_layer.objects.active
 
 
@@ -85,3 +100,8 @@ def to_frame(delta):
 def save_as(file_name: str):
     file_path = "blend/" + file_name + ".blend"
     bpy.ops.wm.save_mainfile(filepath=file_path)
+
+
+def driver_callable(func):
+    func.driver_callable = True
+    return func
