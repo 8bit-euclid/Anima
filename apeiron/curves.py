@@ -21,10 +21,9 @@ class Rectangle:
         self.obj["R"] = 2.0
         self.obj.keyframe_insert(data_path='["R"]', frame=400)
 
+        # Set current shape key value to be driven by the load ratio.
         i = 1
         hook = self.hook[i].object
-
-        # Set current shape key value to be driven by the load ratio.
         driver = add_driver(hook, "location", 0)
         driver_expr = f"halves(t)"
         add_driver_script(driver, self.obj, '["R"]', 't', driver_expr)
@@ -66,7 +65,7 @@ class Rectangle:
         self._create_mesh()
 
         for i in range(4):
-            self.hook.append(add_empty_hook(self.obj, i))
+            self.hook.append(add_empty_hook(f'v{i}', self.obj, i))
 
 # region Segments
 
@@ -79,8 +78,8 @@ class SegmentChain:
 
     def __init__(self, vertices: List[Vector], width: float = 0.05, bias: float = 0.0,
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
-                 outro: Interval = None, dimension=2):
-        self.name = "Segment"
+                 outro: Interval = None, dimension=2, name='SegmentChain'):
+        self.name = name
         self.obj = None
         self.dim = dimension
 
@@ -92,8 +91,6 @@ class SegmentChain:
         assert -1.0 <= bias <= 1.0, \
             "The width bias must be in the range [-1.0, 1.0]."
         self.bias = bias
-        self.segment_lengths = []
-        self.total_length = 0.0
 
         # Build object
         self._build()
@@ -132,6 +129,7 @@ class SegmentChain:
             angle_offs.append(-0.5 * tang_prev.angle_signed(tang_curr))
         angle_offs.append(self.angle_offs1)  # Last vertex.
 
+        self.segment_lengths = []
         self.total_length = 0.0
 
         for i in range(n_verts):
@@ -180,11 +178,9 @@ class SegmentChain:
                 obj_verts[j + 1].co = v2.copy() if detached else v1.copy()
 
     def _create_mesh(self):
-        n_verts = len(self.vertices)
-
         obj_verts = []  # Note: different to the segment vertices
         obj_faces = []
-        for i in range(n_verts - 1):
+        for i in range(len(self.vertices) - 1):
             for _ in range(4):  # 4 vertices per segment
                 obj_verts.append((0, 0, 0))
 
@@ -257,7 +253,7 @@ class SegmentChain:
 class Segment(SegmentChain):
     def __init__(self, vert0: Vector, vert1: Vector, width: float = 0.05, bias: float = 0.0,
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
-                 outro: Interval = None):
+                 outro: Interval = None, name='Segment'):
 
         super().__init__(vertices=[vert0, vert1],
                          width=width,
@@ -265,7 +261,8 @@ class Segment(SegmentChain):
                          angle_offs0=angle_offs0,
                          angle_offs1=angle_offs1,
                          intro=intro,
-                         outro=outro)
+                         outro=outro,
+                         name=name)
 # endregion
 
 
@@ -273,7 +270,7 @@ class Segment(SegmentChain):
 class Polygon(SegmentChain):
     def __init__(self, n_verts: int, width: float = 0.05, bias: float = 0.0,
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
-                 outro: Interval = None):
+                 outro: Interval = None, name='Polygon'):
         assert n_verts > 2, "A polygon must have at least 3 vertices."
         pass
 # endregion
@@ -283,7 +280,7 @@ class Polygon(SegmentChain):
 class ParametricCurve(SegmentChain):
     def __init__(self, point_func, param0: float, param1: float, width: float = 0.05, bias: float = 0.0,
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
-                 outro: Interval = None, n_subdiv: int = 200):
+                 outro: Interval = None, n_subdiv: int = 200, name='Curve'):
 
         # Compute vertices at each subdivision.
         verts = []
@@ -301,12 +298,14 @@ class ParametricCurve(SegmentChain):
                          angle_offs0=angle_offs0,
                          angle_offs1=angle_offs1,
                          intro=intro,
-                         outro=outro)
+                         outro=outro,
+                         name=name)
 
 
 class EllipticalArc(ParametricCurve):
     def __init__(self, centre: Vector, radius_x: float, radius_y: float, theta0: float, theta1: float,
-                 width: float = 0.05, bias: float = 0.0, angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None, outro: Interval = None):
+                 width: float = 0.05, bias: float = 0.0, angle_offs0: float = 0.0, angle_offs1: float = 0.0,
+                 intro: Interval = None, outro: Interval = None, name='EllipticalArc'):
 
         self.centre = Vector(centre).resized(3)
         assert radius_x > 0.0 and radius_y > 0.0
@@ -325,12 +324,13 @@ class EllipticalArc(ParametricCurve):
                          angle_offs0=angle_offs0,
                          angle_offs1=angle_offs1,
                          intro=intro,
-                         outro=outro)
+                         outro=outro,
+                         name=name)
 
 
 class Ellipse(EllipticalArc):
     def __init__(self, centre: Vector, radius_x: float, radius_y: float, width: float = 0.05,
-                 bias: float = 0.0, intro: Interval = None, outro: Interval = None):
+                 bias: float = 0.0, intro: Interval = None, outro: Interval = None, name='Ellipse'):
 
         super().__init__(centre=centre,
                          radius_x=radius_x,
@@ -342,12 +342,14 @@ class Ellipse(EllipticalArc):
                          angle_offs0=0.0,
                          angle_offs1=0.0,
                          intro=intro,
-                         outro=outro)
+                         outro=outro,
+                         name=name)
 
 
 class CircularArc(EllipticalArc):
     def __init__(self, centre: Vector, radius: float, theta0: float, theta1: float,
-                 width: float = 0.05, bias: float = 0.0, angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None, outro: Interval = None):
+                 width: float = 0.05, bias: float = 0.0, angle_offs0: float = 0.0, angle_offs1: float = 0.0,
+                 intro: Interval = None, outro: Interval = None, name='CircularArc'):
 
         super().__init__(centre=centre,
                          radius_x=radius,
@@ -359,12 +361,13 @@ class CircularArc(EllipticalArc):
                          angle_offs0=angle_offs0,
                          angle_offs1=angle_offs1,
                          intro=intro,
-                         outro=outro)
+                         outro=outro,
+                         name=name)
 
 
 class Circle(CircularArc):
     def __init__(self, centre: Vector, radius: float, width: float = 0.05,
-                 bias: float = 0.0, intro: Interval = None, outro: Interval = None):
+                 bias: float = 0.0, intro: Interval = None, outro: Interval = None, name='Circle'):
 
         super().__init__(centre=centre,
                          radius=radius,
@@ -375,5 +378,6 @@ class Circle(CircularArc):
                          angle_offs0=0.0,
                          angle_offs1=0.0,
                          intro=intro,
-                         outro=outro)
+                         outro=outro,
+                         name=name)
 # endregion
