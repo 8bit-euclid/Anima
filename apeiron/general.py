@@ -39,18 +39,18 @@ def add_object(name: str, mesh):
     return obj
 
 
-def add_empty(location=(0, 0, 0)):
-    bpy.ops.object.empty_add(type='PLAIN_AXES', location=location)
+def add_empty(name='Empty', location=(0, 0, 0)):
+    bpy.ops.object.empty_add(name=name, location=location, type='PLAIN_AXES')
     return bpy.context.view_layer.objects.active
 
 
-def add_empty_hook(object, index):
-    hook = add_hook(object)
-    hook.object = add_empty(object.data.vertices[index].co)
-    hook.object.parent = object
+def add_empty_hook(name, parent, vertex_index):
+    hook = add_hook(parent)
+    hook.object = add_empty(name, parent.data.vertices[vertex_index].co)
+    hook.object.parent = parent
     hook.object.hide_viewport = True
     hook.object.hide_render = True
-    hook.vertex_indices_set([index])
+    hook.vertex_indices_set([vertex_index])
     return hook
 
 
