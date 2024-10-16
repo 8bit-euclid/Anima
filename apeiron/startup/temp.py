@@ -1,4 +1,4 @@
-from apeiron.general import driver_callable
+from apeiron.globals.general import driver_callable
 
 
 @driver_callable
