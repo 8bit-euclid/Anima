@@ -1,5 +1,5 @@
 from apeiron.curves import *
-from apeiron.general import *
+from apeiron.globals.general import *
 import apeiron.startup as startup
 
 
