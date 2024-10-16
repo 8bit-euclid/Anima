@@ -1,4 +1,4 @@
-from apeiron.general import *
+from apeiron.globals.general import *
 from apeiron.startup.customs import *
 
 MAX_SEGMENT_ANGLE_OFFSET = math.radians(75)
@@ -7,7 +7,7 @@ MIN_DETACHED_ANGLE_OFFSET = math.radians(30)
 
 class Rectangle:
     def __init__(self, width, height):
-        self.obj = None
+        self.obj = add_object("Rectangle")
         self.width = width
         self.height = height
         self.hook = []
@@ -58,8 +58,7 @@ class Rectangle:
         obj_faces.append((1, 3, 2))
 
         # Create new bpy mesh and update base object.
-        mesh = create_mesh("mesh", obj_verts, obj_faces)
-        self.obj = add_object("mesh", mesh)
+        self.obj.data = create_mesh("mesh", obj_verts, obj_faces)
 
     def _build(self):
         self._create_mesh()
@@ -79,12 +78,13 @@ class SegmentChain:
     def __init__(self, vertices: List[Vector], width: float = 0.05, bias: float = 0.0,
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
                  outro: Interval = None, dimension=2, name='SegmentChain'):
+        self.obj = add_object(name)
         self.name = name
-        self.obj = None
         self.dim = dimension
 
         # Note: currently only works for 2D but we resize to 3.
-        self.vertices = [Vector(v).resized(3) for v in vertices]
+        self.vertices = [
+            add_empty(name=f'{name}.V{i}', location=Vector(v).resized(3), parent=self.obj) for i, v in enumerate(vertices)]
         self.angle_offs0 = angle_offs0
         self.angle_offs1 = angle_offs1
         self.width = width
@@ -112,7 +112,6 @@ class SegmentChain:
     def _build(self):
         self._create_mesh()
         verts = self.vertices
-        half_width = 0.5 * self.width
         bias = self.bias
         obj_verts = self.obj.data.vertices
 
@@ -158,9 +157,8 @@ class SegmentChain:
                 direc = direc / direc.dot(norm)
 
             # Position object vertices, considering end-directions, width, and bias.
-            j = 4 * i  # Object vertex index
-            v0 = verts[i] + (bias - 1.0) * half_width * direc
-            v1 = verts[i] + (bias + 1.0) * half_width * direc
+            v0 = verts[i] + (bias - 1.0) * (0.5 * self.width) * direc
+            v1 = verts[i] + (bias + 1.0) * (0.5 * self.width) * direc
 
             detached = 0 < i < (
                 n_verts - 1) and abs(angle_offs[i]) >= MIN_DETACHED_ANGLE_OFFSET
@@ -170,6 +168,7 @@ class SegmentChain:
                 tang2 = -tang2 / tang2.dot(norm)
                 v2 = v1 + self.width * tang2
 
+            j = 4 * i  # Object vertex index
             if i > 0:
                 obj_verts[j - 2].co = v2.copy() if detached else v0.copy()
                 obj_verts[j - 1].co = v1.copy()
@@ -189,12 +188,10 @@ class SegmentChain:
             obj_faces.append((k + 1, k + 3, k + 2))
 
         # Create new bpy mesh and update base object.
-        mesh = create_mesh("mesh", obj_verts, obj_faces)
-        self.obj = add_object(self.name, mesh)
+        self.obj.data = create_mesh("mesh", obj_verts, obj_faces)
 
     def _make_intro(self):
         assert self.intro, "The intro animation interval was not set."
-        assert self.obj, "The blender object has not been initialised."
 
         # Set load ratio keyframes.
         self.obj["load_ratio"] = 0.0

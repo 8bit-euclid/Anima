@@ -4,7 +4,7 @@ from math import *
 from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
 from typing import List
-from apeiron.easybpy import *
+from .easybpy import *
 
 
 UnitZ = Vector([0.0, 0.0, 1.0])
@@ -33,15 +33,26 @@ def link_object(obj):
     bpy.data.collections['Collection'].objects.link(obj)
 
 
-def add_object(name: str, mesh):
+def add_object(name: str, mesh=None, parent=None):
+    if not mesh:
+        mesh = bpy.data.meshes.new(name=name)  # Create empty mesh
     obj = bpy.data.objects.new(name, mesh)
+    obj.parent = parent
     link_object(obj)
     return obj
 
 
-def add_empty(name='Empty', location=(0, 0, 0)):
-    bpy.ops.object.empty_add(name=name, location=location, type='PLAIN_AXES')
-    return bpy.context.view_layer.objects.active
+def add_empty(name='Empty', location=(0, 0, 0), parent=None):
+    # obj = bpy.data.objects.new(name, None)
+    # obj.empty_display_type = 'PLAIN_AXES'
+    # obj.location = location
+    # link_object(obj)
+    # return obj
+    bpy.ops.object.empty_add(location=location, type='PLAIN_AXES')
+    obj = bpy.context.object
+    obj.name = name
+    obj.parent = parent
+    return obj
 
 
 def add_empty_hook(name, parent, vertex_index):
