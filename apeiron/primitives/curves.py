@@ -7,7 +7,7 @@ MIN_DETACHED_ANGLE_OFFSET = math.radians(30)
 
 class Rectangle:
     def __init__(self, width, height):
-        self.obj = add_object("Rectangle")
+        self.obj = create_object("Rectangle")
         self.width = width
         self.height = height
         self.hook = []
@@ -24,7 +24,7 @@ class Rectangle:
         # Set current shape key value to be driven by the load ratio.
         i = 1
         hook = self.hook[i].object
-        driver = add_driver(hook, "location", 0)
+        driver = create_driver(hook, "location", 0)
         driver_expr = f"halves(t)"
         add_driver_script(driver, self.obj, '["R"]', 't', driver_expr)
 
@@ -78,7 +78,7 @@ class SegmentChain:
     def __init__(self, vertices: List[Vector], width: float = 0.05, bias: float = 0.0,
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
                  outro: Interval = None, dimension=2, name='SegmentChain'):
-        self.obj = add_object(name)
+        self.obj = create_object(name)
         self.name = name
         self.dim = dimension
 
@@ -226,7 +226,7 @@ class SegmentChain:
                 shape_key.data[j].co = obj_verts[j].co
 
             # Set current shape key value to be driven by the load ratio.
-            driver = add_driver(shape_key, "value")
+            driver = create_driver(shape_key, "value")
             driver_expr = f"max(0.0, min(1.0, (t - {a}) / {b}))"
             add_driver_script(driver, self.obj,
                               '["load_ratio"]', 't', driver_expr)

@@ -1796,7 +1796,7 @@ def delete_animation_data(ref=None):
 # region DRIVERS
 
 
-def add_driver(path, property, index=-1):
+def create_driver(path, property, index=-1):
     fcurves = path.driver_add(property, index)
     for area in bpy.context.screen.areas:  # update interface
         area.tag_redraw()
