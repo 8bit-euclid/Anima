@@ -1,7 +1,6 @@
 from apeiron.globals.general import *
 from apeiron.primitives.base import BaseObject
 import bpy
-import bmesh
 
 
 class Empty(BaseObject):
