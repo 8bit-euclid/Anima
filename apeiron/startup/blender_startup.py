@@ -1,6 +1,16 @@
+import sys
 import bpy
 import inspect
-import apeiron.startup.customs as customs
+
+
+def blender_startup_dir():
+    return '/blender-4.' in sys.executable.lower()
+
+
+if blender_startup_dir():
+    import customs
+else:
+    import apeiron.startup.customs as customs
 
 
 @bpy.app.handlers.persistent
