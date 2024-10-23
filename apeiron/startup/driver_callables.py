@@ -87,6 +87,6 @@ def copy_startup_files():
     copy_driver_callables()
 
     # Copy Blender startup files
-    dest_dir = "~/.config/blender/4.1/scripts/startup"
+    dest_dir = "~/.config/blender/4.2/scripts/startup"
     for file_name in ['blender_startup.py', 'customs.py']:
         copy_file(file_name, dest_dir)

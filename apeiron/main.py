@@ -1,7 +1,8 @@
-from apeiron.curves import *
+from apeiron.primitives.curves import *
 from apeiron.globals.general import *
 import apeiron.startup as startup
-
+from apeiron.primitives.base import BaseObject, get_blender_object
+from apeiron.primitives.points import Empty, Point
 
 startup.driver_callables.copy_startup_files()
 startup.blender_startup.register()

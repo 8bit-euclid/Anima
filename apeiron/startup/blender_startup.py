@@ -1,12 +1,13 @@
 import bpy
 import inspect
-import customs
+import apeiron.startup.customs as customs
 
 
 @bpy.app.handlers.persistent
 def load_handlers(dummy):
     for name, obj in inspect.getmembers(customs):
-        bpy.app.driver_namespace[name] = obj
+        if inspect.isfunction(obj):
+            bpy.app.driver_namespace[name] = obj
 
 
 def register():

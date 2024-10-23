@@ -23,7 +23,6 @@ def clear_scene():
 
 def create_mesh(name: str, verts, faces, edges=[]):
     mesh = bpy.data.meshes.new(name)  # Create a new mesh
-    # Load vertices, edges, and faces to the mesh
     mesh.from_pydata(verts, edges, faces)
     mesh.update()
     return mesh
@@ -33,7 +32,7 @@ def link_object(obj):
     bpy.data.collections['Collection'].objects.link(obj)
 
 
-def add_object(name: str, mesh=None, parent=None):
+def create_object(name: str, mesh=None, parent=None):
     if not mesh:
         mesh = bpy.data.meshes.new(name=name)  # Create empty mesh
     obj = bpy.data.objects.new(name, mesh)
@@ -43,11 +42,6 @@ def add_object(name: str, mesh=None, parent=None):
 
 
 def add_empty(name='Empty', location=(0, 0, 0), parent=None):
-    # obj = bpy.data.objects.new(name, None)
-    # obj.empty_display_type = 'PLAIN_AXES'
-    # obj.location = location
-    # link_object(obj)
-    # return obj
     bpy.ops.object.empty_add(location=location, type='PLAIN_AXES')
     obj = bpy.context.object
     obj.name = name
@@ -116,3 +110,21 @@ def save_as(file_name: str):
 def driver_callable(func):
     func.driver_callable = True
     return func
+
+
+def is_blender_object(object):
+    return hasattr(object, 'location') and hasattr(object, 'data')
+
+
+def is_apeiron_object(object):
+    from ..primitives.base import BaseObject
+    return issubclass(type(object), BaseObject)
+
+
+def get_blender_object(object):
+    if is_blender_object(object):
+        return object
+    elif is_apeiron_object(object):
+        return object.bl_object
+    else:
+        raise Exception(f'Unrecognised object of type {type(object)}')
