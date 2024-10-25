@@ -1,18 +1,23 @@
 from apeiron.globals.general import *
 from apeiron.startup.customs import *
+from apeiron.primitives.base import BaseObject
 
 MAX_SEGMENT_ANGLE_OFFSET = math.radians(75)
 MIN_DETACHED_ANGLE_OFFSET = math.radians(30)
 
 
-class Rectangle:
+class Rectangle(BaseObject):
     def __init__(self, width, height):
         self.obj = create_object("Rectangle")
+        super().__init__("Rectangle", self.obj)
         self.width = width
         self.height = height
         self.hook = []
 
         self._build()
+
+    def _process_action(self, action):
+        return super()._process_action(action)
 
     def animate(self):
         # Set load ratio keyframes.
