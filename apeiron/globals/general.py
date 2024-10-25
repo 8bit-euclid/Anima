@@ -1,10 +1,10 @@
 import bpy
+import math
 from collections import namedtuple
-from math import *
 from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
 from typing import List
-from .easybpy import *
+import apeiron.globals.easybpy as ebpy
 
 
 UnitZ = Vector([0.0, 0.0, 1.0])
@@ -50,7 +50,7 @@ def add_empty(name='Empty', location=(0, 0, 0), parent=None):
 
 
 def add_empty_hook(name, parent, vertex_index):
-    hook = add_hook(parent)
+    hook = ebpy.add_hook(parent)
     hook.object = add_empty(name, parent.data.vertices[vertex_index].co)
     hook.object.parent = parent
     hook.object.hide_viewport = True
@@ -99,7 +99,7 @@ def to_frame(delta):
 
     assert delta < timedelta(
         hours=1), "Can only convert up to 1hr to a frame index."
-    return round(get_scene().render.fps * delta.total_seconds()) + 1
+    return round(ebpy.get_scene().render.fps * delta.total_seconds()) + 1
 
 
 def save_as(file_name: str):

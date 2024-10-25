@@ -1,4 +1,5 @@
-from apeiron.globals.general import get_blender_object, create_driver
+from apeiron.globals.general import get_blender_object
+from apeiron.globals.easybpy import create_driver
 
 
 class Driver:

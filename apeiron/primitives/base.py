@@ -1,4 +1,6 @@
-from apeiron.globals.general import *
+# from apeiron.globals.general import *
+import bpy
+from apeiron.globals.general import create_mesh, Vector, Euler, is_apeiron_object, ebpy
 from apeiron.animation.driver import Driver
 from apeiron.animation.action import Action
 from abc import ABC, abstractmethod
@@ -95,7 +97,7 @@ class BaseObject(ABC):
 
         assert self._has_mesh(), f'The object {self.name} has no mesh set.'
         obj = self.bl_obj
-        hook = add_hook(obj)
+        hook = ebpy.add_hook(obj)
 
         # Create empty. Note: Lazy import to prevent cyclic imports.
         from .points import Empty
