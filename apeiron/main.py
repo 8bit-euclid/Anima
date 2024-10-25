@@ -6,7 +6,6 @@ from apeiron.primitives.points import Empty, Point
 
 startup.driver_callables.copy_startup_files()
 startup.blender_startup.register()
-
 clear_scene()
 set_render_fps(60)
 

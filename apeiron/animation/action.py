@@ -1,8 +1,9 @@
-from apeiron.globals.general import Interval
+from abc import ABC, abstractmethod
 from enum import Enum
+from apeiron.globals.general import Interval
 
 
-class Action:
+class Action(ABC):
     def __init__(self, type, interval: Interval):
         self.type = type
         self.interval = interval
