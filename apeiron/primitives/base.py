@@ -24,6 +24,11 @@ class BaseObject(ABC):
         self.shape_keys = []
         self.hooks = []
 
+    @abstractmethod
+    def _process_action(self, action: Action):
+        """Must be implemented by all sub-classes, to process each Action.Type."""
+        pass
+
     def set_mesh(self, vertices, faces, edges=[]):
         """Sets the object's mesh based on lists of vertices, faces, and edges."""
         self.bl_obj.data = create_mesh("mesh", vertices, faces, edges)
@@ -120,11 +125,6 @@ class BaseObject(ABC):
         self.shape_keys.append(shape_key)
         return shape_key
 
-    def process_actions(self):
-        """Process all actions to be performed by this object."""
-        for action in self.actions:
-            self._process_action(action)
-
     def hide(self):
         """Hide this object in both the viewport and the render."""
         self._set_visibility(False)
@@ -132,6 +132,11 @@ class BaseObject(ABC):
     def unhide(self):
         """Unhide this object in both the viewport and the render."""
         self._set_visibility(True)
+
+    def process_actions(self):
+        """Process all actions to be performed by this object."""
+        for action in self.actions:
+            self._process_action(action)
 
     # Property getters/setters for underlying blender object attributes.
     @property
@@ -230,7 +235,3 @@ class BaseObject(ABC):
     def _set_render_visibility(self, val):  # True if visible, else False
         """Sets the object's visibility in the render."""
         self.bl_obj.hide_render = not val
-
-    @abstractmethod
-    def _process_action(self, action: Action):
-        pass
