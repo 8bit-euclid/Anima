@@ -29,7 +29,7 @@ class Rectangle(BaseObject):
         # Set current shape key value to be driven by the load ratio.
         i = 1
         hook = self.hook[i].object
-        driver = create_driver(hook, "location", 0)
+        driver = ebpy.create_driver(hook, "location", 0)
         driver_expr = f"halves(t)"
         add_driver_script(driver, self.obj, '["R"]', 't', driver_expr)
 
@@ -231,7 +231,7 @@ class SegmentChain:
                 shape_key.data[j].co = obj_verts[j].co
 
             # Set current shape key value to be driven by the load ratio.
-            driver = create_driver(shape_key, "value")
+            driver = ebpy.create_driver(shape_key, "value")
             driver_expr = f"max(0.0, min(1.0, (t - {a}) / {b}))"
             add_driver_script(driver, self.obj,
                               '["load_ratio"]', 't', driver_expr)
@@ -316,7 +316,7 @@ class EllipticalArc(ParametricCurve):
         self.radius_y = radius_y
 
         def point(t) -> Vector:
-            return self.centre + Vector([radius_x * cos(t), radius_y * sin(t), 0.0])
+            return self.centre + Vector([radius_x * math.cos(t), radius_y * math.sin(t), 0.0])
 
         super().__init__(point_func=point,
                          param0=theta0,
@@ -338,7 +338,7 @@ class Ellipse(EllipticalArc):
                          radius_x=radius_x,
                          radius_y=radius_y,
                          theta0=0.0,
-                         theta1=2.0*pi,
+                         theta1=2.0*math.pi,
                          width=width,
                          bias=bias,
                          angle_offs0=0.0,
@@ -374,7 +374,7 @@ class Circle(CircularArc):
         super().__init__(centre=centre,
                          radius=radius,
                          theta0=0.0,
-                         theta1=2.0*pi,
+                         theta1=2.0*math.pi,
                          width=width,
                          bias=bias,
                          angle_offs0=0.0,
