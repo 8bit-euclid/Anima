@@ -2,34 +2,22 @@
 import bpy
 from apeiron.globals.general import create_mesh, Vector, Euler, is_apeiron_object, ebpy
 from apeiron.animation.driver import Driver
-from apeiron.animation.action import Action
-from abc import ABC, abstractmethod
+from abc import ABC
 
 
 class BaseObject(ABC):
     """
-    Base class from which all visualisable objects will derive. Contains common functionality and 
-    enforces that all subclasses must implement the '_process_action' method. Encapsulates the underlying 
-    Blender object.
+    Base class from which all visualisable objects will derive. Contains common members and methods, and 
+    encapsulates the underlying Blender object.
     """
 
-    def __init__(self, name='BaseObject', bl_object=None, actions=None):
+    def __init__(self, name='BaseObject', bl_object=None):
         self.name = name
         self.bl_obj = bl_object
         self.parent = None  # of base type BaseObject
         self.children = []  # of base type BaseObject
-
-        if actions is None:
-            actions = []
-        self.actions = actions
-
         self.shape_keys = []
         self.hooks = []
-
-    @abstractmethod
-    def _process_action(self, action: Action):
-        """Must be implemented by all sub-classes, to process each Action.Type."""
-        pass
 
     def set_mesh(self, vertices, faces, edges=[]):
         """Sets the object's mesh based on lists of vertices, faces, and edges."""
@@ -76,10 +64,6 @@ class BaseObject(ABC):
     def scale_by(self, x_fact=1.0, y_fact=1.0, z_fact=1.0):
         """Scale the object by the given factors."""
         self.scale *= Vector((x_fact, y_fact, z_fact))
-
-    def add_action(self, action):
-        """Todo - do we really need this?"""
-        self.actions.append(action)
 
     def add_object(self, object):
         """Adds an object of base type BaseObject and sets current object as parent."""
@@ -134,11 +118,6 @@ class BaseObject(ABC):
     def unhide(self):
         """Unhide this object in both the viewport and the render."""
         self._set_visibility(True)
-
-    def process_actions(self):
-        """Process all actions to be performed by this object."""
-        for action in self.actions:
-            self._process_action(action)
 
     # Property getters/setters for underlying blender object attributes.
     @property
