@@ -20,10 +20,6 @@ class Empty(BaseObject):
             self._set_parent(parent)
         self.hide()
 
-    def _process_action(self, action):
-        super()._process_action(action)
-        raise Exception('Implement')
-
 
 class Point(BaseObject):
     """
@@ -38,7 +34,3 @@ class Point(BaseObject):
 
         # Note: the vertex's coordinates are expressed in the point's local coordinate system.
         self.set_mesh([(0, 0, 0)], faces=[])
-
-    def _process_action(self, action):
-        super()._process_action(action)
-        raise Exception('Implement')

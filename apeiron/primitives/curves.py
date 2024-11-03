@@ -17,9 +17,6 @@ class Rectangle(BaseObject):
 
         self._build()
 
-    def _process_action(self, action):
-        return super()._process_action(action)
-
     def animate(self):
         # Set load ratio keyframes.
         self.obj["R"] = 0.0

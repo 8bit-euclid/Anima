@@ -10,8 +10,8 @@ class BaseCurve(BaseObject):
     Base class from which all curve objects will derive.
     """
 
-    def __init__(self, name='BaseCurve', bl_object=None, width=DEFAULT_LINE_WIDTH, bias=0.0, actions=None):
-        super().__init__(name, bl_object, actions)
+    def __init__(self, name='BaseCurve', bl_object=None, width=DEFAULT_LINE_WIDTH, bias=0.0):
+        super().__init__(name, bl_object)
         self.width = width
 
         self.set_width(width)
