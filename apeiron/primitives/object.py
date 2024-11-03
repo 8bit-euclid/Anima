@@ -95,7 +95,7 @@ class BaseObject(ABC):
     def create_vertex_hook(self, name, vertex_index):
         """Create and return a hook for a given vertex in this object's mesh."""
 
-        assert self._has_mesh(), f'The object {self.name} has no mesh set.'
+        assert self._has_data(), f'The object {self.name} has no mesh set.'
         obj = self.bl_obj
         hook = ebpy.add_hook(obj)
 
@@ -184,19 +184,19 @@ class BaseObject(ABC):
     @property
     def vertices(self):
         """Get the mesh's vertices."""
-        assert self._has_mesh(), f'The object {self.name} has no mesh set.'
+        assert self._has_data(), f'The object {self.name} has no mesh set.'
         return self.bl_obj.data.vertices
 
     @property
     def faces(self):
         """Get the mesh's faces."""
-        assert self._has_mesh(), f'The object {self.name} has no mesh set.'
+        assert self._has_data(), f'The object {self.name} has no mesh set.'
         return self.bl_obj.data.polygons
 
     @property
     def edges(self):
         """Get the mesh's edges."""
-        assert self._has_mesh(), f'The object {self.name} has no mesh set.'
+        assert self._has_data(), f'The object {self.name} has no mesh set.'
         return self.bl_obj.data.edges
 
     @property
@@ -214,8 +214,8 @@ class BaseObject(ABC):
         self.bl_obj[key] = value
 
     # Private methods
-    def _has_mesh(self):
-        """Does the object have a mesh?"""
+    def _has_data(self):
+        """Does the object have data?"""
         return self.bl_obj.data is not None
 
     def _set_parent(self, parent):

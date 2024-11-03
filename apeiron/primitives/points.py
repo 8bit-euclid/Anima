@@ -1,12 +1,12 @@
 from apeiron.globals.general import *
-from apeiron.primitives.base import BaseObject
+from apeiron.primitives.object import BaseObject
 import bpy
 
 
 class Empty(BaseObject):
     """
     An object with just a point location and no mesh. It is invisible in the final render and can be used as 
-    reference points for other geometry or as a hook that drives some geometric property.  
+    reference points for other geometry or as a hook that drives some object property.  
     """
 
     def __init__(self, name='Empty', location=(0, 0, 0), parent=None):
@@ -31,7 +31,7 @@ class Point(BaseObject):
     """
 
     def __init__(self, name='Point', location=(0, 0, 0), parent=None):
-        super().__init__(name, create_object(name))
+        super().__init__(name, add_object(name))
         self.location = location
         if parent:
             self._set_parent(parent)
