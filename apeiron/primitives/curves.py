@@ -1,6 +1,7 @@
 from apeiron.globals.general import *
 from apeiron.startup.customs import *
-from apeiron.primitives.base import BaseObject
+from apeiron.primitives.object import BaseObject
+from apeiron.animation.action import Interval
 
 MAX_SEGMENT_ANGLE_OFFSET = math.radians(75)
 MIN_DETACHED_ANGLE_OFFSET = math.radians(30)
@@ -8,7 +9,7 @@ MIN_DETACHED_ANGLE_OFFSET = math.radians(30)
 
 class Rectangle(BaseObject):
     def __init__(self, width, height):
-        self.obj = create_object("Rectangle")
+        self.obj = add_object("Rectangle")
         super().__init__("Rectangle", self.obj)
         self.width = width
         self.height = height
@@ -83,7 +84,7 @@ class SegmentChain:
     def __init__(self, vertices: List[Vector], width: float = 0.05, bias: float = 0.0,
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
                  outro: Interval = None, dimension=2, name='SegmentChain'):
-        self.obj = create_object(name)
+        self.obj = add_object(name)
         self.name = name
         self.dim = dimension
 

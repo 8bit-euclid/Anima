@@ -1,4 +1,4 @@
-from .base import *
+from .object import *
 
 
 class Polygon(BaseObject):
