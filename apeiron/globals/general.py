@@ -1,6 +1,5 @@
 import bpy
 import math
-from collections import namedtuple
 from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
 from typing import List
@@ -9,19 +8,31 @@ import apeiron.globals.easybpy as ebpy
 
 UnitZ = Vector([0.0, 0.0, 1.0])
 
-Interval = namedtuple("Interval", ['start', 'stop'])
-
 
 def assert_2d(dim):
     assert dim == 2, "Can only handle 2D, currently."
 
 
+def get_2d_vector(v=(0, 0)):
+    return Vector(v).resized(2)
+
+
+def get_3d_vector(v=(0, 0, 0)):
+    return Vector(v).resized(3)
+
+
 def clear_scene():
+    """Clears and deletes all current screen elements."""
     for obj in bpy.data.objects:
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-def create_mesh(name: str, verts, faces, edges=[]):
+def create_mesh(name: str, verts, faces=None, edges=None):
+    """Creates and returns a mesh with a set of vertices, faces, and edges."""
+    if edges is None:
+        edges = []
+    if faces is None:
+        faces = []
     mesh = bpy.data.meshes.new(name)  # Create a new mesh
     mesh.from_pydata(verts, edges, faces)
     mesh.update()
@@ -32,10 +43,10 @@ def link_object(obj):
     bpy.data.collections['Collection'].objects.link(obj)
 
 
-def create_object(name: str, mesh=None, parent=None):
-    if not mesh:
-        mesh = bpy.data.meshes.new(name=name)  # Create empty mesh
-    obj = bpy.data.objects.new(name, mesh)
+def add_object(name: str, data=None, parent=None):
+    if not data:
+        data = bpy.data.meshes.new(name=name)  # Create empty mesh
+    obj = bpy.data.objects.new(name, data)
     obj.parent = parent
     link_object(obj)
     return obj
@@ -57,6 +68,27 @@ def add_empty_hook(name, parent, vertex_index):
     hook.object.hide_render = True
     hook.vertex_indices_set([vertex_index])
     return hook
+
+
+def add_line_segment(name: str, point0, point1):
+    # Create a new curve object
+    curve_data = bpy.data.curves.new(name=name, type='CURVE')
+    curve_data.dimensions = '3D'
+    curve_data.resolution_u = 1
+
+    # Create a Bezier spline and add it to the curve
+    spline = curve_data.splines.new(type='BEZIER')
+    spline.bezier_points.add(count=1)
+    for i, pt in enumerate([point0, point1]):
+        spline.bezier_points[i].co = get_3d_vector(pt)
+
+    return add_object(name, curve_data)
+
+
+def add_circle(radius=1.0, centre=(0, 0, 0)):
+    bpy.ops.curve.primitive_nurbs_circle_add(
+        radius=radius, location=centre, scale=(1, 1, 1))
+    return bpy.context.view_layer.objects.active
 
 
 def add_rectangle(location=(0, 0, 0)):
@@ -117,7 +149,7 @@ def is_blender_object(object):
 
 
 def is_apeiron_object(object):
-    from ..primitives.base import BaseObject
+    from ..primitives.object import BaseObject
     return issubclass(type(object), BaseObject)
 
 

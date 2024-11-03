@@ -1,20 +1,20 @@
+from collections import namedtuple
 from abc import ABC, abstractmethod
 from enum import Enum
-from apeiron.globals.general import Interval
+
+Interval = namedtuple("Interval", ['start', 'stop'])
 
 
 class Action(ABC):
-    def __init__(self, type, interval: Interval):
-        self.type = type
+    def __init__(self, interval: Interval):
         self.interval = interval
 
-    class Type(Enum):
-        INTRO = 1
-        OUTRO = 2
-        TRANSLATE = 3
-        ROTATE = 4
-        GLOW = 5
-
+# class Type(Enum):
+#     INTRO = 1
+#     OUTRO = 2
+#     TRANSLATE = 3
+#     ROTATE = 4
+#     GLOW = 5
 
 # inline std::string
 # ActionTypeString(const ActionType type)
@@ -28,10 +28,10 @@ class Action(ABC):
 #       case AT::OffsetOrientation:  return "OffsetOrientation";
 #       case AT::RotateBy:           return "RotateBy";
 #       case AT::RotateAt:           return "RotateAt";
-#       case AT::OffsetPosition:     return "OffsetPosition";
 #       case AT::Reflect:            return "Reflect";
 #       case AT::RevolveBy:          return "RevolveBy";
 #       case AT::RevolveAt:          return "RevolveAt";
+#       case AT::OffsetPosition:     return "OffsetPosition";
 #       case AT::MoveBy:             return "MoveBy";
 #       case AT::MoveTo:             return "MoveTo";
 #       case AT::MoveAt:             return "MoveAt";
