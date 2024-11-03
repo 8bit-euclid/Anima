@@ -4,7 +4,7 @@ from .curve import BaseCurve, DEFAULT_LINE_WIDTH
 
 
 class BezierSpline(BaseCurve):
-    def __init__(self, points, name='BezierSpline', width=DEFAULT_LINE_WIDTH, bias=0.0, actions=None):
+    def __init__(self, points, name='BezierSpline', width=DEFAULT_LINE_WIDTH, bias=0.0):
         assert len(points) > 1, 'A Bezier spline must contain at least 2 points.'
 
         # Create a new curve object
@@ -25,10 +25,7 @@ class BezierSpline(BaseCurve):
 
         # Create a new object with the curve data.
         bl_obj = add_object(name, curve_data)
-        super().__init__(name, bl_obj, width, bias, actions)
-
-    def _process_action(self, action):
-        return super()._process_action(action)
+        super().__init__(name, bl_obj, width, bias)
 
     def point(self, t: float) -> Vector:
         pass
@@ -80,8 +77,8 @@ class BezierSpline(BaseCurve):
 
 
 class BezierCurve(BezierSpline):
-    def __init__(self, point0, point1, name='BezierCurve', width=DEFAULT_LINE_WIDTH, bias=0.0, actions=None):
-        super().__init__([point0, point1], name, width, bias, actions)
+    def __init__(self, point0, point1, name='BezierCurve', width=DEFAULT_LINE_WIDTH, bias=0.0):
+        super().__init__([point0, point1], name, width, bias)
 
     def set_handle_0(self, location, relative=True):
         self._set_handle_type('RIGHT', 0, 'FREE')
