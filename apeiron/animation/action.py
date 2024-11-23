@@ -6,8 +6,9 @@ Interval = namedtuple("Interval", ['start', 'stop'])
 
 
 class Action(ABC):
-    def __init__(self, interval: Interval):
-        self.interval = interval
+    def __init__(self, obj, interval: Interval):
+        self.obj = obj  # of type BaseObject
+        self.interval = Interval(*interval)
 
 # class Type(Enum):
 #     INTRO = 1

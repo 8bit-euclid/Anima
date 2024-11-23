@@ -1,0 +1,14 @@
+{
+   "version": "2.0.0",
+   "tasks": [
+      {
+         "label": "Run Blender Script",
+         "type": "process",
+         "command": "extension.blender.runScript",
+         // "command": "${extensionInstallFolder:blender.runScript}",
+         // "args": [
+         //    "${workspaceFolder}/run.py"
+         // ]
+      }
+   ]
+}

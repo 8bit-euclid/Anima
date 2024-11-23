@@ -1,6 +1,7 @@
 # from apeiron.globals.general import *
 import bpy
-from apeiron.globals.general import create_mesh, Vector, Euler, is_apeiron_object, ebpy
+import math
+from apeiron.globals.general import create_mesh, Vector, Matrix, Euler, is_apeiron_object, ebpy
 from apeiron.animation.driver import Driver
 from abc import ABC
 
@@ -11,7 +12,8 @@ class BaseObject(ABC):
     encapsulates the underlying Blender object.
     """
 
-    def __init__(self, name='BaseObject', bl_object=None):
+    def __init__(self, bl_object, name='BaseObject'):
+        assert bl_object is not None, 'Need to specify a base Blender object.'
         self.name = name
         self.bl_obj = bl_object
         self.parent = None  # of base type BaseObject
@@ -32,10 +34,34 @@ class BaseObject(ABC):
 
     def set_rotation(self, x=None, y=None, z=None):
         """Sets the object's rotation (Euler angles) in world space."""
-        rot = self.rotation_euler
-        self.bl_obj.rotation_euler = (x if x is not None else rot.x,
-                                      y if y is not None else rot.y,
-                                      z if z is not None else rot.z)
+        obj = self.bl_obj
+        rot = obj.rotation_euler
+        obj.rotation_mode = 'XYZ'
+        obj.rotation_euler = (x if x is not None else rot.x,
+                              y if y is not None else rot.y,
+                              z if z is not None else rot.z)
+
+    def set_orientation(self, x_axis, y_axis):
+        x_axis = Vector(x_axis)
+        y_axis = Vector(y_axis)
+        assert math.isclose(x_axis.dot(y_axis),
+                            0), "The axes must be orthogonal"
+
+        # Compute orthonormal basis
+        x_axis.normalize()
+        y_axis.normalize()
+        z_axis = x_axis.cross(y_axis)
+        z_axis.normalize()
+
+        # Create a 3x3 rotation matrix
+        rot_matr = Matrix((
+            x_axis,
+            y_axis,
+            z_axis
+        )).transposed()  # Blender uses column-major ordering
+
+        # Convert to quaternion or Euler angles
+        self.rotation = rot_matr.to_euler()
 
     def set_scale(self, x=None, y=None, z=None):
         """Sets the object's scale."""
@@ -74,7 +100,10 @@ class BaseObject(ABC):
 
     def add_keyframe(self, bl_data_path, index=-1, frame=bpy.context.scene.frame_current):
         """Adds a keframe for a given propety at the given frame."""
-        self.bl_obj.keyframe_insert(bl_data_path, index, frame)
+        self.bl_obj.keyframe_insert(bl_data_path, index=index, frame=frame)
+
+    def add_handler(self, bl_data_path):
+        pass
 
     def create_vertex_hook(self, name, vertex_index):
         """Create and return a hook for a given vertex in this object's mesh."""
@@ -85,8 +114,8 @@ class BaseObject(ABC):
 
         # Create empty. Note: Lazy import to prevent cyclic imports.
         from .points import Empty
-        empty = Empty(name, location=obj.data.vertices[vertex_index].co,
-                      parent=self)
+        empty = Empty(location=obj.data.vertices[vertex_index].co,
+                      parent=self, name=name)
 
         # Link the hook to the empty.
         hook.object = empty.object

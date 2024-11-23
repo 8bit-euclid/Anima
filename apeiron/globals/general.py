@@ -1,4 +1,6 @@
 import bpy
+import os
+import sys
 import math
 from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
@@ -7,6 +9,7 @@ import apeiron.globals.easybpy as ebpy
 
 
 UnitZ = Vector([0.0, 0.0, 1.0])
+SMALL_OFFSET = 0.0001
 
 
 def assert_2d(dim):
@@ -70,7 +73,7 @@ def add_empty_hook(name, parent, vertex_index):
     return hook
 
 
-def add_line_segment(name: str, point0, point1):
+def add_line_segment(name: str, point_0, point_1):
     # Create a new curve object
     curve_data = bpy.data.curves.new(name=name, type='CURVE')
     curve_data.dimensions = '3D'
@@ -79,7 +82,7 @@ def add_line_segment(name: str, point0, point1):
     # Create a Bezier spline and add it to the curve
     spline = curve_data.splines.new(type='BEZIER')
     spline.bezier_points.add(count=1)
-    for i, pt in enumerate([point0, point1]):
+    for i, pt in enumerate([point_0, point_1]):
         spline.bezier_points[i].co = get_3d_vector(pt)
 
     return add_object(name, curve_data)
@@ -157,6 +160,33 @@ def get_blender_object(object):
     if is_blender_object(object):
         return object
     elif is_apeiron_object(object):
-        return object.bl_object
+        return object.bl_obj
     else:
         raise Exception(f'Unrecognised object of type {type(object)}')
+
+
+# Store the original stdout so we can restore it later
+original_stdout = sys.stdout
+original_stderr = sys.stderr
+
+
+def disable_print():
+    """Disable printing by redirecting sys.stdout to None."""
+    sys.stdout = None
+    sys.stderr = None
+
+
+def enable_print():
+    """Enable printing by restoring sys.stdout to its original state."""
+    global original_stdout, original_stderr
+    sys.stdout = original_stdout
+    sys.stderr = original_stderr
+
+# def disable_print():
+#     """Disables print statements until enable_print() is invoked."""
+#     sys.stdout = open(os.devnull, 'w')
+
+
+# def enable_print():
+#     """Re-enables print statements after disable_print() has been invoked."""
+#     sys.stdout = sys.__stdout__
