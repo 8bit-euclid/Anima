@@ -3,21 +3,25 @@ import inspect
 import shutil
 import os
 import textwrap
-from . import temp
 
 
 # Add all modules with custom driver function definitions here.
+from . import temp
 scan_modules = [temp]
+
+# import os
+# import bpy
+# blend_dir = os.path.normalize(os.path.join(__file__, "..", ".."))
+# bpy.utils.execfile(os.path.join(blend_dir, "driver_namespace.py"))
 
 
 def is_driver_callable(obj):
-    """ Checks if a function/method has been marked to be added to the driver namespace. """
-
+    """Checks if a function/method has been marked to be added to the driver namespace."""
     return inspect.isfunction(obj) and hasattr(obj, 'driver_callable') and obj.driver_callable
 
 
 def remove_decorators(src_code):
-    """ Removes decorators from the source code of a function/method. """
+    """Removes decorators from the source code of a function/method."""
 
     # Parse the source code into an AST (Abstract Syntax Tree)
     tree = ast.parse(src_code)
@@ -33,7 +37,7 @@ def remove_decorators(src_code):
 
 
 def copy_driver_callables():
-    """ Copy all functions/methods flagged to be added to the driver namespace to customs.py. """
+    """Copy all functions/methods flagged to be added to the driver namespace to customs.py."""
 
     # Get the directory of the current submodule
     curr_dir = os.path.dirname(__file__)
@@ -44,6 +48,11 @@ def copy_driver_callables():
         for module in scan_modules:
             mod_name = module.__name__
             for obj_name, obj in inspect.getmembers(module):
+                # Skip if the origin is not 'module', i.e. imports.
+                origin = getattr(obj, '__module__', 'None')
+                if origin != mod_name:
+                    continue
+
                 # Check if the object is a function and flagged.
                 if is_driver_callable(obj):
                     src_code = remove_decorators(inspect.getsource(obj))
