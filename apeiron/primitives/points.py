@@ -20,7 +20,6 @@ class Empty(BaseObject):
         self.location = location
         if parent:
             self._set_parent(parent)
-        self.hide()
 
 
 class Point(BaseObject):
