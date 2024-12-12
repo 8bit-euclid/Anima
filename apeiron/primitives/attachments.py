@@ -1,7 +1,5 @@
-import bpy
 from .object import BaseObject
-from apeiron.globals.general import Vector, Euler
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 
 class BaseAttachment(BaseObject):
@@ -9,10 +7,11 @@ class BaseAttachment(BaseObject):
     Base class from which all attachments (joint, cap) will derive.
     """
 
-    def __init__(self, bl_object, name='BaseAttachment'):
-        super().__init__(bl_object, name)
-        self.connections = []  # of base type BaseCurve
+    def __init__(self, bl_object=None, connections=None, name='BaseAttachment', **kwargs):
+        super().__init__(bl_object=bl_object, name=name, **kwargs)
+        self.connections = \
+            connections if connections is not None else []  # of base type BaseCurve
 
     @abstractmethod
-    def offset_length(self):
+    def offset_distance(self):
         pass

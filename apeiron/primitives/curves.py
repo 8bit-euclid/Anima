@@ -1,4 +1,5 @@
 from .object import BaseObject
+from .attachments import BaseAttachment
 from apeiron.globals.general import Vector
 from abc import abstractmethod
 
@@ -13,31 +14,45 @@ class BaseCurve(BaseObject):
     Base class from which all curve objects will derive.
     """
 
-    def __init__(self, bl_object, name='BaseCurve', width=DEFAULT_LINE_WIDTH, bias=0.0):
-        super().__init__(bl_object, name)
+    def __init__(self, bl_object, width=DEFAULT_LINE_WIDTH, bias=0.0, name='BaseCurve', **kwargs):
+        super().__init__(bl_object=bl_object, name=name, **kwargs)
         self.width = width
-        self.attachment_0: BaseObject = None
-        self.attachment_1: BaseObject = None
-        self.offset_0: float = 0.0
-        self.offset_1: float = 0.0
+        self.bias = bias
+        self.param_0 = 0.0
+        self.param_1 = 1.0
+        self.attachment_0: BaseAttachment = None
+        self.attachment_1: BaseAttachment = None
+        self._length = 0.0
 
-        self.set_width(width)\
-            .set_bias(bias)
+        # Store current length (need to manually update every time geometry is changed).
+        self._store_length()
 
-    def set_attachment_0(self, attmnt):
+    def set_param_0(self, param: float):
+        self._set_param(param, 0)
+
+    def set_param_1(self, param: float):
+        self._set_param(param, 1)
+
+    def update_param_0(self):
+        self.set_param_0(self.param_0)
+
+    def update_param_1(self):
+        self.set_param_1(self.param_1)
+
+    def set_attachment_0(self, attmnt: BaseAttachment):
         self.attachment_0 = attmnt
-        self.offset_0 = attmnt.offset_length() / self.length()
-        t = 0.0
-        attmnt.location = self.point(t)
-        attmnt.set_orientation(self.normal(t), -self.tangent(t))
+        self.update_param_0()
+        from .endcaps import Endcap
+        if isinstance(attmnt, Endcap):
+            self._update_attachment_0()
         return self
 
-    def set_attachment_1(self, attmnt):
+    def set_attachment_1(self, attmnt: BaseAttachment):
         self.attachment_1 = attmnt
-        self.offset_1 = attmnt.offset_length() / self.length()
-        t = 1.0
-        attmnt.location = self.point(t)
-        attmnt.set_orientation(-self.normal(t), self.tangent(t))
+        self.update_param_1()
+        from .endcaps import Endcap
+        if isinstance(attmnt, Endcap):
+            self._update_attachment_1()
         return self
 
     @abstractmethod
@@ -82,3 +97,41 @@ class BaseCurve(BaseObject):
         tang = self.tangent(t, normalise)
         norm = self.normal(t, normalise)
         return tang.cross(norm)
+
+    # Private methods
+
+    @abstractmethod
+    def _set_param(self, param: float, end_index: int):
+        pass
+
+    @abstractmethod
+    def _update_attachment(self, end_index: int):
+        pass
+
+    def _attachments(self):
+        return [self.attachment_0, self.attachment_1]
+
+    def _update_attachment_0(self):
+        self._update_attachment(0)
+
+    def _update_attachment_1(self):
+        self._update_attachment(1)
+
+    def _update_attachments(self):
+        self._update_attachment_0()
+        self._update_attachment_1()
+
+    def _compute_offset_param_0(self, param: float):
+        attmt = self.attachment_0
+        offset = (attmt.offset_distance() /
+                  self._length) if attmt is not None else 0.0
+        return min(param + offset, 1.0)
+
+    def _compute_offset_param_1(self, param: float):
+        attmt = self.attachment_1
+        offset = (attmt.offset_distance() /
+                  self._length) if attmt is not None else 0.0
+        return max(param - offset, 0.0)
+
+    def _store_length(self):
+        self._length = self.length()

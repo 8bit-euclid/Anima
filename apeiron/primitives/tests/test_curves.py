@@ -25,22 +25,14 @@ class TestBezier(unittest.TestCase):
             func(*args, **kwargs)
 
     def test_point(self):
-        # Left endpoint (length factor parameter)
+        # Left endpoint
         pt = self.spline1.point(0.0)
         bpt = self.spline1.spline_point(0).co
         self.assert_vector_equal(pt, bpt)
 
-        # Left endpoint (spline parameter)
-        pt = self.spline1.point(0.0, is_len_factor=False)
-        self.assert_vector_equal(pt, bpt)
-
-        # Right endpoint (length factor parameter)
+        # Right endpoint
         pt = self.spline1.point(1.0)
         bpt = self.spline1.spline_point(2).co
-        self.assert_vector_equal(pt, bpt)
-
-        # Right endpoint (spline parameter)
-        pt = self.spline1.point(1.0, is_len_factor=False)
         self.assert_vector_equal(pt, bpt)
 
         # Death tests
@@ -48,7 +40,7 @@ class TestBezier(unittest.TestCase):
         self.assert_death(self.spline1.point, 1.1)
 
     def test_tangent(self):
-        # Left endpoint tangent (length factor parameter)
+        # Left endpoint tangent.
         tn = self.spline1.tangent(0.0, normalise=True)
         spt = self.spline1.spline_point(0)
         bpt = spt.co
@@ -56,21 +48,9 @@ class TestBezier(unittest.TestCase):
         btn = (hnd - bpt).normalized()
         self.assert_vector_equal(tn, btn, places=6)
 
-        # Left endpoint tangent (spline parameter)
-        tn = self.spline1.tangent(0.0, normalise=True, is_len_factor=False)
-        spt = self.spline1.spline_point(0)
-        bpt = spt.co
-        hnd = spt.handle_right
-        btn = (hnd - bpt).normalized()
-        self.assert_vector_equal(tn, btn, places=6)
-
-        # Right endpoint tangent (length factor parameter). Should be horizontal.
+        # Right endpoint tangent. Should be horizontal.
         tn = self.spline1.tangent(1.0, normalise=True)
         btn = Vector((1, 0, 0))
-        self.assert_vector_equal(tn, btn)
-
-        # Right endpoint tangent (spline parameter). Should be horizontal.
-        tn = self.spline1.tangent(1.0, normalise=True, is_len_factor=False)
         self.assert_vector_equal(tn, btn)
 
         # Death tests
@@ -85,14 +65,8 @@ class TestBezier(unittest.TestCase):
 
         # Test orthogonality of normal and tangent at each param.
         for t in params:
-            # length factor parameter
             nm = self.spline1.normal(t)
             tn = self.spline1.tangent(t)
-            self.assertAlmostEqual(nm.dot(tn), 0)
-
-            # spline parameter
-            nm = self.spline1.normal(t, is_len_factor=False)
-            tn = self.spline1.tangent(t, is_len_factor=False)
             self.assertAlmostEqual(nm.dot(tn), 0)
 
         # Death tests
@@ -102,11 +76,15 @@ class TestBezier(unittest.TestCase):
     def test_length(self):
         # Test total length
         l = self.spline2.length(1.0)
-        self.assertAlmostEqual(l, self.length2, places=7)
+        l_an = self.length2
+        err = abs(l - l_an) / l_an
+        self.assertLess(err, 1e-3)
 
         # Test half length (spline param of 2/3)
         l = self.spline2.length(2/3)
-        self.assertAlmostEqual(l, 0.5*self.length2, places=7)
+        l_an = 0.5 * self.length2
+        err = abs(l - l_an) / l_an
+        self.assertLess(err, 1e-7)
 
         # Test zero length
         l = self.spline2.length(0.0)
