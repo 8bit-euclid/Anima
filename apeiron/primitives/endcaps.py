@@ -1,7 +1,7 @@
 import math
 from apeiron.globals.general import Vector
 from .points import Empty, Point
-from .curves import BaseCurve, DEFAULT_LINE_WIDTH
+from .curves import DEFAULT_LINE_WIDTH
 from .attachments import BaseAttachment
 
 DEFAULT_ARROW_WIDTH = 3.5 * DEFAULT_LINE_WIDTH
@@ -18,7 +18,7 @@ class PointEndcap(Endcap):
     def __init__(self, name='PointEndcap'):
         super().__init__(Point(), name=name)
 
-    def offset_length(self):
+    def offset_distance(self):
         return 0.0
 
 
@@ -50,20 +50,20 @@ class RoundEndcap(Endcap):
 
         super().__init__(obj, name=name)
 
-    def offset_length(self):
+    def offset_distance(self):
         return 0.0
 
 
 class ArrowEndcap(Endcap):
-    def __init__(self, width=DEFAULT_ARROW_WIDTH, height1=DEFAULT_ARROW_HEIGHT_1,
-                 height2=DEFAULT_ARROW_HEIGHT_2, name='ArrowEndcap'):
-        self.height_1 = height1
+    def __init__(self, width=DEFAULT_ARROW_WIDTH, height_1=DEFAULT_ARROW_HEIGHT_1,
+                 height_2=DEFAULT_ARROW_HEIGHT_2, name='ArrowEndcap'):
+        self.height_1 = height_1
 
         obj = Empty(name=name)
 
         v3 = Vector((0, 0, 0))
-        v1 = Vector((0, -height1, 0))
-        v2 = v1 + Vector((0.5*width, -height2, 0))
+        v1 = Vector((0, -height_1, 0))
+        v2 = v1 + Vector((0.5*width, -height_2, 0))
         v4 = v2.copy()
         v4.x *= -1.0
         obj.set_mesh(vertices=[v1, v2, v3, v4], faces=[[0, 1, 2, 3]])
@@ -71,5 +71,5 @@ class ArrowEndcap(Endcap):
 
         super().__init__(obj, name=name)
 
-    def offset_length(self):
+    def offset_distance(self):
         return self.height_1

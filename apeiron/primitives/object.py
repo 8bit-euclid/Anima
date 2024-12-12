@@ -12,8 +12,7 @@ class BaseObject(ABC):
     encapsulates the underlying Blender object.
     """
 
-    def __init__(self, bl_object, name='BaseObject'):
-        assert bl_object is not None, 'Need to specify a base Blender object.'
+    def __init__(self, bl_object=None, name='BaseObject', **kwargs):
         self.name = name
         self.bl_obj = bl_object
         self.parent = None  # of base type BaseObject
@@ -33,7 +32,7 @@ class BaseObject(ABC):
                                 z if z is not None else loc.z)
 
     def set_rotation(self, x=None, y=None, z=None):
-        """Sets the object's rotation (Euler angles) in world space."""
+        """Sets the object's rotation (Euler angles in radians) in world space."""
         obj = self.bl_obj
         rot = obj.rotation_euler
         obj.rotation_mode = 'XYZ'
@@ -58,7 +57,7 @@ class BaseObject(ABC):
             x_axis,
             y_axis,
             z_axis
-        )).transposed()  # Blender uses column-major ordering
+        )).transposed()
 
         # Convert to quaternion or Euler angles
         self.rotation = rot_matr.to_euler()

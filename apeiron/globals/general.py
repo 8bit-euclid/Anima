@@ -8,8 +8,13 @@ from typing import List
 import apeiron.globals.easybpy as ebpy
 
 
-UnitZ = Vector([0.0, 0.0, 1.0])
+UnitZ = Vector((0.0, 0.0, 1.0))
 SMALL_OFFSET = 0.0001
+
+
+class Ref:
+    def __init__(self, value):
+        self.value = value
 
 
 def assert_2d(dim):
@@ -22,6 +27,18 @@ def get_2d_vector(v=(0, 0)):
 
 def get_3d_vector(v=(0, 0, 0)):
     return Vector(v).resized(3)
+
+
+def rotate_90(vector, clockwise=False):
+    assert math.isclose(0, vector.z), "This only applies in 2D."
+
+    x = -vector.y
+    y = vector.x
+    vect = Vector((x, y, 0))
+    if clockwise:
+        vect *= -1
+
+    return vect
 
 
 def clear_scene():
@@ -181,12 +198,3 @@ def enable_print():
     global original_stdout, original_stderr
     sys.stdout = original_stdout
     sys.stderr = original_stderr
-
-# def disable_print():
-#     """Disables print statements until enable_print() is invoked."""
-#     sys.stdout = open(os.devnull, 'w')
-
-
-# def enable_print():
-#     """Re-enables print statements after disable_print() has been invoked."""
-#     sys.stdout = sys.__stdout__
