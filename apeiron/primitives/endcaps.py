@@ -44,7 +44,7 @@ class RoundEndcap(Endcap):
         circle_2 = quarter_circle_pts(c2, 0.5*math.pi, math.pi, num_segs)
 
         obj = Empty(name=name)
-        obj.set_mesh(vertices=circle_1 + circle_2,
+        obj.set_mesh(verts=circle_1 + circle_2,
                      faces=[range(2*(num_segs + 1))])
         obj.unhide()
 
@@ -66,7 +66,7 @@ class ArrowEndcap(Endcap):
         v2 = v1 + Vector((0.5*width, -height_2, 0))
         v4 = v2.copy()
         v4.x *= -1.0
-        obj.set_mesh(vertices=[v1, v2, v3, v4], faces=[[0, 1, 2, 3]])
+        obj.set_mesh(verts=[v1, v2, v3, v4], faces=[[0, 1, 2, 3]])
         obj.unhide()
 
         super().__init__(obj, name=name)

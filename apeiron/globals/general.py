@@ -12,11 +12,6 @@ UnitZ = Vector((0.0, 0.0, 1.0))
 SMALL_OFFSET = 0.0001
 
 
-class Ref:
-    def __init__(self, value):
-        self.value = value
-
-
 def assert_2d(dim):
     assert dim == 2, "Can only handle 2D, currently."
 
@@ -64,12 +59,27 @@ def link_object(obj):
 
 
 def add_object(name: str, data=None, parent=None):
-    if not data:
+    if data is None:
         data = bpy.data.meshes.new(name=name)  # Create empty mesh
     obj = bpy.data.objects.new(name, data)
     obj.parent = parent
     link_object(obj)
     return obj
+
+
+def make_active(obj):
+    bpy.context.view_layer.objects.active = obj
+    deselect_all()
+    obj.select_set(True)
+
+
+def active_object():
+    return bpy.context.view_layer.objects.active
+
+
+def deselect_all():
+    bpy.ops.object.select_all(action='DESELECT')
+    bpy.context.view_layer.objects.active = None
 
 
 def add_empty(name='Empty', location=(0, 0, 0), parent=None):
@@ -105,16 +115,51 @@ def add_line_segment(name: str, point_0, point_1):
     return add_object(name, curve_data)
 
 
-def add_circle(radius=1.0, centre=(0, 0, 0)):
+def add_circle(radius: float = 1, centre=(0, 0, 0)):
     bpy.ops.curve.primitive_nurbs_circle_add(
         radius=radius, location=centre, scale=(1, 1, 1))
-    return bpy.context.view_layer.objects.active
+    return active_object()
 
 
-def add_rectangle(location=(0, 0, 0)):
-    bpy.ops.mesh.primitive_plane_add(
-        size=1, enter_editmode=False, align='WORLD', location=location)
-    return bpy.context.view_layer.objects.active
+def add_square(size: float = 1, location=(0, 0, 0)):
+    bpy.ops.mesh.primitive_plane_add(size=size, location=location)
+    return active_object()
+
+
+def add_cube(size: float = 1, location=(0, 0, 0)):
+    bpy.ops.mesh.primitive_cube_add(size=size, location=(0, 0, 0))
+    return active_object()
+
+
+def add_cuboid(length: float, width: float, height: float, location=(0, 0, 0)):
+    cube = add_cube()
+    cube.scale = (length, width, height)
+    return cube
+
+
+def set_mode(mode: str):
+    bpy.ops.object.mode_set(mode=mode)
+
+
+def set_edit_mode():
+    set_mode('EDIT')
+
+
+def set_object_mode():
+    set_mode('OBJECT')
+
+
+def flip_normals_active_obj():
+    set_edit_mode()
+    bpy.ops.mesh.flip_normals()
+    set_object_mode()
+
+
+def extrude_active_obj(displacement: Vector):
+    set_edit_mode()
+    bpy.ops.mesh.extrude_region_move(
+        TRANSFORM_OT_translate={"value": displacement})
+    set_object_mode()
 
 
 def add_driver_script(driver, object, data_path, var_name, expression):

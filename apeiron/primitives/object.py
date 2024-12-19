@@ -1,9 +1,9 @@
-# from apeiron.globals.general import *
 import bpy
 import math
-from apeiron.globals.general import create_mesh, Vector, Matrix, Euler, is_apeiron_object, ebpy
-from apeiron.animation.driver import Driver
 from abc import ABC
+from apeiron.animation.driver import Driver
+from apeiron.globals.general import create_mesh, Vector, Matrix, Euler, is_apeiron_object, add_object, \
+    make_active, deselect_all, ebpy
 
 
 class BaseObject(ABC):
@@ -13,6 +13,8 @@ class BaseObject(ABC):
     """
 
     def __init__(self, bl_object=None, name='BaseObject', **kwargs):
+        if bl_object is not None:
+            bl_object.name = name
         self.name = name
         self.bl_obj = bl_object
         self.parent = None  # of base type BaseObject
@@ -20,75 +22,33 @@ class BaseObject(ABC):
         self.shape_keys = []
         self.hooks = []
 
-    def set_mesh(self, vertices, faces, edges=[]):
+    def set_mesh(self, verts, faces, edges=None):
         """Sets the object's mesh based on lists of vertices, faces, and edges."""
-        self.bl_obj.data = create_mesh("mesh", vertices, faces, edges)
+        if edges is None:
+            edges = []
 
-    def set_location(self, x=None, y=None, z=None):
-        """Sets the object's location in world space."""
-        loc = self.location
-        self.bl_obj.location = (x if x is not None else loc.x,
-                                y if y is not None else loc.y,
-                                z if z is not None else loc.z)
+        # Create mesh and create/update object.
+        mesh = create_mesh(self.name + '_mesh', verts, faces, edges)
+        if self.bl_obj is None:
+            self.bl_obj = add_object(self.name)
+        self.bl_obj.data = mesh
 
-    def set_rotation(self, x=None, y=None, z=None):
-        """Sets the object's rotation (Euler angles in radians) in world space."""
-        obj = self.bl_obj
-        rot = obj.rotation_euler
-        obj.rotation_mode = 'XYZ'
-        obj.rotation_euler = (x if x is not None else rot.x,
-                              y if y is not None else rot.y,
-                              z if z is not None else rot.z)
+    def update_mesh(self, verts, faces, edges=None):
+        """Updates the object's mesh based on lists of vertices, faces, and edges."""
+        if edges is None:
+            edges = []
+        mesh = self.bl_obj.data
+        # for i, v in enumerate(verts):
+        #     mesh.vertices[i].co = v
+        mesh.clear_geometry()
+        mesh.from_pydata(verts, edges, faces)
+        mesh.update()
 
-    def set_orientation(self, x_axis, y_axis):
-        x_axis = Vector(x_axis)
-        y_axis = Vector(y_axis)
-        assert math.isclose(x_axis.dot(y_axis),
-                            0), "The axes must be orthogonal"
-
-        # Compute orthonormal basis
-        x_axis.normalize()
-        y_axis.normalize()
-        z_axis = x_axis.cross(y_axis)
-        z_axis.normalize()
-
-        # Create a 3x3 rotation matrix
-        rot_matr = Matrix((
-            x_axis,
-            y_axis,
-            z_axis
-        )).transposed()
-
-        # Convert to quaternion or Euler angles
-        self.rotation = rot_matr.to_euler()
-
-    def set_scale(self, x=None, y=None, z=None):
-        """Sets the object's scale."""
-        scale = self.bl_obj.scale
-        self.bl_obj.scale = (x if x is not None else scale.x,
-                             y if y is not None else scale.y,
-                             z if z is not None else scale.z)
-
-    def translate(self, x=0, y=0, z=0, local=False):
-        """Translates the object in world/local space (defaults to world)."""
-        translation = Vector((x, y, z))
-        if local:
-            self.bl_obj.location += self.world_matrix.to_quaternion() @ translation
-        else:
-            self.bl_obj.location += translation
-
-    def rotate(self, x=0, y=0, z=0, local=False):
-        """Rotates the object by the given Euler angles (x, y, z) in world/local space (defaults to world)."""
-        rotation = Euler((x, y, z), 'XYZ')
-        if local:
-            self.bl_obj.rotation_euler.rotate(rotation)
-        else:
-            rotation_matrix = rotation.to_matrix().to_4x4()
-            self.bl_obj.matrix_world = rotation_matrix @ self.world_matrix()
-
-    def scale_by(self, x_fact=1.0, y_fact=1.0, z_fact=1.0):
-        """Scale the object by the given factors."""
-        self.scale *= Vector((x_fact, y_fact, z_fact))
+    def update_vertices(self, verts):
+        mesh = self.bl_obj.data
+        assert len(verts) == len(mesh.vertices)
+        for i, v in enumerate(verts):
+            mesh.vertices[i].co = v
 
     def add_object(self, object):
         """Adds an object of base type BaseObject and sets current object as parent."""
@@ -139,6 +99,14 @@ class BaseObject(ABC):
         self.shape_keys.append(shape_key)
         return shape_key
 
+    def make_active(self):
+        """Make this the current active object."""
+        make_active(self.bl_obj)
+
+    def make_inactive(self):
+        """Make this object inactive."""
+        deselect_all()
+
     def hide(self):
         """Hide this object in both the viewport and the render."""
         self._set_visibility(False)
@@ -147,7 +115,25 @@ class BaseObject(ABC):
         """Unhide this object in both the viewport and the render."""
         self._set_visibility(True)
 
-    # Property getters/setters for underlying blender object attributes.
+    # Location-related methods ----------------------------------------------------------------------------- #
+
+    def set_location(self, x=None, y=None, z=None, apply=False):
+        """Sets the object's location in world space."""
+        loc = self.location
+        self.bl_obj.location = (x if x is not None else loc.x,
+                                y if y is not None else loc.y,
+                                z if z is not None else loc.z)
+        if apply:
+            ebpy.apply_location()
+
+    def translate(self, x=0, y=0, z=0, local=False, apply=False):
+        """Translates the object in world/local space (defaults to world)."""
+        self.make_active()
+        ref_frame = 'LOCAL' if local else 'GLOBAL'
+        bpy.ops.transform.translate(value=(x, y, z), orient_type=ref_frame)
+        if apply:
+            ebpy.apply_location()
+
     @property
     def location(self):
         """Get the object's location."""
@@ -157,6 +143,59 @@ class BaseObject(ABC):
     def location(self, loc):
         """Set the object's location."""
         self.set_location(*loc)
+
+    # Rotation-related methods ----------------------------------------------------------------------------- #
+
+    def set_rotation(self, x=None, y=None, z=None, apply=False):
+        """Sets the object's rotation (Euler angles in radians) in world space."""
+        obj = self.bl_obj
+        rot = obj.rotation_euler
+        obj.rotation_mode = 'XYZ'
+        obj.rotation_euler = (x if x is not None else rot.x,
+                              y if y is not None else rot.y,
+                              z if z is not None else rot.z)
+        if apply:
+            ebpy.apply_rotation()
+
+    def rotate(self, x=0, y=0, z=0, local=False, apply=False):
+        """Rotates the object by the given Euler angles (x, y, z) in world/local space (defaults to world)."""
+        rotation = Euler((x, y, z), 'XYZ')
+        if local:
+            # bpy.ops.transform.rotate(
+            #     value=0.597005, orient_axis='X', orient_type='LOCAL')
+
+            self.bl_obj.rotation_euler.rotate(rotation)
+        else:
+            rotation_matrix = rotation.to_matrix().to_4x4()
+            self.bl_obj.matrix_world = rotation_matrix @ self.world_matrix
+
+        if apply:
+            ebpy.apply_rotation()
+
+    def rotate_about(self, axis, local=False, apply=False):
+        if apply:
+            ebpy.apply_rotation()
+
+    def set_orientation(self, x_axis, y_axis, apply=False):
+        x_axis = Vector(x_axis)
+        y_axis = Vector(y_axis)
+        assert math.isclose(x_axis.dot(y_axis), 0), "Axes are not orthogonal."
+
+        # Compute orthonormal basis
+        x_axis.normalize()
+        y_axis.normalize()
+        z_axis = x_axis.cross(y_axis)
+        z_axis.normalize()
+
+        # Create a 3x3 rotation matrix
+        rot_matr = Matrix((
+            x_axis,
+            y_axis,
+            z_axis
+        )).transposed()
+
+        # Convert to quaternion or Euler angles
+        self.set_rotation(*rot_matr.to_euler(), apply)
 
     @property
     def rotation(self):
@@ -169,14 +208,14 @@ class BaseObject(ABC):
         self.set_rotation(*rot)
 
     @property
-    def scale(self):
-        """Get the object's scale."""
-        return self.bl_obj.scale
+    def local_matrix(self):
+        """Get the local matrix."""
+        return self.bl_obj.matrix_local
 
-    @scale.setter
-    def scale(self, scale):
-        """Set the object's scale."""
-        self.set_scale(*scale)
+    @local_matrix.setter
+    def local_matrix(self, matrix):
+        """Set the local matrix."""
+        self.bl_obj.matrix_local = matrix
 
     @property
     def world_matrix(self):
@@ -187,6 +226,31 @@ class BaseObject(ABC):
     def world_matrix(self, matrix):
         """Set the world matrix."""
         self.bl_obj.matrix_world = matrix
+
+    # Scale-related methods -------------------------------------------------------------------------------- #
+
+    def set_scale(self, x=None, y=None, z=None):
+        """Sets the object's scale."""
+        scale = self.bl_obj.scale
+        self.bl_obj.scale = (x if x is not None else scale.x,
+                             y if y is not None else scale.y,
+                             z if z is not None else scale.z)
+
+    def scale_by(self, x_fact=1.0, y_fact=1.0, z_fact=1.0):
+        """Scale the object by the given factors."""
+        self.scale *= Vector((x_fact, y_fact, z_fact))
+
+    @property
+    def scale(self):
+        """Get the object's scale."""
+        return self.bl_obj.scale
+
+    @scale.setter
+    def scale(self, scale):
+        """Set the object's scale."""
+        self.set_scale(*scale)
+
+    # Property getters/setters for underlying blender object attributes ------------------------------------ #
 
     @property
     def vertices(self):
@@ -211,7 +275,8 @@ class BaseObject(ABC):
         """Get the underlying Blender object."""
         return self.bl_obj
 
-    # Operator overloads
+    # Operator overloads ----------------------------------------------------------------------------------- #
+
     def __getitem__(self, key):
         """Get a custom property using the [] operator."""
         return self.bl_obj[key]
@@ -220,7 +285,8 @@ class BaseObject(ABC):
         """Set a custom property using the [] operator."""
         self.bl_obj[key] = value
 
-    # Private methods
+    # Private methods -------------------------------------------------------------------------------------- #
+
     def _has_data(self):
         """Does the object have data?"""
         return self.bl_obj.data is not None
@@ -244,3 +310,9 @@ class BaseObject(ABC):
     def _set_render_visibility(self, val):  # True if visible, else False
         """Sets the object's visibility in the render."""
         self.bl_obj.hide_render = not val
+
+
+class CustomObject(BaseObject):
+    def __init__(self, bl_object, name='Custom', **kwargs):
+        assert bl_object is not None, 'Must specify underlying blender object.'
+        super().__init__(bl_object=bl_object, name=name, **kwargs)
