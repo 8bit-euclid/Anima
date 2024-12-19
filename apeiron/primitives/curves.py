@@ -14,14 +14,16 @@ class BaseCurve(BaseObject):
     Base class from which all curve objects will derive.
     """
 
-    def __init__(self, bl_object, width=DEFAULT_LINE_WIDTH, bias=0.0, name='BaseCurve', **kwargs):
+    def __init__(self, bl_object=None, width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
+                 name: str = 'BaseCurve', **kwargs):
         super().__init__(bl_object=bl_object, name=name, **kwargs)
-        self.width = width
-        self.bias = bias
-        self.param_0 = 0.0
-        self.param_1 = 1.0
-        self.attachment_0: BaseAttachment = None
-        self.attachment_1: BaseAttachment = None
+
+        self._width = width
+        self._bias = bias
+        self._param_0 = 0.0
+        self._param_1 = 1.0
+        self._attachment_0: BaseAttachment = None
+        self._attachment_1: BaseAttachment = None
         self._length = 0.0
 
         # Store current length (need to manually update every time geometry is changed).
@@ -34,13 +36,13 @@ class BaseCurve(BaseObject):
         self._set_param(param, 1)
 
     def update_param_0(self):
-        self.set_param_0(self.param_0)
+        self.set_param_0(self._param_0)
 
     def update_param_1(self):
-        self.set_param_1(self.param_1)
+        self.set_param_1(self._param_1)
 
     def set_attachment_0(self, attmnt: BaseAttachment):
-        self.attachment_0 = attmnt
+        self._attachment_0 = attmnt
         self.update_param_0()
         from .endcaps import Endcap
         if isinstance(attmnt, Endcap):
@@ -48,7 +50,7 @@ class BaseCurve(BaseObject):
         return self
 
     def set_attachment_1(self, attmnt: BaseAttachment):
-        self.attachment_1 = attmnt
+        self._attachment_1 = attmnt
         self.update_param_1()
         from .endcaps import Endcap
         if isinstance(attmnt, Endcap):
@@ -59,14 +61,14 @@ class BaseCurve(BaseObject):
     def set_width(self, width: float):
         """Sets the width of the curve by setting a line segment as its profile, which is then swept along 
         the curve."""
-        pass
+        self._width = width
 
     @abstractmethod
     def set_bias(self, bias: float):
         """Sets a bias that offsets the curve from its centreline. A bias of 1 offsets the curve to the right 
         (when looking along the tangent of the curve) by half the width, while a bias of -1 offsets it to the 
         left by half the width."""
-        pass
+        self._bias = bias
 
     @abstractmethod
     def point(self, t: float) -> Vector:
@@ -98,18 +100,64 @@ class BaseCurve(BaseObject):
         norm = self.normal(t, normalise)
         return tang.cross(norm)
 
-    # Private methods
+    # Property getters/setters ----------------------------------------------------------------------------- #
+    @property
+    def width(self) -> float:
+        """Get the curve's width."""
+        return self._width
 
+    @width.setter
+    def width(self, w: float):
+        """Set the curve's width."""
+        self.set_width(w)
+
+    @property
+    def bias(self) -> float:
+        """Get the curve's bias."""
+        return self._bias
+
+    @bias.setter
+    def bias(self, b: float):
+        """Set the curve's bias."""
+        assert -1.0 <= b <= 1.0, 'The bias must be in the range [-1, 1].'
+        self.set_bias(b)
+
+    @property
+    def param_0(self) -> float:
+        """Get the curve's param_0."""
+        return self._param_0
+
+    @param_0.setter
+    def param_0(self, param: float):
+        """Set the curve's param_0."""
+        self.set_param_0(param)
+
+    @property
+    def param_1(self) -> float:
+        """Get the curve's param_1."""
+        return self._param_1
+
+    @param_1.setter
+    def param_1(self, param: float):
+        """Set the curve's param_1."""
+        self.set_param_1(param)
+
+    # Private methods -------------------------------------------------------------------------------------- #
     @abstractmethod
     def _set_param(self, param: float, end_index: int):
-        pass
+        if end_index == 0:
+            self._param_0 = param
+        else:
+            self._param_1 = param
+
+        self._update_attachment(end_index)
 
     @abstractmethod
     def _update_attachment(self, end_index: int):
         pass
 
     def _attachments(self):
-        return [self.attachment_0, self.attachment_1]
+        return [self._attachment_0, self._attachment_1]
 
     def _update_attachment_0(self):
         self._update_attachment(0)
@@ -122,16 +170,19 @@ class BaseCurve(BaseObject):
         self._update_attachment_1()
 
     def _compute_offset_param_0(self, param: float):
-        attmt = self.attachment_0
+        attmt = self._attachment_0
         offset = (attmt.offset_distance() /
                   self._length) if attmt is not None else 0.0
         return min(param + offset, 1.0)
 
     def _compute_offset_param_1(self, param: float):
-        attmt = self.attachment_1
+        attmt = self._attachment_1
         offset = (attmt.offset_distance() /
                   self._length) if attmt is not None else 0.0
         return max(param - offset, 0.0)
 
     def _store_length(self):
         self._length = self.length()
+
+    def _update_length(self):
+        self._store_length()

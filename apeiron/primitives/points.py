@@ -18,7 +18,7 @@ class Empty(BaseObject):
 
         super().__init__(bl_object=obj, name=name)
         self.location = location
-        if parent:
+        if parent is not None:
             self._set_parent(parent)
 
 
