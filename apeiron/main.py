@@ -9,11 +9,6 @@ from apeiron.animation.updater import Updater
 from apeiron.globals.general import *
 import apeiron.startup as startup
 
-import cProfile
-import pstats
-import io
-from pstats import SortKey
-
 up = Updater()
 
 
@@ -114,17 +109,12 @@ def test_joints():
 
     def update(scene):
         t = e['t']
-
-        # pr = cProfile.Profile()
-
-        # pr.enable()
         # b = -1 + 2 * t
         # j1.set_bias(b)
         # c1.set_bias(b)
         # c2.set_bias(b)
         # c3.set_bias(b)
         # j2.set_bias(b)
-        # pr.disable()
 
         # w = THIN + 0.02 * t
         # j1.set_width(w)
@@ -142,11 +132,10 @@ def test_joints():
         c3.spline_point(1).co = pt1
         j2._update_geometry()
 
-        # s = io.StringIO()
-        # sortby = SortKey.TIME
-        # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        # ps.print_stats()
-        # print(s.getvalue())
+        j1.set_param_1(0.5)
+        j2.set_param_1(0.5)
+        # j1.set_param_1(t)
+        # j2.set_param_1(t)
 
     up.add_function(update)
 
@@ -164,29 +153,7 @@ def main():
     test_splines()
     test_joints()
 
-    # bpy.app.handlers.frame_change_post.clear()
-    # bpy.app.handlers.frame_change_post.append(update)
-
-    # class Point2(Point):
-    #     def __init__(self, location=(0, 0, 0), parent=None, name='Point2'):
-    #         super().__init__(location, parent, name)
-
-    #     def update(self):
-    #         t = e['t']
-    #         self.location = (t, t, 0)
-
-    #     def handler(self, scene, depsgraph):
-    #         self.update()
-
-    # p2 = Point2()
-
-    # bpy.app.handlers.frame_change_pre.clear()
-    # bpy.app.handlers.frame_change_pre.append(p2.handler)
-
-    # Deselect all objects in the current view layer and clear the active object
-    for obj in bpy.context.view_layer.objects:
-        obj.select_set(False)
-    bpy.context.view_layer.objects.active = None
+    deselect_all()
 
     # Set end frame
     ebpy.set_end_frame(to_frame('00:07'))

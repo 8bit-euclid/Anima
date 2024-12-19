@@ -2,7 +2,7 @@ import bpy
 import math
 import bisect
 from apeiron.globals.general import Vector, get_3d_vector, add_object, disable_print, \
-    enable_print, add_line_segment, SMALL_OFFSET
+    enable_print, add_line_segment, rotate_90, SMALL_OFFSET
 from .curves import BaseCurve, DEFAULT_LINE_WIDTH
 from .endcaps import Endcap
 from scipy import integrate
@@ -34,22 +34,23 @@ class BezierSpline(BaseCurve):
             bpt.handle_left_type = 'AUTO'
             bpt.handle_right_type = 'AUTO'
 
-        # Create a new object with the curve data.
+        # Create a new object with the curve data and initialise base class (can only be done at this stage
+        # because length must be computable).
         bl_obj = add_object(name, curve_data)
         super().__init__(bl_obj, width, bias, name)
 
         # Map spline parameter to length parameter.
-        self.mapped_lengths = False
-        self.length_fraction = None
+        self._mapped_lengths = False
+        self._length_fraction = None
 
         # Set width and bias
         self.set_width(width)
         self.set_bias(bias)
 
     def set_width(self, width):
-        assert self.bl_obj is not None, 'The base object has not yet been set.'
-        self.width = width
+        super().set_width(width)
 
+        assert self.bl_obj is not None, 'The base object has not yet been set.'
         profile = self.bl_obj.data.bevel_object
         hw = 0.5 * width
         pts = [(-hw, 0), (hw, 0)]  # Centred about the origin
@@ -72,9 +73,8 @@ class BezierSpline(BaseCurve):
         return self
 
     def set_bias(self, bias: float):
-        assert -1.0 <= bias <= 1.0, 'The bias must be in the range [-1, 1].'
-        self.bias = bias
-        self.bl_obj.data.offset = -bias * 0.5 * self.width
+        super().set_bias(bias)
+        self.bl_obj.data.offset = -bias * 0.5 * self._width
 
         # Set the same bias for all children
         for c in self.children:
@@ -195,7 +195,7 @@ class BezierSpline(BaseCurve):
 
     def _compute_spline_param(self, param: float, is_len_factor: bool = True) -> float:
         assert 0.0 <= param <= 1.0, "Parameter must be in range [0, 1]"
-        if is_len_factor and not self.mapped_lengths:
+        if is_len_factor and not self._mapped_lengths:
             self._map_parameters()
         return self._get_u_from_s(param * self['s'][-1]) if is_len_factor else param
 
@@ -235,27 +235,24 @@ class BezierSpline(BaseCurve):
     def _set_param(self, param: float, end_index: int):
         # Compute attachment offset and terminate curve accordingly.
         if end_index == 0:
-            self.param_0 = param
             param_offs = self._compute_offset_param_0(param)
-            u = self._compute_spline_param(param_offs)
-            self.bl_obj.data.bevel_factor_start = u
+            bf = self._compute_spline_param(param_offs)
+            self.bl_obj.data.bevel_factor_start = bf
         else:
-            self.param_1 = param
             param_offs = self._compute_offset_param_1(param)
-            u = self._compute_spline_param(param_offs)
-            self.bl_obj.data.bevel_factor_end = u
+            bf = self._compute_spline_param(param_offs)
+            self.bl_obj.data.bevel_factor_end = bf
 
-        # If there is an end attachment, update its location and orientation.
-        self._update_attachment(end_index)
+        super()._set_param(param, end_index)
 
     def _update_attachment(self, end_index: int):
         if end_index == 0:
-            param = self.param_0
-            attmt = self.attachment_0
+            param = self._param_0
+            attmt = self._attachment_0
             param_offs = self._compute_offset_param_0(param)
         else:
             param = self.param_1
-            attmt = self.attachment_1
+            attmt = self._attachment_1
             param_offs = self._compute_offset_param_1(param)
 
         if attmt is None:
@@ -266,7 +263,7 @@ class BezierSpline(BaseCurve):
             pt = self.point(param)
             pt.z += SMALL_OFFSET
             nm = self.normal(param_offs, normalise=True)
-            bias_offs = -self.bias * 0.5 * self.width * nm
+            bias_offs = -self._bias * 0.5 * self._width * nm
             attmt.location = pt + bias_offs
 
             # Set orientation
@@ -278,7 +275,7 @@ class BezierSpline(BaseCurve):
                 y_dir = sgn * self.tangent(param_offs)
 
             if self._dimension() == 2:
-                x_dir = Vector((y_dir.y, -y_dir.x, 0))
+                x_dir = rotate_90(y_dir, clockwise=True)
             else:
                 x_dir = -sgn * self.normal(param_offs)
 
@@ -305,11 +302,11 @@ class BezierSpline(BaseCurve):
 
         # Todo - add bezier boundary points too (discontinuous).
 
-        self.mapped_lengths = True
-        self.length_fraction = 1.0 / self['s'][-1]
+        self._mapped_lengths = True
+        self._length_fraction = 1.0 / self['s'][-1]
 
     def _get_u_from_s(self, s):
-        if not self.mapped_lengths:
+        if not self._mapped_lengths:
             self._map_parameters()
 
         s_list = self['s']
