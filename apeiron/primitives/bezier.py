@@ -8,9 +8,11 @@ from .endcaps import Endcap
 from scipy import integrate
 import numpy as np
 
+DEFAULT_RESOLUTION = 100
 DEFAULT_DASH_LENGTH = 0.1
 DEFAULT_GAP_LENGTH = 0.02
 RELATIVE_LENGTH_EPS = 5.0e-3
+DEFAULT_NUM_LENGTHS = 101
 
 
 class BezierSpline(BaseCurve):
@@ -20,7 +22,7 @@ class BezierSpline(BaseCurve):
         # Create a new curve object
         curve_data = bpy.data.curves.new(name=name, type='CURVE')
         curve_data.dimensions = '2D'
-        curve_data.resolution_u = 100
+        curve_data.resolution_u = DEFAULT_RESOLUTION
 
         # Create a Bezier spline and add it to the curve
         spline = curve_data.splines.new(type='BEZIER')
@@ -37,7 +39,7 @@ class BezierSpline(BaseCurve):
         # Create a new object with the curve data and initialise base class (can only be done at this stage
         # because length must be computable).
         bl_obj = add_object(name, curve_data)
-        super().__init__(bl_obj, width, bias, name)
+        super().__init__(bl_object=bl_obj, width=width, bias=bias, name=name)
 
         # Map spline parameter to length parameter.
         self._mapped_lengths = False
@@ -153,20 +155,17 @@ class BezierSpline(BaseCurve):
 
         return tot_len
 
-    def set_resolution(self, res: int):
-        self.bl_obj.data.resolution_u = res
+    def spline_point(self, pt_index: int):
+        return self._get_spline_points()[pt_index]
 
-    def set_left_handle(self, point_index: int, location, relative=True):
+    # Bezier geometry modifiers ---------------------------------------------------------------------------- #
+    def set_left_handle(self, point_index: int, location, relative: bool = True):
         self.set_left_handle_type(point_index, 'FREE')
         self._set_handle('LEFT', point_index, location, relative)
 
-    def set_right_handle(self, point_index: int, location, relative=True):
+    def set_right_handle(self, point_index: int, location, relative: bool = True):
         self.set_right_handle_type(point_index, 'FREE')
         self._set_handle('RIGHT', point_index, location, relative)
-
-    def set_both_handle_types(self, point_index: int, type: str):
-        self.set_left_handle_type(point_index, type)
-        self.set_right_handle_type(point_index, type)
 
     def set_left_handle_type(self, point_index: int, type: str):
         self._set_handle_type('LEFT', point_index, type)
@@ -174,11 +173,25 @@ class BezierSpline(BaseCurve):
     def set_right_handle_type(self, point_index: int, type: str):
         self._set_handle_type('RIGHT', point_index, type)
 
-    def spline_point(self, pt_index: int):
-        pts = self._get_spline_points()
-        return pts[pt_index]
+    def set_both_handle_types(self, point_index: int, type: str):
+        self.set_left_handle_type(point_index, type)
+        self.set_right_handle_type(point_index, type)
 
-    # Private methods
+    def set_resolution(self, res: int):
+        self.bl_obj.data.resolution_u = res
+
+    # Property getters/setters ----------------------------------------------------------------------------- #
+    @property
+    def resolution(self) -> int:
+        """Get the curve's resolution (number of sub-division intervals)."""
+        return self.bl_obj.data.resolution_u
+
+    @resolution.setter
+    def resolution(self, res: int):
+        """Set the curve's resolution."""
+        self.set_resolution(res)
+
+    # Private methods -------------------------------------------------------------------------------------- #
     def _get_control_points(self, bzr_index: int):
         bpt0 = self.spline_point(bzr_index)
         bpt1 = self.spline_point(bzr_index + 1)
@@ -219,8 +232,8 @@ class BezierSpline(BaseCurve):
         handle_str = 'handle_' + side.lower()
         setattr(pt, handle_str, pt.co + loc if relative else loc)
 
-        # Length possibly changed, so store new value.
-        self._store_length()
+        # Length possibly changed, so update stored value.
+        self._update_length()
 
     def _set_handle_type(self, side: str, point_index: int, type: str):
         pt = self.spline_point(point_index)
@@ -229,8 +242,8 @@ class BezierSpline(BaseCurve):
         handle_type_str = 'handle_' + side.lower() + '_type'
         setattr(pt, handle_type_str, type.upper())
 
-        # Length possibly changed, so store new value.
-        self._store_length()
+        # Length possibly changed, so update stored value.
+        self._update_length()
 
     def _set_param(self, param: float, end_index: int):
         # Compute attachment offset and terminate curve accordingly.
@@ -291,7 +304,7 @@ class BezierSpline(BaseCurve):
             h0 + 3 * (2*t - 3*t_sq) * h1 + 3 * t_sq * p1
         return tang.normalized() if normalise else tang
 
-    def _map_parameters(self, num_pts: int = 101):
+    def _map_parameters(self, num_pts: int = DEFAULT_NUM_LENGTHS):
         self['u'] = [-1.0] * num_pts
         self['s'] = [-1.0] * num_pts
         du = 1.0 / (num_pts - 1)
@@ -322,13 +335,12 @@ class BezierSpline(BaseCurve):
             return u_list[0]
         elif idx == len(s_list):
             return u_list[-1]
-
-        s0 = s_list[idx - 1]
-        s1 = s_list[idx]
-        u0 = u_list[idx - 1]
-        u1 = u_list[idx]
-
-        return u0 + (u1 - u0) * (s - s0) / (s1 - s0)
+        else:
+            s0 = s_list[idx - 1]
+            s1 = s_list[idx]
+            u0 = u_list[idx - 1]
+            u1 = u_list[idx]
+            return u0 + (u1 - u0) * (s - s0) / (s1 - s0)
 
     def _dimension(self):
         return int(self.bl_obj.data.dimensions[0])
@@ -336,7 +348,8 @@ class BezierSpline(BaseCurve):
 
 class BezierCurve(BezierSpline):
     def __init__(self, point_0, point_1, width=DEFAULT_LINE_WIDTH, bias=0.0, name='BezierCurve'):
-        super().__init__([point_0, point_1], width=width, bias=bias, name=name)
+        super().__init__(spline_points=[point_0, point_1],
+                         width=width, bias=bias, name=name)
 
     def set_handle_0(self, location, relative=True):
         """Set the handle position at point 0."""

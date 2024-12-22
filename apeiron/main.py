@@ -11,6 +11,9 @@ import apeiron.startup as startup
 
 up = Updater()
 
+# end_frame = to_frame('00:15')
+end_frame = to_frame('00:07')
+
 
 def test_splines():
     bspline = BezierSpline([(0, 0), (3, 1), (7, -1)])
@@ -29,16 +32,16 @@ def test_splines():
     e['t'] = 0.0
     e.add_keyframe('["t"]', frame=30)
     e['t'] = 1.0
-    e.add_keyframe('["t"]', frame=to_frame('00:06'))
+    e.add_keyframe('["t"]', frame=end_frame)
 
-    # bcurve.set_attachment_0(ArrowEndcap())
-    bcurve.set_attachment_0(PointEndcap())
-    bcurve.set_attachment_1(ArrowEndcap())
-    # bspline.set_attachment_0(ArrowEndcap())
-    bspline.set_attachment_0(RoundEndcap())
-    bspline.set_attachment_1(ArrowEndcap())
-    # crv.set_attachment_0(RoundEndcap())
-    # crv.set_attachment_1(RoundEndcap())
+    # bcurve.attachment_0 = ArrowEndcap()
+    bcurve.attachment_0 = PointEndcap()
+    bcurve.attachment_1 = ArrowEndcap()
+    # bspline.attachment_0 = ArrowEndcap()
+    bspline.attachment_0 = RoundEndcap()
+    bspline.attachment_1 = ArrowEndcap()
+    # crv.attachment_0 = RoundEndcap()
+    # crv.attachment_1 = RoundEndcap()
 
     seg_t = Segment((0, 0), (0, 0))
     seg_n = Segment((0, 0), (0, 0))
@@ -50,17 +53,17 @@ def test_splines():
     # dr.add_input_variable('x', e, '["t"]')
     # dr.set_expression('7*x')
 
-    bspline.set_bias(-1)
+    bspline.bias = -1
 
     def update(scene):
         t1 = e['t']
         t0 = max(0.0, t1 - 0.3)
 
-        bcurve.set_param_0(t0)
-        bcurve.set_param_1(t1)
+        bcurve.param_0 = t0
+        bcurve.param_1 = t1
 
-        bspline.set_param_0(t0)
-        bspline.set_param_1(t1)
+        bspline.param_0 = t0
+        bspline.param_1 = t1
 
         p1.location.x = bspline.point(t1).x
         p2.location.x = bcurve.point(t1).x
@@ -88,54 +91,56 @@ def test_joints():
     c3 = Segment((offs, 0), (offs, radi))
 
     # j1 = Joint(c1, c2)
-    # j1 = Joint(c1, c2, fillet_factor=0.5, num_subdiv=1)
-    j1 = Joint(c1, c2, num_subdiv=50)
+    j1 = Joint(c1, c2, fillet_factor=0.5, num_subdiv=1)
+    # j1 = Joint(c1, c2, num_subdiv=50)
     # j2 = Joint(c2, c3)
-    # j2 = Joint(c2, c3, fillet_factor=0.5, num_subdiv=1)
-    j2 = Joint(c2, c3, num_subdiv=50)
+    j2 = Joint(c2, c3, fillet_factor=0.5, num_subdiv=1)
+    # j2 = Joint(c2, c3, num_subdiv=50)
 
     e = Empty()
     e['t'] = 0.0
     e.add_keyframe('["t"]', frame=30)
     e['t'] = 1.0
-    e.add_keyframe('["t"]', frame=to_frame('00:06'))
+    e.add_keyframe('["t"]', frame=end_frame)
 
     # b = 1
-    # j1.set_bias(b)
-    # c1.set_bias(b)
-    # c2.set_bias(b)
-    # c3.set_bias(b)
-    # j2.set_bias(b)
+    # j1.bias = b
+    # c1.bias = b
+    # c2.bias = b
+    # c3.bias = b
+    # j2.bias = b
 
     def update(scene):
-        t = e['t']
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        e_eval = e.object.evaluated_get(depsgraph)
+        t = e_eval['t']
         # b = -1 + 2 * t
-        # j1.set_bias(b)
-        # c1.set_bias(b)
-        # c2.set_bias(b)
-        # c3.set_bias(b)
-        # j2.set_bias(b)
+        # j1.bias = b
+        # c1.bias = b
+        # c2.bias = b
+        # c3.bias = b
+        # j2.bias = b
 
         # w = THIN + 0.02 * t
-        # j1.set_width(w)
-        # c1.set_width(w)
-        # c2.set_width(w)
-        # c3.set_width(w)
-        # j2.set_width(w)
+        # j1.width = w
+        # c1.width = w
+        # c2.width = w
+        # c3.width = w
+        # j2.width = w
 
-        pt0 = c3.spline_point(0).co
-        pt1 = pt0.copy()
-        theta = t * 2 * math.pi
-        fact = 2
-        pt1.x = pt0.x - radi * math.cos(fact * theta)
-        pt1.y = pt0.y + radi * math.sin(fact * theta)
-        c3.spline_point(1).co = pt1
-        j2._update_geometry()
+        # pt0 = c3.spline_point(0).co
+        # pt1 = pt0.copy()
+        # theta = t * 2 * math.pi
+        # fact = 2
+        # pt1.x = pt0.x - radi * math.cos(fact * theta)
+        # pt1.y = pt0.y + radi * math.sin(fact * theta)
+        # c3.spline_point(1).co = pt1
+        # j2._update_geometry()
 
-        j1.set_param_1(0.5)
-        j2.set_param_1(0.5)
-        # j1.set_param_1(t)
-        # j2.set_param_1(t)
+        # j1.param_1 = 0.5
+        # j2.param_1 = 0.5
+        j1.param_1 = t
+        j2.param_1 = t
 
     up.add_function(update)
 
@@ -144,19 +149,20 @@ def main():
     startup.driver_callables.copy_startup_files()
     startup.blender_startup.register()
     clear_scene()
+    # ebpy.set_render_fps(30)
     ebpy.set_render_fps(60)
 
     # seg = Segment((1, 1.5), (3, 2), width=0.05)
     # ray = Ray((0.15, 0.15), (-3, 5), width=0.01)
     # line = Line((0.15, 0.15), (5, -1), width=0.02)
 
-    test_splines()
+    # test_splines()
     test_joints()
 
     deselect_all()
 
     # Set end frame
-    ebpy.set_end_frame(to_frame('00:07'))
+    ebpy.set_end_frame(end_frame + 50)
 
     # Preset viewpoint
     bpy.ops.view3d.view_axis(type='TOP')

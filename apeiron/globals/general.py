@@ -9,7 +9,7 @@ import apeiron.globals.easybpy as ebpy
 
 
 UnitZ = Vector((0.0, 0.0, 1.0))
-SMALL_OFFSET = 0.0001
+SMALL_OFFSET = 0.00005
 
 
 def assert_2d(dim):
