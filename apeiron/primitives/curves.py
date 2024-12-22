@@ -27,7 +27,7 @@ class BaseCurve(BaseObject):
         self._length = 0.0
 
         # Store current length (need to manually update every time geometry is changed).
-        self._store_length()
+        self._update_length()
 
     def set_param_0(self, param: float):
         self._set_param(param, 0)
@@ -142,6 +142,26 @@ class BaseCurve(BaseObject):
         """Set the curve's param_1."""
         self.set_param_1(param)
 
+    @property
+    def attachment_0(self) -> float:
+        """Get the curve's attachment_0."""
+        return self._attachment_0
+
+    @attachment_0.setter
+    def attachment_0(self, attmnt: BaseAttachment):
+        """Set the curve's attachment_0."""
+        self.set_attachment_0(attmnt)
+
+    @property
+    def attachment_1(self) -> float:
+        """Get the curve's attachment_1."""
+        return self._attachment_1
+
+    @attachment_1.setter
+    def attachment_1(self, attmnt: BaseAttachment):
+        """Set the curve's attachment_1."""
+        self.set_attachment_1(attmnt)
+
     # Private methods -------------------------------------------------------------------------------------- #
     @abstractmethod
     def _set_param(self, param: float, end_index: int):
@@ -181,8 +201,5 @@ class BaseCurve(BaseObject):
                   self._length) if attmt is not None else 0.0
         return max(param - offset, 0.0)
 
-    def _store_length(self):
-        self._length = self.length()
-
     def _update_length(self):
-        self._store_length()
+        self._length = self.length()
