@@ -1,3 +1,4 @@
+import math
 from .object import BaseObject
 from .attachments import BaseAttachment
 from apeiron.globals.general import Vector
@@ -25,6 +26,7 @@ class BaseCurve(BaseObject):
         self._attachment_0: BaseAttachment = None
         self._attachment_1: BaseAttachment = None
         self._length = 0.0
+        self._length_inverse = 0.0
 
         # Store current length (need to manually update every time geometry is changed).
         self._update_length()
@@ -59,14 +61,14 @@ class BaseCurve(BaseObject):
 
     @abstractmethod
     def set_width(self, width: float):
-        """Sets the width of the curve by setting a line segment as its profile, which is then swept along 
+        """Sets the width of the curve by setting a line segment as its profile, which is then swept along
         the curve."""
         self._width = width
 
     @abstractmethod
     def set_bias(self, bias: float):
-        """Sets a bias that offsets the curve from its centreline. A bias of 1 offsets the curve to the right 
-        (when looking along the tangent of the curve) by half the width, while a bias of -1 offsets it to the 
+        """Sets a bias that offsets the curve from its centreline. A bias of 1 offsets the curve to the right
+        (when looking along the tangent of the curve) by half the width, while a bias of -1 offsets it to the
         left by half the width."""
         self._bias = bias
 
@@ -92,7 +94,7 @@ class BaseCurve(BaseObject):
 
     def curvature(self, t: float) -> float:
         """Computes the curvature of the curve at the paramater t."""
-        raise Exception(f'Cannot compute curvature for curve {self.name}.')
+        raise Exception(f'Cannot yet compute curvature for curve {self.name}.')
 
     def binormal(self, t: float, normalise=False) -> Vector:
         """Computes the binormal of the curve associated to the paramater t."""
@@ -101,6 +103,7 @@ class BaseCurve(BaseObject):
         return tang.cross(norm)
 
     # Property getters/setters ----------------------------------------------------------------------------- #
+
     @property
     def width(self) -> float:
         """Get the curve's width."""
@@ -163,17 +166,19 @@ class BaseCurve(BaseObject):
         self.set_attachment_1(attmnt)
 
     # Private methods -------------------------------------------------------------------------------------- #
-    @abstractmethod
-    def _set_param(self, param: float, end_index: int):
-        if end_index == 0:
-            self._param_0 = param
-        else:
-            self._param_1 = param
-
-        self._update_attachment(end_index)
 
     @abstractmethod
-    def _update_attachment(self, end_index: int):
+    def _set_param(self, param: float, end_idx: int):
+        assert param <= self._param_1 if end_idx == 0 else param >= self._param_0
+        setattr(self, f"_param_{end_idx}", param)
+        self._update_attachment(end_idx)
+
+    def _set_both_params(self, param: float):
+        self.set_param_0(param)
+        self.set_param_1(param)
+
+    @abstractmethod
+    def _update_attachment(self, end_idx: int):
         pass
 
     def _attachments(self):
@@ -189,17 +194,29 @@ class BaseCurve(BaseObject):
         self._update_attachment_0()
         self._update_attachment_1()
 
-    def _compute_offset_param_0(self, param: float):
-        attmt = self._attachment_0
-        offset = (attmt.offset_distance() /
-                  self._length) if attmt is not None else 0.0
-        return min(param + offset, 1.0)
+    def _compute_end_offset(self, end_idx: int, is_distance=False):
+        attmt = getattr(self, f'_attachment_{end_idx}')
+        mult = self._length_inverse if not is_distance else 1
+        return mult * attmt.offset_distance() if attmt is not None else 0.0
 
-    def _compute_offset_param_1(self, param: float):
-        attmt = self._attachment_1
-        offset = (attmt.offset_distance() /
-                  self._length) if attmt is not None else 0.0
-        return max(param - offset, 0.0)
+    def _compute_offset_param(self, param: float, end_idx: int) -> float:
+        attmt = getattr(self, f'_attachment_{end_idx}')
+        offs_0 = self._compute_end_offset(0, is_distance=False)
+        offs_1 = self._compute_end_offset(1, is_distance=False)
+
+        # If the attachment is a joint, only need to apply offset at the
+        from .joints import Joint
+        if isinstance(attmt, Joint) and offs_0 < param < 1 - offs_1:
+            offs_0 = offs_1 = 0
+        return min(param + offs_0, 1.0 - offs_1) if end_idx == 0 else max(param - offs_1, offs_0)
+
+    def _compute_offset_param_0(self, param: float) -> float:
+        return self._compute_offset_param(param, 0)
+
+    def _compute_offset_param_1(self, param: float) -> float:
+        return self._compute_offset_param(param, 1)
 
     def _update_length(self):
         self._length = self.length()
+        self._length_inverse = 1 / self._length \
+            if not math.isclose(self._length, 0) else 0
