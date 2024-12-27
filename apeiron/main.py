@@ -5,6 +5,7 @@ from apeiron.primitives.bezier import BezierSpline, BezierCurve
 from apeiron.primitives.lines import Segment, Ray, Line
 from apeiron.primitives.endcaps import RoundEndcap, PointEndcap, ArrowEndcap
 from apeiron.primitives.joints import Joint
+from apeiron.primitives.chains import CurveChain
 from apeiron.animation.updater import Updater
 from apeiron.globals.general import *
 import apeiron.startup as startup
@@ -80,22 +81,24 @@ def test_splines():
 
 
 def test_joints():
-    c1 = BezierCurve((0, -1), (1, 0))
-    c1.set_handle_0((1, 0))
-    c1.set_handle_1((-0.25, -1))
-    # c1 = Segment((1, -1), (1, 0))
-    # c2 = Segment((1, 0), (2, 0))
-    offs = 1.1
-    radi = 0.09
+    c1 = Segment((0.5, -1), (1, 0))
+    # c1 = BezierCurve((0, -1), (1, 0))
+    # c1.set_handle_0((1, 0))
+    # c1.set_handle_1((-0.25, -1))
+    offs = 2.0
+    radi = 0.9
     c2 = Segment((1, 0), (offs, 0))
     c3 = Segment((offs, 0), (offs, radi))
 
     # j1 = Joint(c1, c2)
-    j1 = Joint(c1, c2, fillet_factor=0.5, num_subdiv=1)
+    # j1 = Joint(c1, c2, fillet_factor=0.5, num_subdiv=1)
     # j1 = Joint(c1, c2, num_subdiv=50)
     # j2 = Joint(c2, c3)
-    j2 = Joint(c2, c3, fillet_factor=0.5, num_subdiv=1)
+    # j2 = Joint(c2, c3, fillet_factor=0.5, num_subdiv=1)
     # j2 = Joint(c2, c3, num_subdiv=50)
+
+    chain = CurveChain([c1, c2, c3])
+    chain.width = DEFAULT_LINE_WIDTH * 30
 
     e = Empty()
     e['t'] = 0.0
@@ -110,10 +113,15 @@ def test_joints():
     # c3.bias = b
     # j2.bias = b
 
+    p = Point()
+    # chain.bias = 1
+
     def update(scene):
-        depsgraph = bpy.context.evaluated_depsgraph_get()
-        e_eval = e.object.evaluated_get(depsgraph)
-        t = e_eval['t']
+        # depsgraph = bpy.context.evaluated_depsgraph_get()
+        # e_eval = e.object.evaluated_get(depsgraph)
+        # t = e_eval['t']
+        t = e['t']
+
         # b = -1 + 2 * t
         # j1.bias = b
         # c1.bias = b
@@ -139,8 +147,11 @@ def test_joints():
 
         # j1.param_1 = 0.5
         # j2.param_1 = 0.5
-        j1.param_1 = t
-        j2.param_1 = t
+        # j1.param_1 = t
+        # j2.param_1 = t
+
+        chain.param_1 = t
+        p.location = chain.point(t)
 
     up.add_function(update)
 
@@ -156,7 +167,7 @@ def main():
     # ray = Ray((0.15, 0.15), (-3, 5), width=0.01)
     # line = Line((0.15, 0.15), (5, -1), width=0.02)
 
-    # test_splines()
+    test_splines()
     test_joints()
 
     deselect_all()

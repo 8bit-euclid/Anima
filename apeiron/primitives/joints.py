@@ -1,13 +1,11 @@
-import bpy
 import math
 import bisect
 from enum import Enum
-from .object import CustomObject
 from .curves import BaseCurve, DEFAULT_LINE_WIDTH
 from .bezier import BezierSpline
-from .points import Empty, Point, DEFAULT_POINT_RADIUS
+from .points import Point
 from .attachments import BaseAttachment
-from apeiron.globals.general import Vector, Euler, UnitZ, add_cuboid, make_active, extrude_active_obj, SMALL_OFFSET
+from apeiron.globals.general import Vector, Euler, UnitZ
 
 DEFAULT_FILLET_FACTOR = 0.0
 DEFAULT_NUM_SUBDIV = 10
@@ -62,8 +60,6 @@ class Joint(BaseAttachment, BaseCurve):
                          width=width, bias=bias, name=name)
 
         assert fillet_factor >= 0.0
-        if fillet_factor > 0.0:
-            assert num_subdiv == 1
         self._fillet_factor = fillet_factor
         self._num_subdiv = num_subdiv
         self._vertices = []
@@ -109,6 +105,7 @@ class Joint(BaseAttachment, BaseCurve):
         return self._offset_distance
 
     # Private methods -------------------------------------------------------------------------------------- #
+
     def _update_geometry(self):
         p0, n1, n2, n3 = self._compute_frame()
         w0, w1 = self._compute_widths()
@@ -161,12 +158,12 @@ class Joint(BaseAttachment, BaseCurve):
             verts[1:] = reversed(verts[1:])
 
         # Compute vertex angles w.r.t. (verts[1] - p1)
-        num_angles = len(verts) - 2
+        num_angles = len(verts) - 1
         self._vertex_angles = [0] * num_angles
         angles = self._vertex_angles
         ref = verts[1] - p1
-        for i in range(num_angles):
-            angles[i] = ref.angle(verts[i + 2] - p1)
+        for i in range(1, num_angles):
+            angles[i] = ref.angle(verts[i + 1] - p1)
 
         assert all(angles[i] <= angles[i+1] for i in range(len(angles) - 1))
 
@@ -216,6 +213,10 @@ class Joint(BaseAttachment, BaseCurve):
         else:
             self._offset_distance = 0.0
 
+        # # Offset p0 according to fillet factor.
+        # f = self._fillet_factor
+        # p0 +=  * n3
+
         self._orientation = sgn
 
         return p0, n1, n2, n3
@@ -237,63 +238,63 @@ class Joint(BaseAttachment, BaseCurve):
         pts[2].co = points[2]
         path._update_length()
 
-    def _set_param(self, param: float, end_index: int):
+    def _set_param(self, param: float, end_idx: int):
+        super()._set_param(param, end_idx)
+
         # Compute attachment offset and terminate curve accordingly.
         sgn = self._orientation
-        if end_index == 0:
+        if end_idx == 0:
             self._param_1 = 1.0
-            param_offs = self._compute_offset_param_0(param)
-            cw_sgn = sgn < 0
+            # param_offs = self._compute_offset_param(param)
+            cw_turn = sgn < 0
         else:
             self._param_0 = 0.0
-            param_offs = self._compute_offset_param_1(param)
-            cw_sgn = sgn > 0
+            # param_offs = self._compute_offset_param(param)
+            cw_turn = sgn > 0
 
         type = self._type
-        if type in [Joint.Type.MITER, Joint.Type.BEVEL, Joint.Type.ROUND]:
-            verts_init = self._vertices
-            faces_init = self._faces
-
-            p1 = verts_init[0]  # Assumed to be the first entry
-            p2 = verts_init[1]
-            pt = self.point(param)
-            dir = pt - p1
-
-            a = dir.angle(p2 - p1)
-            angles = [0] + self._vertex_angles
-            angl_idx_1 = bisect.bisect_left(angles, a)
-
-            if angl_idx_1 == 0:
-                verts = verts_init if cw_sgn else []
-                faces = faces_init if cw_sgn else []
-            elif angl_idx_1 == len(angles):
-                verts = [] if cw_sgn else verts_init
-                faces = [] if cw_sgn else faces_init
-            else:
-                angl_idx_0 = angl_idx_1 - 1
-                a0 = angles[angl_idx_0]
-                a1 = angles[angl_idx_1]
-
-                offs = 1
-                vert_idx_0 = angl_idx_0 + offs
-                vert_idx_1 = angl_idx_1 + offs
-                v0 = verts_init[vert_idx_0]
-                v1 = verts_init[vert_idx_1]
-
-                denom = a1 - a0
-                pt = v0 if math.isclose(denom, 0) \
-                    else v0.lerp(v1, (a - a0)/denom)
-
-                verts = [p1, pt] + verts_init[vert_idx_1:] if cw_sgn \
-                    else verts_init[:vert_idx_1] + [pt]
-                faces = faces_init[:len(verts) - 2]
-
-            # Update/create mesh
-            self.update_mesh(verts, faces)
-        else:
+        if type not in [Joint.Type.MITER, Joint.Type.BEVEL, Joint.Type.ROUND]:
             raise Exception(f'Unsupported joint type: {type}')
 
-        super()._set_param(param, end_index)
+        verts_init = self._vertices
+        faces_init = self._faces
+
+        p1 = verts_init[0]  # Assumed to be the first entry
+        p2 = verts_init[1]
+        pt = self.point(param)
+        dir = pt - p1
+
+        a = dir.angle(p2 - p1)
+        angles = self._vertex_angles
+        angl_idx_1 = bisect.bisect_left(angles, a)
+
+        if angl_idx_1 == 0:
+            verts = verts_init if cw_turn else []
+            faces = faces_init if cw_turn else []
+        elif angl_idx_1 == len(angles):
+            verts = [] if cw_turn else verts_init
+            faces = [] if cw_turn else faces_init
+        else:
+            angl_idx_0 = angl_idx_1 - 1
+            a0 = angles[angl_idx_0]
+            a1 = angles[angl_idx_1]
+
+            offs = 1
+            vert_idx_0 = angl_idx_0 + offs
+            vert_idx_1 = angl_idx_1 + offs
+            v0 = verts_init[vert_idx_0]
+            v1 = verts_init[vert_idx_1]
+
+            denom = a1 - a0
+            pt = v0 if math.isclose(denom, 0) \
+                else v0.lerp(v1, (a - a0)/denom)
+
+            verts = [p1, pt] + verts_init[vert_idx_1:] if cw_turn \
+                else verts_init[:vert_idx_1] + [pt]
+            faces = faces_init[:len(verts) - 2]
+
+        # Update/create mesh
+        self.update_mesh(verts, faces)
 
     def _update_attachment(self, end_index: int):
         pass
@@ -319,10 +320,11 @@ class BevelJoint(Joint):
 
 
 class RoundJoint(Joint):
-    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0, radius=None,
+    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0, radius_factor=0.5,
                  num_subdiv=DEFAULT_NUM_SUBDIV, name='RoundJoint'):
         super().__init__(curve_1, curve_2,
                          width=width,
                          bias=bias,
+                         fillet_factor=radius_factor,
                          num_subdiv=num_subdiv,
                          name=name)

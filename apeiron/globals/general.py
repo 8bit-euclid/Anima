@@ -12,6 +12,14 @@ UnitZ = Vector((0.0, 0.0, 1.0))
 SMALL_OFFSET = 0.00005
 
 
+def clip(val: int | float, min_val: int | float, max_val: int | float):
+    return min(max(val, min_val), max_val)
+
+
+def reciprocal(val: int | float, if_val_0: int | float = 0):
+    return 1 / val if not math.isclose(val, 0) else if_val_0
+
+
 def assert_2d(dim):
     assert dim == 2, "Can only handle 2D, currently."
 
@@ -24,7 +32,7 @@ def get_3d_vector(v=(0, 0, 0)):
     return Vector(v).resized(3)
 
 
-def rotate_90(vector, clockwise=False):
+def rotate_90(vector: Vector, clockwise=False):
     assert math.isclose(0, vector.z), "This only applies in 2D."
 
     x = -vector.y
@@ -34,6 +42,13 @@ def rotate_90(vector, clockwise=False):
         vect *= -1
 
     return vect
+
+
+def are_vectors_close(v_1: Vector, v_2: Vector, rel_tol=1e-9, abs_tol=0):
+    for a_1, a_2 in zip(v_1, v_2):
+        if not math.isclose(a_1, a_2, rel_tol=rel_tol, abs_tol=abs_tol):
+            return False
+    return True
 
 
 def clear_scene():
