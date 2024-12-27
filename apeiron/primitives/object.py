@@ -1,5 +1,6 @@
 import bpy
 import math
+from typing import List
 from abc import ABC
 from apeiron.animation.driver import Driver
 from apeiron.globals.general import create_mesh, Vector, Matrix, Euler, is_apeiron_object, add_object, \
@@ -17,10 +18,11 @@ class BaseObject(ABC):
             bl_object.name = name
         self.name = name
         self.bl_obj = bl_object
-        self.parent = None  # of base type BaseObject
-        self.children = []  # of base type BaseObject
+        self.parent: BaseObject = None
+        self.children: List[BaseObject] = []
         self.shape_keys = []
         self.hooks = []
+        self._write_logs = False
 
     def set_mesh(self, verts, faces, edges=None):
         """Sets the object's mesh based on lists of vertices, faces, and edges."""
@@ -38,8 +40,6 @@ class BaseObject(ABC):
         if edges is None:
             edges = []
         mesh = self.bl_obj.data
-        # for i, v in enumerate(verts):
-        #     mesh.vertices[i].co = v
         mesh.clear_geometry()
         mesh.from_pydata(verts, edges, faces)
         mesh.update()
@@ -49,6 +49,9 @@ class BaseObject(ABC):
         assert len(verts) == len(mesh.vertices)
         for i, v in enumerate(verts):
             mesh.vertices[i].co = v
+
+    def update_faces(self, faces):
+        pass
 
     def add_object(self, object):
         """Adds an object of base type BaseObject and sets current object as parent."""
@@ -310,6 +313,11 @@ class BaseObject(ABC):
     def _set_render_visibility(self, val):  # True if visible, else False
         """Sets the object's visibility in the render."""
         self.bl_obj.hide_render = not val
+
+    def _log_info(self, visitor):
+        print(f'Object {self.name} logs:')
+        if self._write_logs:
+            visitor(self)
 
 
 class CustomObject(BaseObject):

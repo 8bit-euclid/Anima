@@ -159,6 +159,7 @@ class BezierSpline(BaseCurve):
         return self._get_spline_points()[pt_index]
 
     # Bezier geometry modifiers ---------------------------------------------------------------------------- #
+
     def set_left_handle(self, point_index: int, location, relative: bool = True):
         self.set_left_handle_type(point_index, 'FREE')
         self._set_handle('LEFT', point_index, location, relative)
@@ -181,6 +182,7 @@ class BezierSpline(BaseCurve):
         self.bl_obj.data.resolution_u = res
 
     # Property getters/setters ----------------------------------------------------------------------------- #
+
     @property
     def resolution(self) -> int:
         """Get the curve's resolution (number of sub-division intervals)."""
@@ -192,6 +194,7 @@ class BezierSpline(BaseCurve):
         self.set_resolution(res)
 
     # Private methods -------------------------------------------------------------------------------------- #
+
     def _get_control_points(self, bzr_index: int):
         bpt0 = self.spline_point(bzr_index)
         bpt1 = self.spline_point(bzr_index + 1)
@@ -245,9 +248,11 @@ class BezierSpline(BaseCurve):
         # Length possibly changed, so update stored value.
         self._update_length()
 
-    def _set_param(self, param: float, end_index: int):
+    def _set_param(self, param: float, end_idx: int):
+        super()._set_param(param, end_idx)
+
         # Compute attachment offset and terminate curve accordingly.
-        if end_index == 0:
+        if end_idx == 0:
             param_offs = self._compute_offset_param_0(param)
             bf = self._compute_spline_param(param_offs)
             self.bl_obj.data.bevel_factor_start = bf
@@ -256,10 +261,8 @@ class BezierSpline(BaseCurve):
             bf = self._compute_spline_param(param_offs)
             self.bl_obj.data.bevel_factor_end = bf
 
-        super()._set_param(param, end_index)
-
-    def _update_attachment(self, end_index: int):
-        if end_index == 0:
+    def _update_attachment(self, end_idx: int):
+        if end_idx == 0:
             param = self._param_0
             attmt = self._attachment_0
             param_offs = self._compute_offset_param_0(param)
@@ -283,7 +286,7 @@ class BezierSpline(BaseCurve):
             pt_offs = self.point(param_offs)
             pt_offs.z += SMALL_OFFSET  # appear above the curve
             y_dir = pt - pt_offs
-            sgn = 1 if end_index == 1 else -1
+            sgn = 1 if end_idx == 1 else -1
             if math.isclose(param, param_offs, rel_tol=1e-4):
                 y_dir = sgn * self.tangent(param_offs)
 
