@@ -8,7 +8,9 @@ from .attachments import BaseAttachment
 from apeiron.globals.general import Vector, Euler, UnitZ
 
 DEFAULT_FILLET_FACTOR = 0.0
-DEFAULT_NUM_SUBDIV = 10
+DEFAULT_RADIUS_FACTOR = 0.5
+DEFAULT_NUM_SUBDIV = 30
+# DEFAULT_NUM_SUBDIV = 10
 
 
 class Joint(BaseAttachment, BaseCurve):
@@ -59,7 +61,7 @@ class Joint(BaseAttachment, BaseCurve):
         super().__init__(bl_object=None, connections=[curve_1, curve_2],
                          width=width, bias=bias, name=name)
 
-        assert fillet_factor >= 0.0
+        assert 0 <= fillet_factor <= 1, 'Currently, only a fillet factor in [0, 1] is supported.'
         self._fillet_factor = fillet_factor
         self._num_subdiv = num_subdiv
         self._vertices = []
@@ -107,20 +109,19 @@ class Joint(BaseAttachment, BaseCurve):
     # Private methods -------------------------------------------------------------------------------------- #
 
     def _update_geometry(self):
-        p0, n1, n2, n3 = self._compute_frame()
-        w0, w1 = self._compute_widths()
+        p0, c, r, p1, p4, n1, n2, _ = self._compute_coord_frame()
 
-        # Compute mesh vertices
+        # Compute remaining mesh vertices
         w = self._width
-        p1 = p0 + w0 * n3
-        p3 = p0 + w1 * n2
-        p5 = p0 + w1 * n1
         p2 = p1 + w * n2
+        p3 = c + r * n2
+        p5 = c + r * n1
         p6 = p1 + w * n1
-        p4 = p1 - w * n3
 
         # Update offset distance.
-        self._offset_distance = abs((p2 - p3).magnitude)
+        _, w1 = self._compute_widths()
+        p3_ = p0 + w1 * n2
+        self._offset_distance = (p2 - p3_).magnitude
 
         # Create the vertex list for the different joint types.
         self._vertices = []
@@ -147,7 +148,7 @@ class Joint(BaseAttachment, BaseCurve):
             verts.extend([p1, p2, p3])
             for i in range(n_subdiv - 1):
                 v.rotate(eul)
-                p = p0 + w1 * v
+                p = c + r * v
                 verts.append(p)
             verts.extend([p5, p6])
         else:
@@ -191,14 +192,16 @@ class Joint(BaseAttachment, BaseCurve):
         p8 = p1 + hw * n2
         self._update_path([p7, p0, p8])
 
-    def _compute_frame(self):
+        # self.update_param_0()
+        # self.update_param_1()
+
+    def _compute_coord_frame(self):
         curve_0 = self.connections[0]
         curve_1 = self.connections[1]
 
         p0 = curve_0.point(1)  # End of curve 1
-        p1 = curve_1.point(0)  # Start of curve 2
-        assert math.isclose(
-            0, (p0 - p1).magnitude), "The curves must coincide at the joint."
+        assert math.isclose(0, (p0 - curve_1.point(0)).magnitude), \
+            "The curves must coincide at the joint."
 
         t0 = curve_0.tangent(1, normalise=True)
         t1 = curve_1.tangent(0, normalise=True)
@@ -213,13 +216,25 @@ class Joint(BaseAttachment, BaseCurve):
         else:
             self._offset_distance = 0.0
 
-        # # Offset p0 according to fillet factor.
-        # f = self._fillet_factor
-        # p0 +=  * n3
-
+        # Store orientation.
         self._orientation = sgn
 
-        return p0, n1, n2, n3
+        # Compute points 1 and 4.
+        w0, w1 = self._compute_widths()
+        w = self._width
+        p1 = p0 + w0 * n3
+        p4 = p1 - w * n3
+
+        # Now compute the centre based on the bias and fillet factor.
+        # b = self._bias
+        f = self._fillet_factor
+        # u = min(f)
+        # c = u * p1 + (1 - u) * p4
+
+        r = min(f*w, w1)
+        c = p4 + r * n3
+
+        return p0, c, r, p1, p4, n1, n2, n3
 
     def _compute_widths(self):
         w = self._width
@@ -309,8 +324,8 @@ class MiterJoint(Joint):
 
 
 class BevelJoint(Joint):
-    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0, fillet_factor=0.5,
-                 name='BevelJoint'):
+    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0,
+                 fillet_factor=DEFAULT_FILLET_FACTOR, name='BevelJoint'):
         super().__init__(curve_1, curve_2,
                          width=width,
                          bias=bias,
@@ -320,8 +335,8 @@ class BevelJoint(Joint):
 
 
 class RoundJoint(Joint):
-    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0, radius_factor=0.5,
-                 num_subdiv=DEFAULT_NUM_SUBDIV, name='RoundJoint'):
+    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0,
+                 radius_factor=DEFAULT_RADIUS_FACTOR, num_subdiv=DEFAULT_NUM_SUBDIV, name='RoundJoint'):
         super().__init__(curve_1, curve_2,
                          width=width,
                          bias=bias,
