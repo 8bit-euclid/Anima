@@ -1,7 +1,7 @@
 import math
 from .object import BaseObject
 from .attachments import BaseAttachment
-from apeiron.globals.general import Vector
+from apeiron.globals.general import Vector, reciprocal
 from abc import abstractmethod
 
 DEFAULT_LINE_WIDTH = 0.02
@@ -199,6 +199,12 @@ class BaseCurve(BaseObject):
         mult = self._length_inverse if not is_distance else 1
         return mult * attmt.offset_distance() if attmt is not None else 0.0
 
+    def _compute_end_offset_0(self, is_distance=False) -> float:
+        return self._compute_end_offset(0, is_distance)
+
+    def _compute_end_offset_1(self, is_distance=False) -> float:
+        return self._compute_end_offset(1, is_distance)
+
     def _compute_offset_param(self, param: float, end_idx: int) -> float:
         # Compute end offsets.
         attmt = getattr(self, f'_attachment_{end_idx}')
@@ -220,5 +226,4 @@ class BaseCurve(BaseObject):
 
     def _update_length(self):
         self._length = self.length()
-        self._length_inverse = 1 / self._length \
-            if not math.isclose(self._length, 0) else 0
+        self._length_inverse = reciprocal(self._length)

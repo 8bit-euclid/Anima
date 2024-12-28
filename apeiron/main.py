@@ -123,7 +123,7 @@ def test_joints():
         # depsgraph = bpy.context.evaluated_depsgraph_get()
         # e_eval = e.object.evaluated_get(depsgraph)
         # t = e_eval['t']
-        t = e['t']
+        t1 = e['t']
 
         # b = -1 + 2 * t
         # j1.bias = b
@@ -153,11 +153,15 @@ def test_joints():
         # j1.param_1 = t
         # j2.param_1 = t
 
-        # w = THIN + 0.02 * t
+        # w = THIN + 0.2 * t1
+        # chain.width = w
         # chain.width = DEFAULT_LINE_WIDTH * 30
-        chain.param_1 = t
-        p.location = chain.point(t)
-        # chain.bias = 2 * t - 1
+        # chain.bias = 2 * t1 - 1
+
+        t0 = max(0.0, t1 - 0.45)
+        chain.param_0 = t0
+        chain.param_1 = t1
+        p.location = chain.point(t1)
 
     up.add_function(update)
 
