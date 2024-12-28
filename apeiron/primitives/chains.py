@@ -113,19 +113,22 @@ class CurveChain(BaseCurve):
         # Compute and store curve lengths, cumulative lengths, and total length.
         sz = len(self._all_entities)
         self._cumu_lengths = [0] * sz
-        cumu_len = 0
         true_len = 0
+        cumu_len = 0
         for i, c in enumerate(self._all_entities):
             # First update length of this curve.
             c._update_length()
 
-            # Compute curve length and subtract both end offset lengths.
-            l = copy.deepcopy(c._length)
+            # Updapte true length (i.e. without joints).
+            l = c._length
             if not isinstance(c, Joint):
                 true_len += l
+
+            # Subtract both end offset lengths from the curve length.
             for j in range(2):
                 l -= c._compute_end_offset(j, is_distance=True)
 
+            # Update cumulative length.
             self._cumu_lengths[i] = cumu_len
             cumu_len += l
 

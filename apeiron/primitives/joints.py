@@ -109,7 +109,7 @@ class Joint(BaseAttachment, BaseCurve):
     # Private methods -------------------------------------------------------------------------------------- #
 
     def _update_geometry(self):
-        p0, c, r, p1, p4, n1, n2, _ = self._compute_coord_frame()
+        p0, c, r, p1, p4, n1, n2, _ = self._compute_frame_info()
 
         # Compute remaining mesh vertices
         w = self._width
@@ -195,7 +195,7 @@ class Joint(BaseAttachment, BaseCurve):
         # self.update_param_0()
         # self.update_param_1()
 
-    def _compute_coord_frame(self):
+    def _compute_frame_info(self):
         curve_0 = self.connections[0]
         curve_1 = self.connections[1]
 
@@ -226,11 +226,7 @@ class Joint(BaseAttachment, BaseCurve):
         p4 = p1 - w * n3
 
         # Now compute the centre based on the bias and fillet factor.
-        # b = self._bias
         f = self._fillet_factor
-        # u = min(f)
-        # c = u * p1 + (1 - u) * p4
-
         r = min(f*w, w1)
         c = p4 + r * n3
 
