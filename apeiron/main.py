@@ -7,6 +7,7 @@ from apeiron.primitives.endcaps import RoundEndcap, PointEndcap, ArrowEndcap
 from apeiron.primitives.joints import Joint
 from apeiron.primitives.chains import CurveChain
 from apeiron.animation.updater import Updater
+from apeiron.diagnostics.profiler import Profiler
 from apeiron.globals.general import *
 import apeiron.startup as startup
 
@@ -116,6 +117,8 @@ def test_joints():
     p = Point()
     # chain.bias = 1
 
+    pf = Profiler()
+
     def update(scene):
         # depsgraph = bpy.context.evaluated_depsgraph_get()
         # e_eval = e.object.evaluated_get(depsgraph)
@@ -150,8 +153,11 @@ def test_joints():
         # j1.param_1 = t
         # j2.param_1 = t
 
+        # w = THIN + 0.02 * t
+        # chain.width = DEFAULT_LINE_WIDTH * 30
         chain.param_1 = t
         p.location = chain.point(t)
+        # chain.bias = 2 * t - 1
 
     up.add_function(update)
 

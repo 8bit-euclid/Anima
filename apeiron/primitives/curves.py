@@ -200,14 +200,16 @@ class BaseCurve(BaseObject):
         return mult * attmt.offset_distance() if attmt is not None else 0.0
 
     def _compute_offset_param(self, param: float, end_idx: int) -> float:
+        # Compute end offsets.
         attmt = getattr(self, f'_attachment_{end_idx}')
         offs_0 = self._compute_end_offset(0, is_distance=False)
         offs_1 = self._compute_end_offset(1, is_distance=False)
 
-        # If the attachment is a joint, only need to apply offset at the
+        # If the attachment is a joint, only need to apply offset at the ends.
         from .joints import Joint
         if isinstance(attmt, Joint) and offs_0 < param < 1 - offs_1:
             offs_0 = offs_1 = 0
+
         return min(param + offs_0, 1.0 - offs_1) if end_idx == 0 else max(param - offs_1, offs_0)
 
     def _compute_offset_param_0(self, param: float) -> float:
