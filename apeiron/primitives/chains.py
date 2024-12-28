@@ -12,7 +12,7 @@ class CurveChain(BaseCurve):
                  name: str = 'CurveChain'):
         self._curves: List[BaseCurve] = curves
         self._joints: List[Joint] = []
-        self._all_curves: List[BaseCurve] = []
+        self._all_entities: List[BaseCurve] = []
         self._cumu_lengths: List[float] = []
         self._curve_0_idx: int = None
         self._curve_1_idx: int = None
@@ -24,27 +24,27 @@ class CurveChain(BaseCurve):
             joint = RoundJoint(curve_1, curve_2)
             # joint = Joint(curve_1, curve_2)
             self._joints.append(joint)
-            self._all_curves.extend([curve_1, joint])
+            self._all_entities.extend([curve_1, joint])
 
-        self._all_curves.append(curves[-1])
+        self._all_entities.append(curves[-1])
 
         # Set indices of curves 0 and 1.
         self._curve_0_idx = 0
-        self._curve_1_idx = len(self._all_curves) - 1
+        self._curve_1_idx = len(self._all_entities) - 1
+
+        super().__init__(width=width, bias=bias, name=name)
 
         # Set the width and bias.
         self.set_width(width)
         self.set_bias(bias)
 
-        super().__init__(width=width, bias=bias, name=name)
-
     def set_width(self, width: float):
-        for c in self._all_curves:
+        for c in self._all_entities:
             c.set_width(width)
         self._update_length()
 
     def set_bias(self, bias: float):
-        for c in self._all_curves:
+        for c in self._all_entities:
             c.set_bias(bias)
         self._update_length()
 
@@ -63,7 +63,10 @@ class CurveChain(BaseCurve):
     def length(self, t: float = 1.0) -> float:
         crv, idx, t = self._compute_curve_info(t)
         cumu_len = self._cumu_lengths[idx]
-        return cumu_len + crv.length(t)
+        offs_0 = crv._compute_end_offset_0()
+        crv_len = crv.length(t) - offs_0
+        assert crv_len >= 0
+        return cumu_len + crv_len
 
     # Private methods -------------------------------------------------------------------------------------- #
 
@@ -77,7 +80,7 @@ class CurveChain(BaseCurve):
         crv._set_param(t, end_idx)
         setattr(self, crv_str, idx)
 
-        curves = self._all_curves
+        curves = self._all_entities
         if param < param_old:
             for c in curves[idx + 1: idx_ + 1]:
                 c._set_param(0, end_idx)
@@ -96,7 +99,7 @@ class CurveChain(BaseCurve):
         arc_len = param * self._length
         idx = bisect.bisect_left(cumu_lens, arc_len) - 1
         idx = clip(idx, 0, sz - 1)
-        crv: BaseCurve = self._all_curves[idx]
+        crv: BaseCurve = self._all_entities[idx]
 
         end_offs = crv._compute_end_offset(0, is_distance=True)
         if crv._write_logs:
@@ -108,22 +111,27 @@ class CurveChain(BaseCurve):
 
     def _update_length(self):
         # Compute and store curve lengths, cumulative lengths, and total length.
-        sz = len(self._all_curves)
+        sz = len(self._all_entities)
         self._cumu_lengths = [0] * sz
         cumu_len = 0
-        for i, c in enumerate(self._all_curves):
+        true_len = 0
+        for i, c in enumerate(self._all_entities):
             # First update length of this curve.
             c._update_length()
 
             # Compute curve length and subtract both end offset lengths.
             l = copy.deepcopy(c._length)
+            if not isinstance(c, Joint):
+                true_len += l
             for j in range(2):
                 l -= c._compute_end_offset(j, is_distance=True)
 
             self._cumu_lengths[i] = cumu_len
             cumu_len += l
 
-        # Need to explicitly calculate own length and inverse length
-        # instead of invoking super()._update_length()
+        # Need to override super()._update_length() to avoid a cycle. This is because the latter invokes
+        # self.length(), which requires self._length to have already been set.
+        assert math.isclose(cumu_len, true_len, abs_tol=1e-6), \
+            f'Inconsistent total length. Abs Error: {abs(cumu_len - true_len)}'
         self._length = cumu_len
         self._length_inverse = reciprocal(cumu_len)

@@ -288,6 +288,17 @@ class BaseObject(ABC):
         """Set a custom property using the [] operator."""
         self.bl_obj[key] = value
 
+    # Debugging tools -------------------------------------------------------------------------------------- #
+
+    def debug(self) -> bool:
+        return self._write_logs
+
+    def debug_on(self):
+        self._write_logs = True
+
+    def debug_off(self):
+        self._write_logs = False
+
     # Private methods -------------------------------------------------------------------------------------- #
 
     def _has_data(self):
