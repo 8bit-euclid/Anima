@@ -1,7 +1,7 @@
 import bpy
 import math
-from typing import List
 from abc import ABC
+from copy import deepcopy
 from apeiron.animation.driver import Driver
 from apeiron.globals.general import create_mesh, Vector, Matrix, Euler, is_apeiron_object, add_object, \
     make_active, deselect_all, ebpy
@@ -18,8 +18,8 @@ class BaseObject(ABC):
             bl_object.name = name
         self.name = name
         self.bl_obj = bl_object
-        self.parent: BaseObject = None
-        self.children: List[BaseObject] = []
+        self.parent: type[BaseObject] = None
+        self.children: list[type[BaseObject]] = []
         self.shape_keys = []
         self.hooks = []
         self._write_logs = False
@@ -280,13 +280,28 @@ class BaseObject(ABC):
 
     # Operator overloads ----------------------------------------------------------------------------------- #
 
-    def __getitem__(self, key):
+    def __getitem__(self, attr_name):
         """Get a custom property using the [] operator."""
-        return self.bl_obj[key]
+        return self.bl_obj[attr_name]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, attr_name, value):
         """Set a custom property using the [] operator."""
-        self.bl_obj[key] = value
+        self.bl_obj[attr_name] = value
+
+    def __deepcopy__(self, memo):
+        obj = self.bl_obj
+        if obj.type == 'MESH':
+            print("This is a mesh object")
+        # Create a new instance of the class
+        new_inst = type(self)(deepcopy(obj, memo))
+
+        # Add the new object to the memo dictionary
+        memo[id(self)] = new_inst
+
+        # We can choose to not copy certain attributes
+        new_inst.no_copy = self.no_copy  # Reference to original
+
+        return new_inst
 
     # Debugging tools -------------------------------------------------------------------------------------- #
 

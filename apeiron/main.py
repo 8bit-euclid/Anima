@@ -6,6 +6,7 @@ from apeiron.primitives.lines import Segment, Ray, Line
 from apeiron.primitives.endcaps import RoundEndcap, PointEndcap, ArrowEndcap
 from apeiron.primitives.joints import Joint
 from apeiron.primitives.chains import CurveChain
+from apeiron.primitives.dashed_curves import DashedCurve
 from apeiron.animation.updater import Updater
 from apeiron.diagnostics.profiler import Profiler
 from apeiron.globals.general import *
@@ -13,8 +14,8 @@ import apeiron.startup as startup
 
 up = Updater()
 
-# end_frame = to_frame('00:15')
-end_frame = to_frame('00:07')
+end_frame = to_frame('00:10')
+# end_frame = to_frame('00:07')
 
 
 def test_splines():
@@ -27,12 +28,14 @@ def test_splines():
     bcurve = BezierCurve((0, 0.1), (6, 0.1))
     ln = 10
     ht = 3
-    bcurve.set_handle_0((ln, ht))
-    bcurve.set_handle_1((-ln, ht))
+    bcurve.handle_0 = (ln, ht)
+    bcurve.handle_1 = (-ln, ht)
 
     e = Empty()
+    # e.t = 0.0
     e['t'] = 0.0
     e.add_keyframe('["t"]', frame=30)
+    # e.t = 1.0
     e['t'] = 1.0
     e.add_keyframe('["t"]', frame=end_frame)
 
@@ -166,6 +169,16 @@ def test_joints():
     up.add_function(update)
 
 
+def test_dashes():
+    c1 = Segment((0, -1), (0, 0))
+    c2 = Segment((0, 0), (0.5, 0))
+    c3 = Segment((0.5, 0), (0.5, 1))
+    chain = CurveChain([c1, c2, c3])
+
+    width = DEFAULT_LINE_WIDTH*10
+    dashed = DashedCurve(chain, width=width)
+
+
 def main():
     startup.driver_callables.copy_startup_files()
     startup.blender_startup.register()
@@ -179,6 +192,7 @@ def main():
 
     test_splines()
     test_joints()
+    test_dashes()
 
     deselect_all()
 
