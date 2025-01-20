@@ -1,7 +1,7 @@
 import bpy
 from enum import Enum
-from apeiron.primitives.points import Empty
-from apeiron.animation.driver import Driver
+from anima.primitives.points import Empty
+from anima.animation.driver import Driver
 
 
 class Updater:

@@ -4,7 +4,7 @@ import sys
 import math
 from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
-import apeiron.globals.easybpy as ebpy
+import anima.globals.easybpy as ebpy
 
 
 UnitZ = Vector((0.0, 0.0, 1.0))
@@ -227,7 +227,7 @@ def is_blender_object(object):
     return hasattr(object, 'location') and hasattr(object, 'data')
 
 
-def is_apeiron_object(object):
+def is_anima_object(object):
     from ..primitives.object import BaseObject
     return issubclass(type(object), BaseObject)
 
@@ -235,7 +235,7 @@ def is_apeiron_object(object):
 def get_blender_object(object):
     if is_blender_object(object):
         return object
-    elif is_apeiron_object(object):
+    elif is_anima_object(object):
         return object.bl_obj
     else:
         raise Exception(f'Unrecognised object of type {type(object)}')

@@ -1,4 +1,4 @@
-from apeiron.globals.general import get_3d_vector
+from anima.globals.general import get_3d_vector
 from .curves import DEFAULT_LINE_WIDTH
 from .bezier import BezierCurve
 

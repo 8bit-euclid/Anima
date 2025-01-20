@@ -1,17 +1,18 @@
 import unittest
-from apeiron.primitives.chains import CurveChain
-from apeiron.primitives.lines import Segment
+from anima.primitives.lines import Segment
+from anima.primitives.joints import MiterJoint, BevelJoint, RoundJoint
 
 
-class TestCurveChain(unittest.TestCase):
+class TestJoint(unittest.TestCase):
     def __init__(self, methodName="runTest"):
         super().__init__(methodName)
 
         self.crv1 = Segment((0, 0), (1, 0))
-        self.crv2 = Segment((1, 0), (1, 1))
-        self.crv3 = Segment((1, 1), (2, 1))
+        self.crv2 = Segment((1, 0), (1, -1))
 
-        self.chain = CurveChain([self.crv1, self.crv2, self.crv3])
+        self.miter = MiterJoint(self.crv1, self.crv2)
+        self.bevel = BevelJoint(self.crv1, self.crv2)
+        self.round = RoundJoint(self.crv1, self.crv2)
 
     def assert_vector_equal(self, v1, v2, places=None):
         for i in range(len(v1)):
@@ -22,10 +23,14 @@ class TestCurveChain(unittest.TestCase):
             func(*args, **kwargs)
 
     def test_geometry(self):
-        pass
+        miter_verts = self.miter._vertices
+        bevel_verts = self.bevel._vertices
+        round_verts = self.round._vertices
 
     def test_point(self):
-        pass
+        miter = self.miter
+        bevel = self.bevel
+        round = self.round
 
     def test_tangent(self):
         pass

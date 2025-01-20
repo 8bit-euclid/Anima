@@ -2,8 +2,8 @@ import bpy
 import math
 from abc import ABC
 from copy import deepcopy
-from apeiron.animation.driver import Driver
-from apeiron.globals.general import create_mesh, Vector, Matrix, Euler, is_apeiron_object, add_object, \
+from anima.animation.driver import Driver
+from anima.globals.general import create_mesh, Vector, Matrix, Euler, is_anima_object, add_object, \
     make_active, deselect_all, ebpy
 
 
@@ -55,7 +55,7 @@ class BaseObject(ABC):
 
     def add_object(self, object):
         """Adds an object of base type BaseObject and sets current object as parent."""
-        assert is_apeiron_object(object), \
+        assert is_anima_object(object), \
             "Can only add sub-objects of type BaseObject."
         object._set_parent(self)
         self.children.append(object)
@@ -322,7 +322,7 @@ class BaseObject(ABC):
 
     def _set_parent(self, parent):
         """Sets the parent (of type BaseObject) of the current object."""
-        assert is_apeiron_object(parent), \
+        assert is_anima_object(parent), \
             "Can only set a parent of type BaseObject."
         self.parent = parent
         self.bl_obj.parent = parent.bl_obj
