@@ -1,6 +1,6 @@
 import math
 from copy import deepcopy
-from apeiron.globals.general import Vector
+from anima.globals.general import Vector
 from .curves import BaseCurve, DEFAULT_LINE_WIDTH, DEFAULT_DASH_LENGTH, DEFAULT_GAP_LENGTH
 
 

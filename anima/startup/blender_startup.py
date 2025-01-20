@@ -10,7 +10,7 @@ def blender_startup_dir():
 if blender_startup_dir():
     import customs
 else:
-    import apeiron.startup.customs as customs
+    import anima.startup.customs as customs
 
 
 @bpy.app.handlers.persistent

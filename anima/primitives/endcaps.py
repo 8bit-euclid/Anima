@@ -1,5 +1,5 @@
 import math
-from apeiron.globals.general import Vector
+from anima.globals.general import Vector
 from .points import Empty, Point
 from .curves import DEFAULT_LINE_WIDTH
 from .attachments import BaseAttachment

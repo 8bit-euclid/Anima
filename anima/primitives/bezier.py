@@ -1,7 +1,7 @@
 import bpy
 import math
 import bisect
-from apeiron.globals.general import Vector, get_3d_vector, add_object, disable_print, \
+from anima.globals.general import Vector, get_3d_vector, add_object, disable_print, \
     enable_print, add_line_segment, rotate_90, SMALL_OFFSET
 from .curves import BaseCurve, DEFAULT_LINE_WIDTH
 from .endcaps import Endcap

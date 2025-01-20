@@ -2,10 +2,10 @@
    "version": "1.0.0",
    "configurations": [
       {
-         "name": "Apeiron",
+         "name": "Anima",
          "type": "debugpy",
          "request": "launch",
-         "module": "apeiron.main",
+         "module": "anima.main",
          "justMyCode": true
       }
    ]

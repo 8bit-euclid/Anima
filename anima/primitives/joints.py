@@ -5,7 +5,7 @@ from .curves import BaseCurve, DEFAULT_LINE_WIDTH
 from .bezier import BezierSpline
 from .points import Point
 from .attachments import BaseAttachment
-from apeiron.globals.general import Vector, Euler, UnitZ
+from anima.globals.general import Vector, Euler, UnitZ
 
 DEFAULT_FILLET_FACTOR = 0.0
 DEFAULT_RADIUS_FACTOR = 0.5

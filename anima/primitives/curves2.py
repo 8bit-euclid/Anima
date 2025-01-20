@@ -1,7 +1,7 @@
-from apeiron.globals.general import *
-from apeiron.startup.customs import *
-from apeiron.primitives.object import BaseObject
-from apeiron.animation.action import Interval
+from anima.globals.general import *
+from anima.startup.customs import *
+from anima.primitives.object import BaseObject
+from anima.animation.action import Interval
 
 MAX_SEGMENT_ANGLE_OFFSET = math.radians(75)
 MIN_DETACHED_ANGLE_OFFSET = math.radians(30)

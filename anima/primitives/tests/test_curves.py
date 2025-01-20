@@ -1,7 +1,7 @@
 import unittest
 import random
-from apeiron.globals.general import Vector
-from apeiron.primitives.bezier import BezierSpline
+from anima.globals.general import Vector
+from anima.primitives.bezier import BezierSpline
 
 
 class TestBezier(unittest.TestCase):

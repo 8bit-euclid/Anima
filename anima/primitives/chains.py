@@ -3,7 +3,7 @@ import copy
 import bisect
 from .curves import BaseCurve, DEFAULT_LINE_WIDTH
 from .joints import Joint, RoundJoint, DEFAULT_LINE_WIDTH
-from apeiron.globals.general import Vector, are_vectors_close, reciprocal, clip
+from anima.globals.general import Vector, are_vectors_close, reciprocal, clip
 
 
 class CurveChain(BaseCurve):

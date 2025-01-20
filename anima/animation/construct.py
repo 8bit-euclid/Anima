@@ -1,5 +1,5 @@
 from .action import Action
-from apeiron.primitives.curves import BaseCurve
+from anima.primitives.curves import BaseCurve
 
 
 class Construct(Action):

@@ -1,6 +1,6 @@
-from apeiron.globals.general import *
-from apeiron.primitives.object import BaseObject
-from apeiron.primitives.curves import DEFAULT_LINE_WIDTH
+from anima.globals.general import *
+from anima.primitives.object import BaseObject
+from anima.primitives.curves import DEFAULT_LINE_WIDTH
 import bpy
 
 DEFAULT_POINT_RADIUS = 1.1 * DEFAULT_LINE_WIDTH

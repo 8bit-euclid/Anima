@@ -1,6 +1,6 @@
 from .object import BaseObject
 from .attachments import BaseAttachment
-from apeiron.globals.general import Vector, reciprocal
+from anima.globals.general import Vector, reciprocal
 from abc import abstractmethod
 
 DEFAULT_LINE_WIDTH = 0.02
