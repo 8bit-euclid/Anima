@@ -6,11 +6,8 @@ from apeiron.globals.general import Vector, get_3d_vector, add_object, disable_p
 from .curves import BaseCurve, DEFAULT_LINE_WIDTH
 from .endcaps import Endcap
 from scipy import integrate
-import numpy as np
 
 DEFAULT_RESOLUTION = 100
-DEFAULT_DASH_LENGTH = 0.1
-DEFAULT_GAP_LENGTH = 0.02
 RELATIVE_LENGTH_EPS = 5.0e-3
 DEFAULT_NUM_LENGTHS = 101
 
@@ -93,21 +90,6 @@ class BezierSpline(BaseCurve):
         self._update_attachments()
 
         return self
-
-    def make_dashed(self, dash_len: float = DEFAULT_DASH_LENGTH, gap_len: float = DEFAULT_GAP_LENGTH,
-                    offset: float = 0.0):
-        # Compute u intervals corresponding to the dashes.
-        total_len = self.length()
-        delta_u = dash_len + gap_len
-
-        u0 = delta_u % offset
-        while u0 < total_len:
-            # Compute u1 and make a dash over interval (u0, u1)
-            u1 = min(u0 + dash_len, total_len)
-            # todo
-
-            # Jump to next dash
-            u0 += delta_u
 
     def point(self, param: float) -> Vector:
         bzr_param, bzr_index = self._compute_bezier_param(param)
@@ -212,7 +194,7 @@ class BezierSpline(BaseCurve):
     def _compute_spline_param(self, param: float, is_len_factor: bool = True) -> float:
         assert 0.0 <= param <= 1.0, "Parameter must be in range [0, 1]"
         if is_len_factor and not self._mapped_lengths:
-            self._map_parameters()
+            self._map_params()
         return self._get_u_from_s(param * self['s'][-1]) if is_len_factor else param
 
     def _compute_bezier_param(self, param: float, is_len_factor: bool = True) -> float:
@@ -228,7 +210,14 @@ class BezierSpline(BaseCurve):
 
         return bzr_param, bzr_index
 
-    def _set_handle(self, side: str, point_index: int, location, relative=True):
+    def _get_handle(self, side: str, point_index: int, relative: bool = True) -> Vector:
+        assert side in ['LEFT', 'RIGHT']
+        pt = self.spline_point(point_index)
+        handle_str = 'handle_' + side.lower()
+        loc = getattr(pt, handle_str)
+        return loc - pt.co if relative else loc
+
+    def _set_handle(self, side: str, point_index: int, location, relative: bool = True):
         loc = get_3d_vector(location)
         pt = self.spline_point(point_index)
         assert side in ['LEFT', 'RIGHT']
@@ -307,7 +296,7 @@ class BezierSpline(BaseCurve):
             h0 + 3 * (2*t - 3*t_sq) * h1 + 3 * t_sq * p1
         return tang.normalized() if normalise else tang
 
-    def _map_parameters(self, num_pts: int = DEFAULT_NUM_LENGTHS):
+    def _map_params(self, num_pts: int = DEFAULT_NUM_LENGTHS):
         self['u'] = [-1.0] * num_pts
         self['s'] = [-1.0] * num_pts
         du = 1.0 / (num_pts - 1)
@@ -323,7 +312,7 @@ class BezierSpline(BaseCurve):
 
     def _get_u_from_s(self, s):
         if not self._mapped_lengths:
-            self._map_parameters()
+            self._map_params()
 
         s_list = self['s']
         u_list = self['u']
@@ -363,3 +352,25 @@ class BezierCurve(BezierSpline):
         """Set the handle position at point 1."""
         self.set_left_handle(1, location, relative)
         return self
+
+    # Property getters/setters ----------------------------------------------------------------------------- #
+
+    @property
+    def handle_0(self) -> Vector:
+        """Get the curve's handle 0."""
+        return self._get_handle(side='RIGHT', point_index=0, relative=True)
+
+    @handle_0.setter
+    def handle_0(self, direction: Vector | tuple):
+        """Set the curve's handle 0."""
+        self.set_handle_0(direction)
+
+    @property
+    def handle_1(self) -> Vector:
+        """Get the curve's handle 1"""
+        return self._get_handle(side='LEFT', point_index=1, relative=True)
+
+    @handle_1.setter
+    def handle_1(self, direction: Vector | tuple):
+        """Set the curve's handle 1."""
+        self.set_handle_1(direction)

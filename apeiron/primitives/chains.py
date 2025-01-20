@@ -1,19 +1,18 @@
 import math
 import copy
 import bisect
-from typing import List, Tuple
 from .curves import BaseCurve, DEFAULT_LINE_WIDTH
 from .joints import Joint, RoundJoint, DEFAULT_LINE_WIDTH
 from apeiron.globals.general import Vector, are_vectors_close, reciprocal, clip
 
 
 class CurveChain(BaseCurve):
-    def __init__(self, curves: List[BaseCurve], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
+    def __init__(self, curves: list[type[BaseCurve]], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
                  name: str = 'CurveChain'):
-        self._curves: List[BaseCurve] = curves
-        self._joints: List[Joint] = []
-        self._all_entities: List[BaseCurve] = []
-        self._cumu_lengths: List[float] = []
+        self._curves: list[BaseCurve] = curves
+        self._joints: list[Joint] = []
+        self._all_entities: list[BaseCurve] = []
+        self._cumu_lengths: list[float] = []
         self._curve_0_idx: int = None
         self._curve_1_idx: int = None
 
@@ -61,12 +60,7 @@ class CurveChain(BaseCurve):
         return crv.normal(t, normalise)
 
     def length(self, t: float = 1.0) -> float:
-        crv, idx, t = self._compute_curve_info(t)
-        cumu_len = self._cumu_lengths[idx]
-        offs_0 = crv._compute_end_offset_0()
-        crv_len = crv.length(t) - offs_0
-        assert crv_len >= 0
-        return cumu_len + crv_len
+        return t * self._length
 
     # Private methods -------------------------------------------------------------------------------------- #
 
@@ -92,18 +86,16 @@ class CurveChain(BaseCurve):
         # todo
         super()._update_attachment(end_index)
 
-    def _compute_curve_info(self, param: float) -> Tuple[BaseCurve, int, float]:
+    def _compute_curve_info(self, param: float) -> tuple[type[BaseCurve], int, float]:
         cumu_lens = self._cumu_lengths
         sz = len(cumu_lens)
 
         arc_len = param * self._length
         idx = bisect.bisect_left(cumu_lens, arc_len) - 1
         idx = clip(idx, 0, sz - 1)
-        crv: BaseCurve = self._all_entities[idx]
+        crv = self._all_entities[idx]
 
         end_offs = crv._compute_end_offset(0, is_distance=True)
-        if crv._write_logs:
-            print(arc_len, end_offs, cumu_lens[idx])
         crv_param = (arc_len + end_offs - cumu_lens[idx]) * \
             crv._length_inverse
         crv_param = clip(crv_param, 0, 1)

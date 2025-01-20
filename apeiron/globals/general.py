@@ -4,7 +4,6 @@ import sys
 import math
 from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
-from typing import List
 import apeiron.globals.easybpy as ebpy
 
 

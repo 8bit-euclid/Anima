@@ -78,7 +78,7 @@ class SegmentChain:
     It is currently specialised for 2D curves only.
     """
 
-    def __init__(self, vertices: List[Vector], width: float = 0.05, bias: float = 0.0,
+    def __init__(self, vertices: list[Vector], width: float = 0.05, bias: float = 0.0,
                  angle_offs0: float = 0.0, angle_offs1: float = 0.0, intro: Interval = None,
                  outro: Interval = None, dimension=2, name='SegmentChain'):
         self.obj = add_object(name)
