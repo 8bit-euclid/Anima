@@ -1,24 +1,19 @@
-import bpy
-from apeiron.primitives.curves import THIN, NORMAL, THICK, DEFAULT_LINE_WIDTH
-from apeiron.primitives.points import Point, Empty
-from apeiron.primitives.bezier import BezierSpline, BezierCurve
-from apeiron.primitives.lines import Segment, Ray, Line
-from apeiron.primitives.endcaps import RoundEndcap, PointEndcap, ArrowEndcap
-from apeiron.primitives.joints import Joint
-from apeiron.primitives.chains import CurveChain
-from apeiron.primitives.dashed_curves import DashedCurve
-from apeiron.animation.updater import Updater
-from apeiron.diagnostics.profiler import Profiler
-from apeiron.globals.general import *
-import apeiron.startup as startup
+
+
+from anima.animation.updater import Updater
+from anima.diagnostics.profiler import Profiler
+from anima.primitives.bezier import BezierCurve, BezierSpline
+from anima.primitives.chains import CurveChain
+from anima.primitives.curves import DEFAULT_LINE_WIDTH
+from anima.primitives.dashed_curves import DashedCurve
+from anima.primitives.endcaps import ArrowEndcap, PointEndcap, RoundEndcap
+from anima.primitives.lines import Segment
+from anima.primitives.points import Empty, Point
 
 up = Updater()
 
-end_frame = to_frame('00:10')
-# end_frame = to_frame('00:07')
 
-
-def test_splines():
+def test_bezier_splines(end_frame: int):
     bspline = BezierSpline([(0, 0), (3, 1), (7, -1)])
     # bspline = BezierSpline([(0, 0), (1, 0), (7, 0)])
     # bspline.set_width(THIN)
@@ -84,7 +79,7 @@ def test_splines():
     up.add_function(update)
 
 
-def test_joints():
+def test_curve_joints(end_frame: int):
     c1 = Segment((0.5, -1), (1, 0))
     # c1 = BezierCurve((0, -1), (1, 0))
     # c1.set_handle_0((1, 0))
@@ -169,7 +164,7 @@ def test_joints():
     up.add_function(update)
 
 
-def test_dashes():
+def test_dashed_curves(end_frame: int):
     c1 = Segment((0, -1), (0, 0))
     c2 = Segment((0, 0), (0.5, 0))
     c3 = Segment((0.5, 0), (0.5, 1))
@@ -177,35 +172,3 @@ def test_dashes():
 
     width = DEFAULT_LINE_WIDTH*10
     dashed = DashedCurve(chain, width=width)
-
-
-def main():
-    startup.driver_callables.copy_startup_files()
-    startup.blender_startup.register()
-    clear_scene()
-    # ebpy.set_render_fps(30)
-    ebpy.set_render_fps(60)
-
-    # seg = Segment((1, 1.5), (3, 2), width=0.05)
-    # ray = Ray((0.15, 0.15), (-3, 5), width=0.01)
-    # line = Line((0.15, 0.15), (5, -1), width=0.02)
-
-    test_splines()
-    test_joints()
-    test_dashes()
-
-    deselect_all()
-
-    # Set end frame
-    ebpy.set_end_frame(end_frame + 50)
-
-    # Preset viewpoint
-    bpy.ops.view3d.view_axis(type='TOP')
-
-    # Reset to first frame and play
-    bpy.context.scene.frame_current = 1
-    bpy.ops.screen.animation_play()
-
-
-if __name__ == "__main__":
-    main()

@@ -1,4 +1,4 @@
-from apeiron.globals.general import driver_callable
+from anima.globals.general import driver_callable
 
 
 @driver_callable

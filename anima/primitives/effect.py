@@ -1,6 +1,6 @@
 import bpy
 from .object import BaseObject
-from apeiron.globals.general import Vector, Euler
+from anima.globals.general import Vector, Euler
 from abc import abstractmethod
 
 
