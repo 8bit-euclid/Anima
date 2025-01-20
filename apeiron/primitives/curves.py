@@ -1,4 +1,3 @@
-import math
 from .object import BaseObject
 from .attachments import BaseAttachment
 from apeiron.globals.general import Vector, reciprocal
@@ -8,6 +7,9 @@ DEFAULT_LINE_WIDTH = 0.02
 NORMAL = DEFAULT_LINE_WIDTH
 THIN = 0.5 * NORMAL
 THICK = 1.5 * NORMAL
+
+DEFAULT_DASH_LENGTH = 0.1
+DEFAULT_GAP_LENGTH = 0.02
 
 
 class BaseCurve(BaseObject):
@@ -23,8 +25,8 @@ class BaseCurve(BaseObject):
         self._bias = bias
         self._param_0 = 0.0
         self._param_1 = 1.0
-        self._attachment_0: BaseAttachment = None
-        self._attachment_1: BaseAttachment = None
+        self._attachment_0: type[BaseAttachment] = None
+        self._attachment_1: type[BaseAttachment] = None
         self._length = 0.0
         self._length_inverse = 0.0
 
@@ -43,7 +45,7 @@ class BaseCurve(BaseObject):
     def update_param_1(self):
         self.set_param_1(self._param_1)
 
-    def set_attachment_0(self, attmnt: BaseAttachment):
+    def set_attachment_0(self, attmnt: type[BaseAttachment]):
         self._attachment_0 = attmnt
         self.update_param_0()
         from .endcaps import Endcap
@@ -51,13 +53,17 @@ class BaseCurve(BaseObject):
             self._update_attachment_0()
         return self
 
-    def set_attachment_1(self, attmnt: BaseAttachment):
+    def set_attachment_1(self, attmnt: type[BaseAttachment]):
         self._attachment_1 = attmnt
         self.update_param_1()
         from .endcaps import Endcap
         if isinstance(attmnt, Endcap):
             self._update_attachment_1()
         return self
+
+    def make_dashed(self, dash_len: float = DEFAULT_DASH_LENGTH, gap_len: float = DEFAULT_GAP_LENGTH,
+                    offset: float = 0.0):
+        pass
 
     @abstractmethod
     def set_width(self, width: float):
@@ -151,7 +157,7 @@ class BaseCurve(BaseObject):
         return self._attachment_0
 
     @attachment_0.setter
-    def attachment_0(self, attmnt: BaseAttachment):
+    def attachment_0(self, attmnt: type[BaseAttachment]):
         """Set the curve's attachment_0."""
         self.set_attachment_0(attmnt)
 
@@ -161,7 +167,7 @@ class BaseCurve(BaseObject):
         return self._attachment_1
 
     @attachment_1.setter
-    def attachment_1(self, attmnt: BaseAttachment):
+    def attachment_1(self, attmnt: type[BaseAttachment]):
         """Set the curve's attachment_1."""
         self.set_attachment_1(attmnt)
 
@@ -169,8 +175,7 @@ class BaseCurve(BaseObject):
 
     @abstractmethod
     def _set_param(self, param: float, end_idx: int):
-        assert param <= self._param_1 if end_idx == 0 else param >= self._param_0
-        setattr(self, f"_param_{end_idx}", param)
+        setattr(self, f'_param_{end_idx}', param)
         self._update_attachment(end_idx)
 
     def _set_both_params(self, param: float):
