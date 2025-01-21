@@ -1,11 +1,14 @@
-import bpy
-import math
 import bisect
-from anima.globals.general import Vector, get_3d_vector, add_object, disable_print, \
-    enable_print, add_line_segment, rotate_90, SMALL_OFFSET
-from .curves import BaseCurve, DEFAULT_LINE_WIDTH
-from .endcaps import Endcap
+import math
+import bpy
+import numpy as np
+from array import array
 from scipy import integrate
+from anima.globals.general import (SMALL_OFFSET, Vector, add_line_segment,
+                                   add_object, disable_print, enable_print,
+                                   get_3d_vector, rotate_90)
+from .curves import DEFAULT_LINE_WIDTH, BaseCurve
+from .endcaps import Endcap
 
 DEFAULT_RESOLUTION = 100
 RELATIVE_LENGTH_EPS = 5.0e-3
@@ -40,7 +43,9 @@ class BezierSpline(BaseCurve):
 
         # Map spline parameter to length parameter.
         self._mapped_lengths = False
-        self._length_fraction = None
+        self._length_fraction: float = None
+        self._spl_params: array = None
+        self._len_params: array = None
 
         # Set width and bias
         self.set_width(width)
@@ -194,8 +199,8 @@ class BezierSpline(BaseCurve):
     def _compute_spline_param(self, param: float, is_len_factor: bool = True) -> float:
         assert 0.0 <= param <= 1.0, "Parameter must be in range [0, 1]"
         if is_len_factor and not self._mapped_lengths:
-            self._map_params()
-        return self._get_u_from_s(param * self['s'][-1]) if is_len_factor else param
+            self._map_u_to_s()
+        return self._get_u_from_s(param * self._len_params[-1]) if is_len_factor else param
 
     def _compute_bezier_param(self, param: float, is_len_factor: bool = True) -> float:
         u = self._compute_spline_param(param, is_len_factor)
@@ -296,43 +301,45 @@ class BezierSpline(BaseCurve):
             h0 + 3 * (2*t - 3*t_sq) * h1 + 3 * t_sq * p1
         return tang.normalized() if normalise else tang
 
-    def _map_params(self, num_pts: int = DEFAULT_NUM_LENGTHS):
-        self['u'] = [-1.0] * num_pts
-        self['s'] = [-1.0] * num_pts
+    def _map_u_to_s(self, num_pts: int = DEFAULT_NUM_LENGTHS):
+        self._spl_params = array('d', [-1.0]*num_pts)
+        self._len_params = array('d', [-1.0]*num_pts)
         du = 1.0 / (num_pts - 1)
 
+        params = self._spl_params
+        lengths = self._len_params
         for i in range(num_pts):
-            self['u'][i] = i * du
-            self['s'][i] = self.length(self['u'][i])
+            params[i] = i * du
+            lengths[i] = self.length(params[i])
 
         # Todo - add bezier boundary points too (discontinuous).
 
         self._mapped_lengths = True
-        self._length_fraction = 1.0 / self['s'][-1]
+        self._length_fraction = 1.0 / lengths[-1]
 
     def _get_u_from_s(self, s):
         if not self._mapped_lengths:
-            self._map_params()
+            self._map_u_to_s()
 
-        s_list = self['s']
-        u_list = self['u']
+        params = self._len_params
+        lengths = self._spl_params
 
-        if s < s_list[0] or s > s_list[-1]:
+        if s < params[0] or s > params[-1]:
             raise Exception('The length parameter is out of bounds.')
 
         # Find bounding interval and linearly interpolate
-        idx = bisect.bisect_left(s_list, s)
+        idx = bisect.bisect_left(params, s)
 
-        if idx == 0:
-            return u_list[0]
-        elif idx == len(s_list):
-            return u_list[-1]
-        else:
-            s0 = s_list[idx - 1]
-            s1 = s_list[idx]
-            u0 = u_list[idx - 1]
-            u1 = u_list[idx]
+        if 0 < idx < len(params):
+            s0 = params[idx - 1]
+            s1 = params[idx]
+            u0 = lengths[idx - 1]
+            u1 = lengths[idx]
             return u0 + (u1 - u0) * (s - s0) / (s1 - s0)
+        elif idx == 0:
+            return lengths[0]
+        else:
+            return lengths[-1]
 
     def _dimension(self):
         return int(self.bl_obj.data.dimensions[0])
