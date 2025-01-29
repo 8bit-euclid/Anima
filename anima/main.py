@@ -10,14 +10,11 @@ def main():
     startup.blender_startup.register()
     clear_scene()
     # ebpy.set_render_fps(30)
+    # ebpy.set_render_fps(35)
+    # ebpy.set_render_fps(40)
     ebpy.set_render_fps(60)
 
     end_frame = to_frame('00:10')
-    # end_frame = to_frame('00:07')
-
-    # seg = Segment((1, 1.5), (3, 2), width=0.05)
-    # ray = Ray((0.15, 0.15), (-3, 5), width=0.01)
-    # line = Line((0.15, 0.15), (5, -1), width=0.02)
 
     test_bezier_splines(end_frame)
     test_curve_joints(end_frame)

@@ -1,5 +1,4 @@
 import math
-import copy
 import bisect
 from .curves import BaseCurve, DEFAULT_LINE_WIDTH
 from .joints import Joint, RoundJoint, DEFAULT_LINE_WIDTH
@@ -9,29 +8,31 @@ from anima.globals.general import Vector, are_vectors_close, reciprocal, clip
 class CurveChain(BaseCurve):
     def __init__(self, curves: list[type[BaseCurve]], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
                  name: str = 'CurveChain'):
-        self._curves: list[BaseCurve] = curves
-        self._joints: list[Joint] = []
-        self._all_entities: list[BaseCurve] = []
+        for c in curves:
+            assert not isinstance(c, Joint), \
+                "The curves in a curve chain cannot be joints."
+        self._curves: list[type[BaseCurve]] = curves
+        self._joints: list[type[Joint]] = []
         self._cumu_lengths: list[float] = []
         self._curve_0_idx: int = None
         self._curve_1_idx: int = None
 
-        # Initialise joints and order all curves.
+        # Initialise joints.
         for curve_1, curve_2 in zip(curves, curves[1:]):
             assert are_vectors_close(curve_1.point(1), curve_2.point(0)), \
-                "The end-point of the first curve must be the start-point for the second"
+                f"The end-point of the first curve must be the start-point for the second."
             joint = RoundJoint(curve_1, curve_2)
-            # joint = Joint(curve_1, curve_2)
             self._joints.append(joint)
-            self._all_entities.extend([curve_1, joint])
-
-        self._all_entities.append(curves[-1])
 
         # Set indices of curves 0 and 1.
         self._curve_0_idx = 0
         self._curve_1_idx = len(self._all_entities) - 1
 
         super().__init__(width=width, bias=bias, name=name)
+
+        # Add all entities as children of this object.
+        for c in self._all_entities:
+            self.add_object(c)
 
         # Set the width and bias.
         self.set_width(width)
@@ -63,6 +64,12 @@ class CurveChain(BaseCurve):
         return t * self._length
 
     # Private methods -------------------------------------------------------------------------------------- #
+    @property
+    def _all_entities(self) -> list[type[BaseCurve]]:
+        """Attributes to exclude from deep copying"""
+        curves = self._curves
+        joints = self._joints
+        return [crv for pair in zip(curves, joints) for crv in pair] + curves[-1:]
 
     def _set_param(self, param: float, end_idx: int):
         param_old = getattr(self, f'param_{end_idx}')
@@ -103,15 +110,16 @@ class CurveChain(BaseCurve):
 
     def _update_length(self):
         # Compute and store curve lengths, cumulative lengths, and total length.
-        sz = len(self._all_entities)
+        curves = self._all_entities
+        sz = len(curves)
         self._cumu_lengths = [0] * sz
         true_len = 0
         cumu_len = 0
-        for i, c in enumerate(self._all_entities):
+        for i, c in enumerate(curves):
             # First update length of this curve.
             c._update_length()
 
-            # Updapte true length (i.e. without joints).
+            # Update true length (i.e. without joints).
             l = c._length
             if not isinstance(c, Joint):
                 true_len += l
