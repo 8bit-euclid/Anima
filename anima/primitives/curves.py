@@ -175,6 +175,8 @@ class BaseCurve(BaseObject):
 
     @abstractmethod
     def _set_param(self, param: float, end_idx: int):
+        param_other = getattr(self, f'param_{1 - end_idx}')
+        assert param >= param_other if end_idx == 1 else param <= param_other
         setattr(self, f'_param_{end_idx}', param)
         self._update_attachment(end_idx)
 

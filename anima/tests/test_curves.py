@@ -1,14 +1,17 @@
 
 
+from cProfile import label
 from anima.animation.updater import Updater
 from anima.diagnostics.profiler import Profiler
-from anima.primitives.bezier import BezierCurve, BezierSpline
+from anima.globals.general import clip
+from anima.primitives.bezier import DEFAULT_NUM_LOOKUP_PTS, BezierCurve, BezierSpline
 from anima.primitives.chains import CurveChain
 from anima.primitives.curves import DEFAULT_LINE_WIDTH
 from anima.primitives.dashed_curves import DashedCurve
 from anima.primitives.endcaps import ArrowEndcap, PointEndcap, RoundEndcap
 from anima.primitives.lines import Segment
 from anima.primitives.points import Empty, Point
+import matplotlib.pyplot as plt
 
 up = Updater()
 
@@ -85,7 +88,7 @@ def test_curve_joints(end_frame: int):
     # c1.set_handle_0((1, 0))
     # c1.set_handle_1((-0.25, -1))
     offs = 2.0
-    radi = 0.9
+    radi = 1.0
     c2 = Segment((1, 0), (offs, 0))
     c3 = Segment((offs, 0), (offs, radi))
 
@@ -165,10 +168,34 @@ def test_curve_joints(end_frame: int):
 
 
 def test_dashed_curves(end_frame: int):
-    c1 = Segment((0, -1), (0, 0))
-    c2 = Segment((0, 0), (0.5, 0))
-    c3 = Segment((0.5, 0), (0.5, 1))
-    chain = CurveChain([c1, c2, c3])
+    width = DEFAULT_LINE_WIDTH
 
-    width = DEFAULT_LINE_WIDTH*10
-    dashed = DashedCurve(chain, width=width)
+    # c1 = Segment((0, -1), (0, 0))
+    # c2 = Segment((0, 0), (0.5, 0))
+    # c3 = Segment((0.5, 0), (0.5, 1))
+    # curve = CurveChain([c1, c2, c3], width=width)
+    curve = BezierSpline([(0, -1), (0, 0), (0.5, 0), (0.5, 1)])
+
+    # pf = Profiler()
+
+    # pf.enable()
+    dashed = DashedCurve(curve, width=width)
+    # pf.disable()
+    # pf.print_stats()
+
+    radi = 1.0
+    e = Empty()
+    e['t'] = -radi
+    e.add_keyframe('["t"]', frame=30)
+    e['t'] = radi
+    e.add_keyframe('["t"]', frame=end_frame)
+
+    def updater(scene):
+        t = e['t']
+        # pf.enable()
+        dashed.dash_offset = t
+        # dashed.param_1 = t
+        # pf.disable()
+        # pf.print_stats()
+
+    up.add_function(updater)

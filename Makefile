@@ -1,3 +1,3 @@
 .PHONY: test
 test:
-	PYTHONPATH=. pytest --disable-warnings
+	PYTHONPATH=. pytest --disable-warnings --ignore=./anima/tests

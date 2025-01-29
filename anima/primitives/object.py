@@ -1,25 +1,31 @@
+import copy
 import bpy
 import math
 from abc import ABC
 from copy import deepcopy
+from typing import Any, Optional
 from anima.animation.driver import Driver
 from anima.globals.general import create_mesh, Vector, Matrix, Euler, is_anima_object, add_object, \
-    make_active, deselect_all, ebpy
+    deepcopy_object, make_active, deselect_all, ebpy
 
 
 class BaseObject(ABC):
     """
-    Base class from which all visualisable objects will derive. Contains common members and methods, and 
+    Base class from which all visualisable objects will derive. Contains common members and methods, and
     encapsulates the underlying Blender object.
     """
 
-    def __init__(self, bl_object=None, name='BaseObject', **kwargs):
-        if bl_object is not None:
-            bl_object.name = name
-        self.name = name
-        self.bl_obj = bl_object
+    def __init__(self, *, bl_object=None, name='BaseObject', **kwargs):
+        if kwargs:
+            raise TypeError(f"Unexpected keyword arguments: {kwargs}")
+
         self.parent: type[BaseObject] = None
         self.children: list[type[BaseObject]] = []
+
+        if bl_object is None:
+            bl_object = add_object()
+        bl_object.name = name
+        self.bl_obj = bl_object
         self.shape_keys = []
         self.hooks = []
         self._write_logs = False
@@ -31,8 +37,6 @@ class BaseObject(ABC):
 
         # Create mesh and create/update object.
         mesh = create_mesh(self.name + '_mesh', verts, faces, edges)
-        if self.bl_obj is None:
-            self.bl_obj = add_object(self.name)
         self.bl_obj.data = mesh
 
     def update_mesh(self, verts, faces, edges=None):
@@ -111,12 +115,16 @@ class BaseObject(ABC):
         deselect_all()
 
     def hide(self):
-        """Hide this object in both the viewport and the render."""
+        """Hide this object and its children in both the viewport and the render."""
         self._set_visibility(False)
+        for child in self.children:
+            child.hide()
 
     def unhide(self):
-        """Unhide this object in both the viewport and the render."""
+        """Unhide this object and its children in both the viewport and the render."""
         self._set_visibility(True)
+        for child in self.children:
+            child.unhide()
 
     # Location-related methods ----------------------------------------------------------------------------- #
 
@@ -256,6 +264,16 @@ class BaseObject(ABC):
     # Property getters/setters for underlying blender object attributes ------------------------------------ #
 
     @property
+    def name(self):
+        """Get the object's name."""
+        return self.bl_obj.name
+
+    @name.setter
+    def name(self, name):
+        """Set the object's name."""
+        self.bl_obj.name = name
+
+    @property
     def vertices(self):
         """Get the mesh's vertices."""
         assert self._has_data(), f'The object {self.name} has no mesh set.'
@@ -278,31 +296,6 @@ class BaseObject(ABC):
         """Get the underlying Blender object."""
         return self.bl_obj
 
-    # Operator overloads ----------------------------------------------------------------------------------- #
-
-    def __getitem__(self, attr_name):
-        """Get a custom property using the [] operator."""
-        return self.bl_obj[attr_name]
-
-    def __setitem__(self, attr_name, value):
-        """Set a custom property using the [] operator."""
-        self.bl_obj[attr_name] = value
-
-    def __deepcopy__(self, memo):
-        obj = self.bl_obj
-        if obj.type == 'MESH':
-            print("This is a mesh object")
-        # Create a new instance of the class
-        new_inst = type(self)(deepcopy(obj, memo))
-
-        # Add the new object to the memo dictionary
-        memo[id(self)] = new_inst
-
-        # We can choose to not copy certain attributes
-        new_inst.no_copy = self.no_copy  # Reference to original
-
-        return new_inst
-
     # Debugging tools -------------------------------------------------------------------------------------- #
 
     def debug(self) -> bool:
@@ -314,10 +307,60 @@ class BaseObject(ABC):
     def debug_off(self):
         self._write_logs = False
 
+    # Magic methods ---------------------------------------------------------------------------------------- #
+
+    def __getitem__(self, attr_name):
+        """Get a custom property using the [] operator."""
+        return self.bl_obj[attr_name]
+
+    def __setitem__(self, attr_name, value):
+        """Set a custom property using the [] operator."""
+        self.bl_obj[attr_name] = value
+
+    def __deepcopy__(self, memo: Optional[dict[int, Any]] = None):
+        """Deepcopy the object."""
+        if memo is None:
+            memo = {}
+
+        # Check if already deep-copied, to prevent recursion.
+        self_id = id(self)
+        if self_id in memo:
+            return memo[self_id]
+
+        # Create new instance without calling __init__ and cache.
+        new_copy = self.__class__.__new__(self.__class__)
+        memo[self_id] = new_copy
+
+        # Copy all attributes except those in attrs_to_excl
+        attrs_to_excl = self._deepcopy_excluded_attrs
+        attrs_to_copy = {
+            key: value for key, value in self.__dict__.items()
+            if key not in attrs_to_excl
+        }
+        new_copy.__dict__.update(deepcopy(attrs_to_copy, memo))
+
+        # Initialize excluded attributes as None
+        for attr in attrs_to_excl:
+            setattr(new_copy, attr, None)
+
+        # Copy Blender object manually.
+        new_copy.bl_obj = deepcopy_object(self.bl_obj)
+
+        return new_copy
+
+    @property
+    def _deepcopy_excluded_attrs(self) -> set[str]:
+        """Attributes to exclude from deep copying."""
+        assert len(self.shape_keys) == 0, \
+            'Cannot deepcopy objects with shape keys yet.'
+        assert len(self.hooks) == 0, \
+            'Cannot deepcopy objects with hooks yet.'
+        return {'bl_obj', 'shape_keys', 'hooks', 'parent'}
+
     # Private methods -------------------------------------------------------------------------------------- #
 
     def _has_data(self):
-        """Does the object have data?"""
+        """Does the Blender object have data?"""
         return self.bl_obj.data is not None
 
     def _set_parent(self, parent):
