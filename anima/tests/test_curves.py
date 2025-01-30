@@ -4,14 +4,13 @@ from cProfile import label
 from anima.animation.updater import Updater
 from anima.diagnostics.profiler import Profiler
 from anima.globals.general import clip
-from anima.primitives.bezier import DEFAULT_NUM_LOOKUP_PTS, BezierCurve, BezierSpline
+from anima.primitives.bezier import BezierCurve, BezierSpline
 from anima.primitives.chains import CurveChain
 from anima.primitives.curves import DEFAULT_LINE_WIDTH
 from anima.primitives.dashed_curves import DashedCurve
 from anima.primitives.endcaps import ArrowEndcap, PointEndcap, RoundEndcap
 from anima.primitives.lines import Segment
 from anima.primitives.points import Empty, Point
-import matplotlib.pyplot as plt
 
 up = Updater()
 
@@ -168,33 +167,44 @@ def test_curve_joints(end_frame: int):
 
 
 def test_dashed_curves(end_frame: int):
-    width = DEFAULT_LINE_WIDTH
+    width = 1.5*DEFAULT_LINE_WIDTH
 
     # c1 = Segment((0, -1), (0, 0))
     # c2 = Segment((0, 0), (0.5, 0))
     # c3 = Segment((0.5, 0), (0.5, 1))
-    # curve = CurveChain([c1, c2, c3], width=width)
-    curve = BezierSpline([(0, -1), (0, 0), (0.5, 0), (0.5, 1)])
+    # curve1 = CurveChain([c1, c2, c3], width=width)
+
+    curve2 = BezierSpline([(0, -1), (0, 0), (0.5, 0), (0.5, 1)])
+    # curve2.translate(-1, 0)
 
     # pf = Profiler()
 
     # pf.enable()
-    dashed = DashedCurve(curve, width=width)
+    # dashed1 = DashedCurve(curve1, width=width)
+    dashed2 = DashedCurve(curve2, width=width)
     # pf.disable()
     # pf.print_stats()
 
     radi = 1.0
     e = Empty()
-    e['t'] = -radi
+    e['t'] = 0.0
     e.add_keyframe('["t"]', frame=30)
     e['t'] = radi
     e.add_keyframe('["t"]', frame=end_frame)
 
     def updater(scene):
-        t = e['t']
+        t1 = e['t']
+        t0 = max(0, t1 - 0.45)
         # pf.enable()
-        dashed.dash_offset = t
-        # dashed.param_1 = t
+
+        # dashed1.offset = t1
+        # dashed1.param_0 = t0
+        # dashed1.param_1 = t1
+
+        # dashed2.offset = t1
+        dashed2.param_0 = t0
+        dashed2.param_1 = t1
+
         # pf.disable()
         # pf.print_stats()
 
