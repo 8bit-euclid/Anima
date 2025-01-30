@@ -1,4 +1,4 @@
 {
-   // "python.pythonPath": "${workspaceFolder}/.venv/bin/python",
-   "editor.foldingMaximumRegions": 100
+   "editor.foldingMaximumRegions": 100,
+   "makefile.configureOnOpen": false
 }

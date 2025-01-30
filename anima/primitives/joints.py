@@ -178,8 +178,8 @@ class Joint(BaseAttachment, BaseCurve):
         curve_1 = self.connections[1]
         if self._initialised:
             self.update_mesh(verts, faces)
-            curve_0.update_param_1()
-            curve_1.update_param_0()
+            curve_0._update_param_1()
+            curve_1._update_param_0()
         else:
             self.set_mesh(verts, faces)
             curve_0.set_attachment_1(self)

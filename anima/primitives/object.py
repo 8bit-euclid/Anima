@@ -5,6 +5,7 @@ from abc import ABC
 from copy import deepcopy
 from typing import Any, Optional
 from anima.animation.driver import Driver
+from anima.globals.easybpy import apply_scale
 from anima.globals.general import create_mesh, Vector, Matrix, Euler, is_anima_object, add_object, \
     deepcopy_object, make_active, deselect_all, ebpy
 
@@ -135,7 +136,7 @@ class BaseObject(ABC):
                                 y if y is not None else loc.y,
                                 z if z is not None else loc.z)
         if apply:
-            ebpy.apply_location()
+            ebpy.apply_location(ref=self.bl_obj)
 
     def translate(self, x=0, y=0, z=0, local=False, apply=False):
         """Translates the object in world/local space (defaults to world)."""
@@ -143,7 +144,7 @@ class BaseObject(ABC):
         ref_frame = 'LOCAL' if local else 'GLOBAL'
         bpy.ops.transform.translate(value=(x, y, z), orient_type=ref_frame)
         if apply:
-            ebpy.apply_location()
+            ebpy.apply_location(ref=self.bl_obj)
 
     @property
     def location(self):
@@ -166,7 +167,7 @@ class BaseObject(ABC):
                               y if y is not None else rot.y,
                               z if z is not None else rot.z)
         if apply:
-            ebpy.apply_rotation()
+            ebpy.apply_rotation(ref=self.bl_obj)
 
     def rotate(self, x=0, y=0, z=0, local=False, apply=False):
         """Rotates the object by the given Euler angles (x, y, z) in world/local space (defaults to world)."""
@@ -181,11 +182,11 @@ class BaseObject(ABC):
             self.bl_obj.matrix_world = rotation_matrix @ self.world_matrix
 
         if apply:
-            ebpy.apply_rotation()
+            ebpy.apply_rotation(ref=self.bl_obj)
 
     def rotate_about(self, axis, local=False, apply=False):
         if apply:
-            ebpy.apply_rotation()
+            ebpy.apply_rotation(ref=self.bl_obj)
 
     def set_orientation(self, x_axis, y_axis, apply=False):
         x_axis = Vector(x_axis)
@@ -240,16 +241,20 @@ class BaseObject(ABC):
 
     # Scale-related methods -------------------------------------------------------------------------------- #
 
-    def set_scale(self, x=None, y=None, z=None):
+    def set_scale(self, x=None, y=None, z=None, apply=False):
         """Sets the object's scale."""
         scale = self.bl_obj.scale
         self.bl_obj.scale = (x if x is not None else scale.x,
                              y if y is not None else scale.y,
                              z if z is not None else scale.z)
+        if apply:
+            apply_scale(ref=self.bl_obj)
 
-    def scale_by(self, x_fact=1.0, y_fact=1.0, z_fact=1.0):
+    def scale_by(self, x_fact=1.0, y_fact=1.0, z_fact=1.0, apply=False):
         """Scale the object by the given factors."""
         self.scale *= Vector((x_fact, y_fact, z_fact))
+        if apply:
+            apply_scale(ref=self.bl_obj)
 
     @property
     def scale(self):

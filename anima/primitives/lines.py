@@ -1,16 +1,19 @@
-from anima.globals.general import get_3d_vector
 from .curves import DEFAULT_LINE_WIDTH
 from .bezier import BezierCurve
+from anima.globals.general import Vector, get_3d_vector
 
 
 class Segment(BezierCurve):
     def __init__(self, point_0, point_1, width=DEFAULT_LINE_WIDTH, bias=0.0, name='Segment', **kwargs):
-        super().__init__(point_0, point_1, width=width, bias=bias, name=name, **kwargs)
-
-
-# Disable redundant methods in Segment class.
-Segment.set_handle_0 = None
-Segment.set_handle_1 = None
+        super().__init__(point_0, point_1, width=width, bias=bias, name=name,
+                         num_lookup_pts=2, **kwargs)
+        # Place handles at 1/3rd and 2/3rd of the way between the points.
+        # This makes the Bezier parameter equivalent to the length fraction parameter.
+        p0 = Vector(point_0)
+        p1 = Vector(point_1)
+        vect = (1/3) * (p1 - p0)
+        self.handle_0 = vect
+        self.handle_1 = -vect
 
 
 class Ray(Segment):
