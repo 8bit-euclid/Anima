@@ -14,16 +14,22 @@ from .curves import DEFAULT_LINE_WIDTH, BaseCurve
 from .endcaps import Endcap
 
 DEFAULT_RESOLUTION = 100
-RELATIVE_LENGTH_EPS = 1.0e-3
-DEFAULT_NUM_LOOKUP_PTS = 40
+RELATIVE_LENGTH_ERR = 1.0e-3  # 0.1% of the length
+NUM_PARAM_LOOKUP_PTS = 40
 
 
 class BezierSpline(BaseCurve):
     def __init__(self, spline_points: list[Vector | tuple], width: float = DEFAULT_LINE_WIDTH,
                  bias: float = 0.0, name: str = 'BezierSpline', **kwargs):
-        self._spl_params: array[float] = None
-        self._len_params: array[float] = None
+        self._spl_params: 'np.ndarray'[float] = None
+        self._len_params: 'np.ndarray'[float] = None
         self._cumu_bzr_lengths: array[float] = None
+        num_pts_key = 'num_lookup_pts'
+        if num_pts_key in kwargs:
+            self._num_lookup_pts = kwargs[num_pts_key]
+            del kwargs[num_pts_key]  # Remove so it is not passed on
+        else:
+            self._num_lookup_pts = NUM_PARAM_LOOKUP_PTS
 
         # Create a new curve object
         curve_data = bpy.data.curves.new(name=name, type='CURVE')
@@ -85,7 +91,7 @@ class BezierSpline(BaseCurve):
         for c in self.children:
             c.set_bias(bias)
 
-        update_params = [self.update_param_0, self.update_param_1]
+        update_params = [self._update_param_0, self._update_param_1]
         for i, att in enumerate(self._attachments()):
             if att is not None:
                 from .joints import Joint
@@ -194,7 +200,7 @@ class BezierSpline(BaseCurve):
         return self.bl_obj.data.splines[0].bezier_points
 
     def _compute_spline_param(self, param: float, is_len_fraction: bool = True) -> float:
-        assert 0.0 <= param <= 1.0, "Parameter must be in range [0, 1]"
+        assert 0.0 <= param <= 1.0, f'Parameter must be in range [0, 1]. Got: {param:.3f}'
         return self._get_u_from_s(param * self._length) if is_len_fraction else param
 
     def _bezier_curve_info(self, param: float, is_len_fraction: bool = True) -> tuple[float, int]:
@@ -295,25 +301,28 @@ class BezierSpline(BaseCurve):
 
         disable_print()  # Disable output regarding round-off errors
         l = self._length
-        eps = RELATIVE_LENGTH_EPS * l if l > 0 else 1e-5
+        eps = RELATIVE_LENGTH_ERR * l if l > 0 else 1e-5
         arc_len, err = integrate.quad(integrand, 0.0, param, epsabs=eps)
         enable_print()
 
         assert err < eps, 'Arc length computation failed.'
         return arc_len
 
-    def _map_u_to_s(self, num_pts: int = DEFAULT_NUM_LOOKUP_PTS):
-        n_bzr_crv = len(self._spline_points()) - 1
-        num_bzr_pts = n_bzr_crv - 1  # Only the intermediate points are inserted
+    def _map_u_to_s(self):
+        num_pts = self._num_lookup_pts
         spl_params = [-1.0]*num_pts
         len_params = [-1.0]*num_pts
 
+        # Compute the lengths at uniformly distributed points.
         du = 1.0 / (num_pts - 1)
         for i in range(num_pts):
             u = min(i*du, 1)
             spl_params[i] = u
             len_params[i] = self.length(u)
 
+        # Compute the extra parameters at spline points.
+        n_bzr_crv = len(self._spline_points()) - 1
+        num_bzr_pts = n_bzr_crv - 1  # Only the intermediate points are inserted
         extra_spl_params = [-1.0]*num_bzr_pts
         extra_len_params = [-1.0]*num_bzr_pts
         du = 1 / n_bzr_crv
@@ -321,13 +330,14 @@ class BezierSpline(BaseCurve):
             u = (i + 1) * du
             extra_spl_params[i] = u
             extra_len_params[i] = self.length(u)
-
         spl_params.extend(extra_spl_params)
         len_params.extend(extra_len_params)
+
         # Zip the lists together, sort based on first list, and unzip and then convert back to lists.
         sorted_lists = zip(*sorted(zip(spl_params, len_params)))
         spl_params, len_params = map(list, sorted_lists)
 
+        # Lastly, convert to numpy arrays.
         self._spl_params = np.array(spl_params, dtype=float)
         self._len_params = np.array(len_params, dtype=float)
 

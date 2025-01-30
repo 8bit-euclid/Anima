@@ -1,5 +1,6 @@
 import math
 from copy import deepcopy
+from functools import partial
 from dataclasses import dataclass, field
 from anima.globals.general import Vector, clip
 from anima.primitives.chains import CurveChain
@@ -16,11 +17,11 @@ class DashedCurve(BaseCurve):
 
     def __init__(self, curve: type[BaseCurve], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
                  dash_len: float = DEFAULT_DASH_LENGTH, gap_len: float = DEFAULT_GAP_LENGTH,
-                 dash_offs: float = 0.0, name: str = 'DashedCurve'):
+                 offset: float = 0.0, name: str = 'DashedCurve'):
         self._base_curve = curve
         self._dash_len = dash_len
         self._gap_len = gap_len
-        self._dash_offs = self._normalised_dash_offset(dash_offs)
+        self._offset = self._normalised_offset(offset)
         self._dashes: list[DashedCurve.Dash] = []
 
         # Initialise BaseCurve and store length.
@@ -43,9 +44,11 @@ class DashedCurve(BaseCurve):
         for d in self._dashes:
             d.curve.bias = bias
 
-    def set_dash_offset(self, offs: float):
-        self._dash_offs = self._normalised_dash_offset(offs)
-        self._update_dash_offsets()
+    def set_offset(self, offs: float):
+        """Set the curve's dash offset."""
+        self._offset = self._normalised_offset(offs)
+        self._update_param_0()
+        self._update_param_1()
 
     def point(self, t: float) -> Vector:
         return self._base_curve.point(t)
@@ -62,34 +65,25 @@ class DashedCurve(BaseCurve):
     # Property getters/setters ----------------------------------------------------------------------------- #
 
     @property
-    def dash_offset(self) -> float:
+    def offset(self) -> float:
         """Get the curve's dash offset."""
         return self._width
 
-    @dash_offset.setter
-    def dash_offset(self, offs: float):
+    @offset.setter
+    def offset(self, offs: float):
         """Set the curve's dash offset."""
-        self.set_dash_offset(offs)
+        self.set_offset(offs)
+
+    @property
+    def _stride(self) -> float:
+        """Get the curve's dash stride (dash_l + gap_l) / l."""
+        return (self._dash_len + self._gap_len) * self._length_inverse
 
     # Private methods -------------------------------------------------------------------------------------- #
 
-    def _normalised_dash_offset(self, offs: float) -> float:
+    def _normalised_offset(self, offs: float) -> float:
         # Recast offset to range [0, 1]. 1 unit ~ (dash_l + gap_l)
         return offs - math.floor(offs)
-
-    def _clip_dash_param(self, param: float) -> float:
-        return clip(param, min_val=0, max_val=1)
-
-    def _update_dash_offsets(self):
-        stride_dt = (self._dash_len + self._gap_len) * self._length_inverse
-        offset_dt = self._dash_offs * stride_dt
-        clip_param = self._clip_dash_param
-
-        dashes = self._dashes
-        for dash in dashes:
-            crv = dash.curve
-            crv.param_0 = clip_param(dash.ref_param_0 + offset_dt)
-            crv.param_1 = clip_param(dash.ref_param_1 + offset_dt)
 
     def _update_geometry(self):
         self._check_dash_len(self._base_curve)
@@ -99,32 +93,30 @@ class DashedCurve(BaseCurve):
         dash_dt = self._dash_len * inv_len
         gap_dt = self._gap_len * inv_len
         stride_dt = dash_dt + gap_dt
-        offset_dt = self._dash_offs * stride_dt
+        offset_dt = self._offset * stride_dt
 
         num_dashes = math.ceil(self._length / stride_dt) + 1
         num_new = max(0, num_dashes - len(self._dashes))
         if num_new > 0:
             self._dashes.extend([None] * num_new)
 
-        clip_param = self._clip_dash_param
+        clip_param = partial(clip, min_val=0, max_val=1)
         dashes = self._dashes
         for i, dash in enumerate(dashes):
-            # Get/create the curve for the dash.
+            # Create the curve for the dash, if necessary.
             if dash is None:
                 dash = DashedCurve.Dash()
                 dashes[i] = dash
-                crv = deepcopy(self._base_curve)
-                dash.curve = crv
-            else:
-                crv = dash.curve
+                dash.curve = deepcopy(self._base_curve)
 
-            # Computeand make a dash over the interval (t0, t1).
+            # Compute and make a dash over the interval (t0, t1).
             t0 = (i - 1) * stride_dt  # Start with hidden dash.
             t1 = t0 + dash_dt
             dash.ref_param_0 = t0
             dash.ref_param_1 = t1
 
-            # Deepcopy the base curve and set relevant attributes.
+            # Set relevant curve attributes.
+            crv = dash.curve
             crv.width = self.width
             crv.bias = self.bias
             crv.param_0 = clip_param(t0 + offset_dt)
@@ -149,22 +141,18 @@ class DashedCurve(BaseCurve):
     def _set_param(self, param: float, end_idx: int):
         super()._set_param(param, end_idx)
 
-        stride_dt = (self._dash_len + self._gap_len) * self._length_inverse
-        offset_dt = self._dash_offs * stride_dt
-
+        offset_dt = self._offset * self._stride
         for d in self._dashes:
-            crv = d.curve
-            r0 = d.ref_param_0 + offset_dt
-            r1 = d.ref_param_1 + offset_dt
-            t0 = crv.param_0
-            t1 = crv.param_1
+            # Compute the offset reference parameters.
+            ref_0 = clip(d.ref_param_0 + offset_dt, 0, 1)
+            ref_1 = clip(d.ref_param_1 + offset_dt, 0, 1)
 
+            # Update the dash curve's parameters.
+            crv = d.curve
             if end_idx == 0:
-                crv.param_0 = clip(param, r0, t1)
-                crv.param_1 = min(param, t1)
+                crv.param_0 = clip(param, ref_0, crv.param_1)
             else:
-                crv.param_0 = max(param, t0)
-                crv.param_1 = clip(param, t0, r1)
+                crv.param_1 = clip(param, crv.param_0, ref_1)
 
     def _update_attachment(self, end_idx: int):
         pass

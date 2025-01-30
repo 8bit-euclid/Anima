@@ -39,15 +39,9 @@ class BaseCurve(BaseObject):
     def set_param_1(self, param: float):
         self._set_param(param, 1)
 
-    def update_param_0(self):
-        self.set_param_0(self._param_0)
-
-    def update_param_1(self):
-        self.set_param_1(self._param_1)
-
     def set_attachment_0(self, attmnt: type[BaseAttachment]):
         self._attachment_0 = attmnt
-        self.update_param_0()
+        self._update_param_0()
         from .endcaps import Endcap
         if isinstance(attmnt, Endcap):
             self._update_attachment_0()
@@ -55,7 +49,7 @@ class BaseCurve(BaseObject):
 
     def set_attachment_1(self, attmnt: type[BaseAttachment]):
         self._attachment_1 = attmnt
-        self.update_param_1()
+        self._update_param_1()
         from .endcaps import Endcap
         if isinstance(attmnt, Endcap):
             self._update_attachment_1()
@@ -175,14 +169,21 @@ class BaseCurve(BaseObject):
 
     @abstractmethod
     def _set_param(self, param: float, end_idx: int):
+        assert end_idx in {0, 1}, 'The end index must be either 0 or 1.'
         param_other = getattr(self, f'param_{1 - end_idx}')
-        assert param >= param_other if end_idx == 1 else param <= param_other
+        assert param <= param_other if end_idx == 0 else param >= param_other
         setattr(self, f'_param_{end_idx}', param)
         self._update_attachment(end_idx)
 
     def _set_both_params(self, param: float):
         self.set_param_0(param)
         self.set_param_1(param)
+
+    def _update_param_0(self):
+        self.set_param_0(self._param_0)
+
+    def _update_param_1(self):
+        self.set_param_1(self._param_1)
 
     @abstractmethod
     def _update_attachment(self, end_idx: int):
