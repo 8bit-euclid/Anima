@@ -1,6 +1,5 @@
 
 
-from cProfile import label
 from anima.animation.updater import Updater
 from anima.diagnostics.profiler import Profiler
 from anima.globals.general import clip
@@ -177,13 +176,13 @@ def test_dashed_curves(end_frame: int):
     curve2 = BezierSpline([(0, -1), (0, 0), (0.5, 0), (0.5, 1)])
     # curve2.translate(-1, 0)
 
-    # pf = Profiler()
-
-    # pf.enable()
     # dashed1 = DashedCurve(curve1, width=width)
     dashed2 = DashedCurve(curve2, width=width)
-    # pf.disable()
-    # pf.print_stats()
+
+    gap2 = dashed2._gap_len / dashed2._length
+    dash2 = dashed2._dash_len / dashed2._length
+    gap_offs = gap2 / (dash2 + gap2)
+    scal2 = 1 / (dash2 + gap2)
 
     radi = 1.0
     e = Empty()
@@ -194,18 +193,14 @@ def test_dashed_curves(end_frame: int):
 
     def updater(scene):
         t1 = e['t']
-        t0 = max(0, t1 - 0.45)
-        # pf.enable()
+        t0 = max(0, t1 - 0.57)
 
         # dashed1.offset = t1
         # dashed1.param_0 = t0
         # dashed1.param_1 = t1
 
-        # dashed2.offset = t1
+        dashed2.offset = gap_offs + scal2 * t1
         dashed2.param_0 = t0
         dashed2.param_1 = t1
-
-        # pf.disable()
-        # pf.print_stats()
 
     up.add_function(updater)

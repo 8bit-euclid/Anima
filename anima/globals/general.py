@@ -16,6 +16,7 @@ DEFAULT_RELATIVE_SMALL = 1e-8
 
 
 def clip(val: int | float, min_val: int | float, max_val: int | float):
+    assert min_val <= max_val, f"Minimum value must be less than or equal to maximum value. {val} [{min_val}, {max_val}]"
     return min(max(val, min_val), max_val)
 
 
