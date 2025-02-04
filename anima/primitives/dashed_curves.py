@@ -95,7 +95,7 @@ class DashedCurve(BaseCurve):
         stride_dt = dash_dt + gap_dt
         offset_dt = self._offset * stride_dt
 
-        num_dashes = math.ceil(self._length / stride_dt) + 1
+        num_dashes = math.ceil(1.0 / stride_dt) + 1
         num_new = max(0, num_dashes - len(self._dashes))
         if num_new > 0:
             self._dashes.extend([None] * num_new)
@@ -150,9 +150,11 @@ class DashedCurve(BaseCurve):
             # Update the dash curve's parameters.
             crv = d.curve
             if end_idx == 0:
-                crv.param_0 = clip(param, ref_0, crv.param_1)
+                upper = min(clip(crv.param_1, ref_0, ref_1), ref_1)
+                crv.param_0 = clip(param, ref_0, upper)
             else:
-                crv.param_1 = clip(param, crv.param_0, ref_1)
+                lower = max(clip(crv.param_0, ref_0, ref_1), ref_0)
+                crv.param_1 = clip(param, lower, ref_1)
 
     def _update_attachment(self, end_idx: int):
         pass

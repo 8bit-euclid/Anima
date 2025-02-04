@@ -1,4 +1,3 @@
-import copy
 import bpy
 import math
 from abc import ABC

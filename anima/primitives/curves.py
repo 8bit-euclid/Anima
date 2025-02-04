@@ -87,6 +87,12 @@ class BaseCurve(BaseObject):
         """Computes the normal of the curve associated to the paramater t."""
         pass
 
+    def binormal(self, t: float, normalise=False) -> Vector:
+        """Computes the binormal of the curve associated to the paramater t."""
+        tang = self.tangent(t, normalise)
+        norm = self.normal(t, normalise)
+        return tang.cross(norm)
+
     @abstractmethod
     def length(self, t: float = 1.0) -> float:
         """Computes the length along the curve up to the paramater t."""
@@ -95,12 +101,6 @@ class BaseCurve(BaseObject):
     def curvature(self, t: float) -> float:
         """Computes the curvature of the curve at the paramater t."""
         raise Exception(f'Cannot yet compute curvature for curve {self.name}.')
-
-    def binormal(self, t: float, normalise=False) -> Vector:
-        """Computes the binormal of the curve associated to the paramater t."""
-        tang = self.tangent(t, normalise)
-        norm = self.normal(t, normalise)
-        return tang.cross(norm)
 
     # Property getters/setters ----------------------------------------------------------------------------- #
 
@@ -170,8 +170,6 @@ class BaseCurve(BaseObject):
     @abstractmethod
     def _set_param(self, param: float, end_idx: int):
         assert end_idx in {0, 1}, 'The end index must be either 0 or 1.'
-        param_other = getattr(self, f'param_{1 - end_idx}')
-        assert param <= param_other if end_idx == 0 else param >= param_other
         setattr(self, f'_param_{end_idx}', param)
         self._update_attachment(end_idx)
 
