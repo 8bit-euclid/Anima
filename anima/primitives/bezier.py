@@ -1,23 +1,35 @@
 import bisect
 import math
-import bpy
+from operator import le
+
 import numpy as np
+import bpy
+from typing import Any, Optional
 from array import array
 from scipy import integrate
 from anima.globals.general import (SMALL_OFFSET, Vector, add_line_segment,
-                                   add_object, disable_print, enable_print,
+                                   add_object, deepcopy_object, disable_print, enable_print,
                                    get_3d_vector, rotate_90)
 from .curves import DEFAULT_LINE_WIDTH, BaseCurve
 from .endcaps import Endcap
 
 DEFAULT_RESOLUTION = 100
-RELATIVE_LENGTH_EPS = 5.0e-3
-DEFAULT_NUM_LENGTHS = 101
+RELATIVE_LENGTH_ERR = 1.0e-3  # 0.1% of the length
+NUM_PARAM_LOOKUP_PTS = 40
 
 
 class BezierSpline(BaseCurve):
-    def __init__(self, spline_points, width=DEFAULT_LINE_WIDTH, bias=0.0, name='BezierSpline'):
-        assert len(spline_points) > 1, 'A spline must contain at least 2 points.'
+    def __init__(self, spline_points: list[Vector | tuple], width: float = DEFAULT_LINE_WIDTH,
+                 bias: float = 0.0, name: str = 'BezierSpline', **kwargs):
+        self._spl_params: 'np.ndarray'[float] = None
+        self._len_params: 'np.ndarray'[float] = None
+        self._cumu_bzr_lengths: array[float] = None
+        num_pts_key = 'num_lookup_pts'
+        if num_pts_key in kwargs:
+            self._num_lookup_pts = kwargs[num_pts_key]
+            del kwargs[num_pts_key]  # Remove so it is not passed on
+        else:
+            self._num_lookup_pts = NUM_PARAM_LOOKUP_PTS
 
         # Create a new curve object
         curve_data = bpy.data.curves.new(name=name, type='CURVE')
@@ -25,6 +37,7 @@ class BezierSpline(BaseCurve):
         curve_data.resolution_u = DEFAULT_RESOLUTION
 
         # Create a Bezier spline and add it to the curve
+        assert len(spline_points) > 1, 'A spline must contain at least 2 points.'
         spline = curve_data.splines.new(type='BEZIER')
         spline.bezier_points.add(
             count=len(spline_points)-1)  # contains 1 already
@@ -39,13 +52,7 @@ class BezierSpline(BaseCurve):
         # Create a new object with the curve data and initialise base class (can only be done at this stage
         # because length must be computable).
         bl_obj = add_object(name, curve_data)
-        super().__init__(bl_object=bl_obj, width=width, bias=bias, name=name)
-
-        # Map spline parameter to length parameter.
-        self._mapped_lengths = False
-        self._length_fraction: float = None
-        self._spl_params: array = None
-        self._len_params: array = None
+        super().__init__(bl_object=bl_obj, width=width, bias=bias, name=name, **kwargs)
 
         # Set width and bias
         self.set_width(width)
@@ -84,7 +91,7 @@ class BezierSpline(BaseCurve):
         for c in self.children:
             c.set_bias(bias)
 
-        update_params = [self.update_param_0, self.update_param_1]
+        update_params = [self._update_param_0, self._update_param_1]
         for i, att in enumerate(self._attachments()):
             if att is not None:
                 from .joints import Joint
@@ -97,8 +104,8 @@ class BezierSpline(BaseCurve):
         return self
 
     def point(self, param: float) -> Vector:
-        bzr_param, bzr_index = self._compute_bezier_param(param)
-        p0, h0, h1, p1 = self._get_control_points(bzr_index)
+        bzr_param, bzr_index = self._bezier_curve_info(param)
+        p0, h0, h1, p1 = self._control_points(bzr_index)
 
         t = bzr_param
         _t = (1 - t)
@@ -110,7 +117,10 @@ class BezierSpline(BaseCurve):
         return _t_cb * p0 + 3 * _t_sq * t * h0 + 3 * _t * t_sq * h1 + t_cb * p1
 
     def tangent(self, param: float, normalise=False) -> Vector:
-        return self._tangent(param, normalise, is_len_factor=True)
+        bzr_param, bzr_index = \
+            self._bezier_curve_info(param, is_len_fraction=True)
+        tangent = self._bezier_tangent(bzr_index, bzr_param)
+        return tangent.normalized() if normalise else tangent
 
     def normal(self, param: float, normalise=False) -> Vector:
         assert self.object.data.dimensions == '2D'
@@ -118,32 +128,17 @@ class BezierSpline(BaseCurve):
         return Vector((-tang.y, tang.x, tang.z))
 
     def length(self, spl_param: float = 1.0) -> float:
-        n_bezier = len(self._get_spline_points()) - 1
+        bzr_param, bzr_index = \
+            self._bezier_curve_info(spl_param, is_len_fraction=False)
+        arc_len = self._bezier_length(bzr_index, bzr_param)
 
-        def integrand(u):
-            return self._tangent(u, is_len_factor=False).magnitude
+        cumu_len = self._cumu_bzr_lengths[bzr_index]
+        assert cumu_len >= 0, 'Cumulative length not yet computed.'
 
-        max_segs = 2
-        num_segs = max(1, int(spl_param * max_segs))
-        du = spl_param / num_segs
-        tot_len = 0
-        for i in range(num_segs):
-            u0 = du * i
-            u1 = du * (i + 1)
-
-            disable_print()  # Disable output regarding round-off errors
-            l = self._length
-            eps = RELATIVE_LENGTH_EPS * l if l > 0 else 1.0e-5
-            seg_len, err = integrate.quad(integrand, u0, u1, epsabs=eps)
-            enable_print()
-
-            assert err < eps, 'Arc length computation failed'
-            tot_len += n_bezier * seg_len
-
-        return tot_len
+        return cumu_len + arc_len
 
     def spline_point(self, pt_index: int):
-        return self._get_spline_points()[pt_index]
+        return self._spline_points()[pt_index]
 
     # Bezier geometry modifiers ---------------------------------------------------------------------------- #
 
@@ -180,9 +175,17 @@ class BezierSpline(BaseCurve):
         """Set the curve's resolution."""
         self.set_resolution(res)
 
+    def __deepcopy__(self, memo: Optional[dict[int, Any]] = None):
+        new_copy = super().__deepcopy__(memo)
+        new_bl_obj = new_copy.bl_obj
+        new_bl_obj.data.bevel_object = \
+            deepcopy_object(self.bl_obj.data.bevel_object)
+        new_bl_obj.data.bevel_object.parent = new_bl_obj
+        return new_copy
+
     # Private methods -------------------------------------------------------------------------------------- #
 
-    def _get_control_points(self, bzr_index: int):
+    def _control_points(self, bzr_index: int):
         bpt0 = self.spline_point(bzr_index)
         bpt1 = self.spline_point(bzr_index + 1)
 
@@ -193,25 +196,19 @@ class BezierSpline(BaseCurve):
 
         return p0, h0, h1, p1
 
-    def _get_spline_points(self):
+    def _spline_points(self):
         return self.bl_obj.data.splines[0].bezier_points
 
-    def _compute_spline_param(self, param: float, is_len_factor: bool = True) -> float:
-        assert 0.0 <= param <= 1.0, "Parameter must be in range [0, 1]"
-        if is_len_factor and not self._mapped_lengths:
-            self._map_u_to_s()
-        return self._get_u_from_s(param * self._len_params[-1]) if is_len_factor else param
+    def _compute_spline_param(self, param: float, is_len_fraction: bool = True) -> float:
+        assert 0.0 <= param <= 1.0, f'Parameter must be in range [0, 1]. Got: {param:.3f}'
+        return self._get_u_from_s(param * self._length) if is_len_fraction else param
 
-    def _compute_bezier_param(self, param: float, is_len_factor: bool = True) -> float:
-        u = self._compute_spline_param(param, is_len_factor)
-
-        num_bzr = len(self._get_spline_points()) - 1
-        bzr_intvl = 1.0 / num_bzr
-
-        bzr_index = math.floor(u / bzr_intvl)
-        if u % bzr_intvl == 0 and u > 0:
-            bzr_index -= 1
-        bzr_param = (u - bzr_index * bzr_intvl) / bzr_intvl
+    def _bezier_curve_info(self, param: float, is_len_fraction: bool = True) -> tuple[float, int]:
+        num_bzr = len(self._spline_points()) - 1
+        u = self._compute_spline_param(param, is_len_fraction)
+        val = u * num_bzr
+        bzr_index = min(math.floor(val), num_bzr - 1)
+        bzr_param = val - bzr_index
 
         return bzr_param, bzr_index
 
@@ -291,64 +288,86 @@ class BezierSpline(BaseCurve):
 
             attmt.set_orientation(x_dir, y_dir)
 
-    def _tangent(self, param: float, normalise=False, is_len_factor=True) -> Vector:
-        bzr_param, bzr_index = self._compute_bezier_param(param, is_len_factor)
-        p0, h0, h1, p1 = self._get_control_points(bzr_index)
-
-        t = bzr_param
+    def _bezier_tangent(self, bzr_index: int, param: float) -> Vector:
+        p0, h0, h1, p1 = self._control_points(bzr_index)
+        t = param
         t_sq = t * t
-        tang = -3 * (1 - t)**2 * p0 + 3 * (1 - 4*t + 3*t_sq) * \
-            h0 + 3 * (2*t - 3*t_sq) * h1 + 3 * t_sq * p1
-        return tang.normalized() if normalise else tang
+        return -3 * (1 - t)**2 * p0 + 3 * (1 - 4*t + 3*t_sq) * h0 + \
+            3 * (2*t - 3*t_sq) * h1 + 3 * t_sq * p1
 
-    def _map_u_to_s(self, num_pts: int = DEFAULT_NUM_LENGTHS):
-        self._spl_params = array('d', [-1.0]*num_pts)
-        self._len_params = array('d', [-1.0]*num_pts)
+    def _bezier_length(self, bzr_index: int, param: float = 1.0) -> float:
+        def integrand(t):
+            return self._bezier_tangent(bzr_index, t).magnitude
+
+        disable_print()  # Disable output regarding round-off errors
+        l = self._length
+        eps = RELATIVE_LENGTH_ERR * l if l > 0 else 1e-5
+        arc_len, err = integrate.quad(integrand, 0.0, param, epsabs=eps)
+        enable_print()
+
+        assert err < eps, 'Arc length computation failed.'
+        return arc_len
+
+    def _map_u_to_s(self):
+        num_pts = self._num_lookup_pts
+        spl_params = [-1.0]*num_pts
+        len_params = [-1.0]*num_pts
+
+        # Compute the lengths at uniformly distributed points.
         du = 1.0 / (num_pts - 1)
-
-        params = self._spl_params
-        lengths = self._len_params
         for i in range(num_pts):
-            params[i] = i * du
-            lengths[i] = self.length(params[i])
+            u = min(i*du, 1)
+            spl_params[i] = u
+            len_params[i] = self.length(u)
 
-        # Todo - add bezier boundary points too (discontinuous).
+        # Compute the extra parameters at spline points.
+        n_bzr_crv = len(self._spline_points()) - 1
+        num_bzr_pts = n_bzr_crv - 1  # Only the intermediate points are inserted
+        extra_spl_params = [-1.0]*num_bzr_pts
+        extra_len_params = [-1.0]*num_bzr_pts
+        du = 1 / n_bzr_crv
+        for i in range(num_bzr_pts):
+            u = (i + 1) * du
+            extra_spl_params[i] = u
+            extra_len_params[i] = self.length(u)
+        spl_params.extend(extra_spl_params)
+        len_params.extend(extra_len_params)
 
-        self._mapped_lengths = True
-        self._length_fraction = 1.0 / lengths[-1]
+        # Zip the lists together, sort based on first list, and unzip and then convert back to lists.
+        sorted_lists = zip(*sorted(zip(spl_params, len_params)))
+        spl_params, len_params = map(list, sorted_lists)
+
+        # Lastly, convert to numpy arrays.
+        self._spl_params = np.array(spl_params, dtype=float)
+        self._len_params = np.array(len_params, dtype=float)
 
     def _get_u_from_s(self, s):
-        if not self._mapped_lengths:
-            self._map_u_to_s()
-
-        params = self._len_params
-        lengths = self._spl_params
-
-        if s < params[0] or s > params[-1]:
+        if not (0 <= s <= self._length):
             raise Exception('The length parameter is out of bounds.')
+        return float(np.interp(s, self._len_params, self._spl_params))
 
-        # Find bounding interval and linearly interpolate
-        idx = bisect.bisect_left(params, s)
-
-        if 0 < idx < len(params):
-            s0 = params[idx - 1]
-            s1 = params[idx]
-            u0 = lengths[idx - 1]
-            u1 = lengths[idx]
-            return u0 + (u1 - u0) * (s - s0) / (s1 - s0)
-        elif idx == 0:
-            return lengths[0]
-        else:
-            return lengths[-1]
-
-    def _dimension(self):
+    def _dimension(self) -> int:
         return int(self.bl_obj.data.dimensions[0])
+
+    def _update_length(self):
+        n_bezier = len(self._spline_points()) - 1
+        self._cumu_bzr_lengths = array('f', [-1]*n_bezier)
+        cumu_lens = self._cumu_bzr_lengths
+
+        cumu_lens[0] = 0
+        for i in range(1, n_bezier):
+            cumu_lens[i] = cumu_lens[i - 1] + self._bezier_length(i - 1)
+
+        self._map_u_to_s()
+
+        super()._update_length()
 
 
 class BezierCurve(BezierSpline):
-    def __init__(self, point_0, point_1, width=DEFAULT_LINE_WIDTH, bias=0.0, name='BezierCurve'):
+    def __init__(self, point_0: Vector | tuple, point_1: Vector | tuple, width: float = DEFAULT_LINE_WIDTH,
+                 bias: float = 0.0, name: str = 'BezierCurve', **kwargs):
         super().__init__(spline_points=[point_0, point_1],
-                         width=width, bias=bias, name=name)
+                         width=width, bias=bias, name=name, **kwargs)
 
     def set_handle_0(self, location, relative=True):
         """Set the handle position at point 0."""

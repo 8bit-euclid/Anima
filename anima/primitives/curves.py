@@ -39,15 +39,9 @@ class BaseCurve(BaseObject):
     def set_param_1(self, param: float):
         self._set_param(param, 1)
 
-    def update_param_0(self):
-        self.set_param_0(self._param_0)
-
-    def update_param_1(self):
-        self.set_param_1(self._param_1)
-
     def set_attachment_0(self, attmnt: type[BaseAttachment]):
         self._attachment_0 = attmnt
-        self.update_param_0()
+        self._update_param_0()
         from .endcaps import Endcap
         if isinstance(attmnt, Endcap):
             self._update_attachment_0()
@@ -55,7 +49,7 @@ class BaseCurve(BaseObject):
 
     def set_attachment_1(self, attmnt: type[BaseAttachment]):
         self._attachment_1 = attmnt
-        self.update_param_1()
+        self._update_param_1()
         from .endcaps import Endcap
         if isinstance(attmnt, Endcap):
             self._update_attachment_1()
@@ -93,6 +87,12 @@ class BaseCurve(BaseObject):
         """Computes the normal of the curve associated to the paramater t."""
         pass
 
+    def binormal(self, t: float, normalise=False) -> Vector:
+        """Computes the binormal of the curve associated to the paramater t."""
+        tang = self.tangent(t, normalise)
+        norm = self.normal(t, normalise)
+        return tang.cross(norm)
+
     @abstractmethod
     def length(self, t: float = 1.0) -> float:
         """Computes the length along the curve up to the paramater t."""
@@ -101,12 +101,6 @@ class BaseCurve(BaseObject):
     def curvature(self, t: float) -> float:
         """Computes the curvature of the curve at the paramater t."""
         raise Exception(f'Cannot yet compute curvature for curve {self.name}.')
-
-    def binormal(self, t: float, normalise=False) -> Vector:
-        """Computes the binormal of the curve associated to the paramater t."""
-        tang = self.tangent(t, normalise)
-        norm = self.normal(t, normalise)
-        return tang.cross(norm)
 
     # Property getters/setters ----------------------------------------------------------------------------- #
 
@@ -175,12 +169,19 @@ class BaseCurve(BaseObject):
 
     @abstractmethod
     def _set_param(self, param: float, end_idx: int):
+        assert end_idx in {0, 1}, 'The end index must be either 0 or 1.'
         setattr(self, f'_param_{end_idx}', param)
         self._update_attachment(end_idx)
 
     def _set_both_params(self, param: float):
         self.set_param_0(param)
         self.set_param_1(param)
+
+    def _update_param_0(self):
+        self.set_param_0(self._param_0)
+
+    def _update_param_1(self):
+        self.set_param_1(self._param_1)
 
     @abstractmethod
     def _update_attachment(self, end_idx: int):

@@ -32,7 +32,6 @@ class Updater:
 
     def add_input_variable(self, object, bl_data_path):
         """Adds an input variable."""
-
         d = Driver('dummy')
         d.set_output_variable(self.obj, '["out"]')
         d.add_input_variable('x', object, bl_data_path)

@@ -2,6 +2,8 @@ import bpy
 import os
 import sys
 import math
+from copy import deepcopy
+from typing import Iterable
 from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
 import anima.globals.easybpy as ebpy
@@ -9,9 +11,12 @@ import anima.globals.easybpy as ebpy
 
 UnitZ = Vector((0.0, 0.0, 1.0))
 SMALL_OFFSET = 0.00005
+DEFAULT_ABSOLUTE_SMALL = 1e-7
+DEFAULT_RELATIVE_SMALL = 1e-8
 
 
 def clip(val: int | float, min_val: int | float, max_val: int | float):
+    assert min_val <= max_val, f"Minimum value must be less than or equal to maximum value. {val} [{min_val}, {max_val}]"
     return min(max(val, min_val), max_val)
 
 
@@ -43,7 +48,8 @@ def rotate_90(vector: Vector, clockwise=False):
     return vect
 
 
-def are_vectors_close(v_1: Vector, v_2: Vector, rel_tol=1e-9, abs_tol=0):
+def are_vectors_close(v_1: Vector | Iterable, v_2: Vector | Iterable, rel_tol: float = DEFAULT_RELATIVE_SMALL,
+                      abs_tol: float = DEFAULT_ABSOLUTE_SMALL):
     for a_1, a_2 in zip(v_1, v_2):
         if not math.isclose(a_1, a_2, rel_tol=rel_tol, abs_tol=abs_tol):
             return False
@@ -72,12 +78,31 @@ def link_object(obj):
     bpy.data.collections['Collection'].objects.link(obj)
 
 
-def add_object(name: str, data=None, parent=None):
+def add_object(name: str = 'Object', data=None, parent=None):
     if data is None:
         data = bpy.data.meshes.new(name=name)  # Create empty mesh
     obj = bpy.data.objects.new(name, data)
     obj.parent = parent
     link_object(obj)
+    return obj
+
+
+def deepcopy_object(obj, name=None):
+    if obj is None:
+        return None
+    new_obj = obj.copy()
+    new_obj.name = deepcopy(obj.name) if name is None else name
+    if obj.data is not None:
+        new_obj.data = obj.data.copy()
+    link_object(new_obj)
+    return new_obj
+
+
+def add_empty(name='Empty', location=(0, 0, 0), parent=None):
+    bpy.ops.object.empty_add(location=location, type='PLAIN_AXES')
+    obj = bpy.context.object
+    obj.name = name
+    obj.parent = parent
     return obj
 
 
@@ -94,14 +119,6 @@ def active_object():
 def deselect_all():
     bpy.ops.object.select_all(action='DESELECT')
     bpy.context.view_layer.objects.active = None
-
-
-def add_empty(name='Empty', location=(0, 0, 0), parent=None):
-    bpy.ops.object.empty_add(location=location, type='PLAIN_AXES')
-    obj = bpy.context.object
-    obj.name = name
-    obj.parent = parent
-    return obj
 
 
 def add_empty_hook(name, parent, vertex_index):

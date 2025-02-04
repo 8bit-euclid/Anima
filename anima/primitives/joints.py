@@ -5,12 +5,11 @@ from .curves import BaseCurve, DEFAULT_LINE_WIDTH
 from .bezier import BezierSpline
 from .points import Point
 from .attachments import BaseAttachment
-from anima.globals.general import Vector, Euler, UnitZ
+from anima.globals.general import Vector, Euler, UnitZ, are_vectors_close
 
 DEFAULT_FILLET_FACTOR = 0.0
 DEFAULT_RADIUS_FACTOR = 0.5
-DEFAULT_NUM_SUBDIV = 30
-# DEFAULT_NUM_SUBDIV = 10
+DEFAULT_NUM_SUBDIV = 15
 
 
 class Joint(BaseAttachment, BaseCurve):
@@ -56,9 +55,8 @@ class Joint(BaseAttachment, BaseCurve):
         path.hide()
         self._path = path
 
-        # Now that the path is set, we can initialise super(). The bl_object will be set when the mesh
-        # geometry is updated.
-        super().__init__(bl_object=None, connections=[curve_1, curve_2],
+        # Now that the path is set, we can initialise super().
+        super().__init__(connections=[curve_1, curve_2],
                          width=width, bias=bias, name=name)
 
         assert 0 <= fillet_factor <= 1, 'Currently, only a fillet factor in [0, 1] is supported.'
@@ -78,6 +76,7 @@ class Joint(BaseAttachment, BaseCurve):
             self._type = Joint.Type.BEVEL
         else:
             self._type = Joint.Type.ROUND
+        self._initialised = False
 
         self._update_geometry()
 
@@ -177,14 +176,15 @@ class Joint(BaseAttachment, BaseCurve):
         # Update/create mesh
         curve_0 = self.connections[0]
         curve_1 = self.connections[1]
-        if self.object is not None:
+        if self._initialised:
             self.update_mesh(verts, faces)
-            curve_0.update_param_1()
-            curve_1.update_param_0()
+            curve_0._update_param_1()
+            curve_1._update_param_0()
         else:
             self.set_mesh(verts, faces)
             curve_0.set_attachment_1(self)
             curve_1.set_attachment_0(self)
+            self._initialised = True
 
         # Update joint path
         hw = 0.5 * w
@@ -200,8 +200,8 @@ class Joint(BaseAttachment, BaseCurve):
         curve_1 = self.connections[1]
 
         p0 = curve_0.point(1)  # End of curve 1
-        assert math.isclose(0, (p0 - curve_1.point(0)).magnitude), \
-            "The curves must coincide at the joint."
+        assert are_vectors_close(p0, curve_1.point(0)), \
+            f"The curves must coincide at the joint. {p0} --- {(p0 - curve_1.point(0)).magnitude:.3e}"
 
         t0 = curve_0.tangent(1, normalise=True)
         t1 = curve_1.tangent(0, normalise=True)
@@ -243,7 +243,7 @@ class Joint(BaseAttachment, BaseCurve):
 
     def _update_path(self, points):
         path = self._path
-        pts = path._get_spline_points()
+        pts = path._spline_points()
         pts[0].co = points[0]
         pts[1].co = points[1]
         pts[2].co = points[2]

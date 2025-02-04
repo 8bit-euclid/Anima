@@ -2,6 +2,7 @@
 
 from anima.animation.updater import Updater
 from anima.diagnostics.profiler import Profiler
+from anima.globals.general import clip
 from anima.primitives.bezier import BezierCurve, BezierSpline
 from anima.primitives.chains import CurveChain
 from anima.primitives.curves import DEFAULT_LINE_WIDTH
@@ -85,7 +86,7 @@ def test_curve_joints(end_frame: int):
     # c1.set_handle_0((1, 0))
     # c1.set_handle_1((-0.25, -1))
     offs = 2.0
-    radi = 0.9
+    radi = 1.0
     c2 = Segment((1, 0), (offs, 0))
     c3 = Segment((offs, 0), (offs, radi))
 
@@ -165,10 +166,41 @@ def test_curve_joints(end_frame: int):
 
 
 def test_dashed_curves(end_frame: int):
-    c1 = Segment((0, -1), (0, 0))
-    c2 = Segment((0, 0), (0.5, 0))
-    c3 = Segment((0.5, 0), (0.5, 1))
-    chain = CurveChain([c1, c2, c3])
+    width = 1.5*DEFAULT_LINE_WIDTH
 
-    width = DEFAULT_LINE_WIDTH*10
-    dashed = DashedCurve(chain, width=width)
+    # c1 = Segment((0, -1), (0, 0))
+    # c2 = Segment((0, 0), (0.5, 0))
+    # c3 = Segment((0.5, 0), (0.5, 1))
+    # curve1 = CurveChain([c1, c2, c3], width=width)
+
+    curve2 = BezierSpline([(0, -1), (0, 0), (0.5, 0), (0.5, 1)])
+    # curve2.translate(-1, 0)
+
+    # dashed1 = DashedCurve(curve1, width=width)
+    dashed2 = DashedCurve(curve2, width=width)
+
+    gap2 = dashed2._gap_len / dashed2._length
+    dash2 = dashed2._dash_len / dashed2._length
+    gap_offs = gap2 / (dash2 + gap2)
+    scal2 = 1 / (dash2 + gap2)
+
+    radi = 1.0
+    e = Empty()
+    e['t'] = 0.0
+    e.add_keyframe('["t"]', frame=30)
+    e['t'] = radi
+    e.add_keyframe('["t"]', frame=end_frame)
+
+    def updater(scene):
+        t1 = e['t']
+        t0 = max(0, t1 - 0.57)
+
+        # dashed1.offset = t1
+        # dashed1.param_0 = t0
+        # dashed1.param_1 = t1
+
+        dashed2.offset = gap_offs + scal2 * t1
+        dashed2.param_0 = t0
+        dashed2.param_1 = t1
+
+    up.add_function(updater)
