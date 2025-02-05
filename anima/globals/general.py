@@ -1,3 +1,4 @@
+import inspect
 import bpy
 import os
 import sys
@@ -245,17 +246,17 @@ def is_blender_object(object):
 
 
 def is_anima_object(object):
-    from ..primitives.object import BaseObject
-    return issubclass(type(object), BaseObject)
+    from ..primitives.object import Object
+    return issubclass(type(object), Object)
 
 
-def get_blender_object(object):
-    if is_blender_object(object):
-        return object
-    elif is_anima_object(object):
-        return object.bl_obj
+def get_blender_object(obj):
+    if is_blender_object(obj):
+        return obj
+    elif is_anima_object(obj):
+        return obj.object
     else:
-        raise Exception(f'Unrecognised object of type {type(object)}')
+        raise Exception(f'Unrecognised object of type {type(obj)}')
 
 
 # Store the original stdout so we can restore it later
@@ -274,3 +275,22 @@ def enable_print():
     global original_stdout, original_stderr
     sys.stdout = original_stdout
     sys.stderr = original_stderr
+
+
+def has_instance_variable(obj, name):
+    if not hasattr(obj, name):
+        return False
+
+    # Exclude methods and properties
+    attr = getattr(obj, name)
+    if inspect.isfunction(attr) or inspect.ismethod(attr) or isinstance(attr, property):
+        return False
+
+    # Ensure it's an instance variable (not a class variable)
+    return name in obj.__dict__
+
+
+def extract_argument(name, kwargs, default=None):
+    val = kwargs[name] if name in kwargs else default
+    del kwargs[name]
+    return val

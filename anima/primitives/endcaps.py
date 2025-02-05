@@ -2,14 +2,14 @@ import math
 from anima.globals.general import Vector
 from .points import Empty, Point
 from .curves import DEFAULT_LINE_WIDTH
-from .attachments import BaseAttachment
+from .attachments import Attachment
 
 DEFAULT_ARROW_WIDTH = 3.5 * DEFAULT_LINE_WIDTH
 DEFAULT_ARROW_HEIGHT_1 = 4 * DEFAULT_LINE_WIDTH
 DEFAULT_ARROW_HEIGHT_2 = 0.4 * DEFAULT_LINE_WIDTH
 
 
-class Endcap(BaseAttachment):
+class Endcap(Attachment):
     def __init__(self, obj, name='Endcap'):
         super().__init__(obj.object, name=name)
 
