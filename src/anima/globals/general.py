@@ -1,3 +1,4 @@
+import inspect
 import bpy
 import os
 import sys
@@ -274,7 +275,7 @@ def get_blender_object(object):
     elif is_animable(object):
         return object.bl_obj
     else:
-        raise Exception(f'Unrecognised object of type {type(object)}')
+        raise Exception(f'Unrecognised object of type {type(obj)}')
 
 
 # Store the original stdout so we can restore it later
@@ -293,3 +294,22 @@ def enable_print():
     global original_stdout, original_stderr
     sys.stdout = original_stdout
     sys.stderr = original_stderr
+
+
+def has_instance_variable(obj, name):
+    if not hasattr(obj, name):
+        return False
+
+    # Exclude methods and properties
+    attr = getattr(obj, name)
+    if inspect.isfunction(attr) or inspect.ismethod(attr) or isinstance(attr, property):
+        return False
+
+    # Ensure it's an instance variable (not a class variable)
+    return name in obj.__dict__
+
+
+def extract_argument(name, kwargs, default=None):
+    val = kwargs[name] if name in kwargs else default
+    del kwargs[name]
+    return val

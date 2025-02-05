@@ -24,7 +24,7 @@ class DashedCurve(Curve):
         self._offset = self._normalised_offset(offset)
         self._dashes: list[DashedCurve.Dash] = []
 
-        # Initialise BaseCurve and store length.
+        # Initialise Curve and store length.
         super().__init__(width=width, bias=bias, name=name)
         self._update_geometry()
 

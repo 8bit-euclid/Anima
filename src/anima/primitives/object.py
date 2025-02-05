@@ -14,7 +14,8 @@ class Object(ABC):
     encapsulates the underlying Blender object.
     """
 
-    def __init__(self, *, bl_object=None, name='BaseObject', **kwargs):
+    def __init__(self, *, bl_object=None, name='Object', **kwargs):
+        # There should be no additional keyword arguments.
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {kwargs}")
 
@@ -66,7 +67,7 @@ class Object(ABC):
 
     def make_active(self):
         """Make this the current active object."""
-        make_active(self.bl_obj)
+        make_active(self.object)
 
     def make_inactive(self):
         """Make this object inactive."""
@@ -105,7 +106,7 @@ class Object(ABC):
                                 y if y_set else loc.y,
                                 z if z_set else loc.z)
         if apply:
-            ebpy.apply_location(ref=self.bl_obj)
+            ebpy.apply_location(ref=self.object)
 
     def translate(self, x: float = 0, y: float = 0, z: float = 0, local: bool = False, apply: bool = False):
         """Translates the object in world/local space (defaults to world).
@@ -120,7 +121,7 @@ class Object(ABC):
         ref_frame = 'LOCAL' if local else 'GLOBAL'
         bpy.ops.transform.translate(value=(x, y, z), orient_type=ref_frame)
         if apply:
-            ebpy.apply_location(ref=self.bl_obj)
+            ebpy.apply_location(ref=self.object)
 
     @property
     def location(self):
@@ -160,7 +161,7 @@ class Object(ABC):
                               y if y_set else rot.y,
                               z if z_set else rot.z)
         if apply:
-            ebpy.apply_rotation(ref=self.bl_obj)
+            ebpy.apply_rotation(ref=self.object)
 
     def rotate(self, x: float = 0, y: float = 0, z: float = 0, local: bool = False, apply: bool = False):
         """Rotates the object by the given Euler angles (x, y, z) in world/local space (defaults to world).
@@ -176,10 +177,10 @@ class Object(ABC):
             self.bl_obj.rotation_euler.rotate(rotation)
         else:
             rotation_matrix = rotation.to_matrix().to_4x4()
-            self.bl_obj.matrix_world = rotation_matrix @ self.world_matrix
+            self.object.matrix_world = rotation_matrix @ self.world_matrix
 
         if apply:
-            ebpy.apply_rotation(ref=self.bl_obj)
+            ebpy.apply_rotation(ref=self.object)
 
     def rotate_about(self, axis: tuple | list[float] | Vector, local: bool = False, apply: bool = False):
         """Rotates the object about a given axis.
@@ -191,7 +192,7 @@ class Object(ABC):
         raise NotImplementedError(
             "The rotate_about method is not implemented yet. ")
         if apply:
-            ebpy.apply_rotation(ref=self.bl_obj)
+            ebpy.apply_rotation(ref=self.object)
 
     def set_orientation(self, x_axis: tuple | list[float] | Vector,
                         y_axis: tuple | list[float] | Vector, apply: bool = False):
@@ -288,7 +289,7 @@ class Object(ABC):
                              y if y_set else scale.y,
                              z if z_set else scale.z)
         if apply:
-            apply_scale(ref=self.bl_obj)
+            apply_scale(ref=self.object)
 
     def scale_by(self, x_fact: float = 1.0, y_fact: float = 1.0, z_fact: float = 1.0, apply: bool = False):
         """Scale the object by the given factors.
@@ -299,7 +300,7 @@ class Object(ABC):
             apply (bool, optional): If True, permanently apply the scale to the object. Defaults to False."""
         self.scale *= Vector((x_fact, y_fact, z_fact))
         if apply:
-            apply_scale(ref=self.bl_obj)
+            apply_scale(ref=self.object)
 
     @property
     def scale(self):
@@ -403,7 +404,7 @@ class Object(ABC):
             setattr(new_copy, attr, None)
 
         # Copy Blender object manually.
-        new_copy.bl_obj = deepcopy_object(self.bl_obj)
+        new_copy._blender_obj = deepcopy_object(self.object)
 
         return new_copy
 
