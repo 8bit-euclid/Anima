@@ -44,5 +44,5 @@ class MetaObject(ABCMeta, type):
         return super().__new__(mcs, name, bases, class_dict)
 
 
-class BaseObject(ABC, metaclass=MetaObject):
+class Object(ABC, metaclass=MetaObject):
     pass

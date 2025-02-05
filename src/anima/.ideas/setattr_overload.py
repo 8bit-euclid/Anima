@@ -112,13 +112,13 @@
 #     # print('z:', a.z)
 
 
-# class BaseObject(ABC):
+# class Object(ABC):
 #     """
 #     Base class from which all visualisable objects will derive. Contains common members and methods, and
 #     encapsulates the underlying Blender object.
 #     """
 
-#     def __init__(self, bl_object=None, name='BaseObject', **kwargs):
+#     def __init__(self, bl_object=None, name='Object', **kwargs):
 #         set_attr = super().__setattr__
 #         get_attr = super().__getattribute__
 
