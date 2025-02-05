@@ -1,7 +1,6 @@
 import math
 import bisect
 from enum import Enum
-
 from .curves import Curve, DEFAULT_LINE_WIDTH
 from .bezier import BezierSpline
 from .points import Point
