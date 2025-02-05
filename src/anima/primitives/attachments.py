@@ -7,10 +7,10 @@ class Attachment(Object):
     Base class from which all attachments (joint, cap) derive.
     """
 
-    def __init__(self, bl_object=None, connections=None, name='BaseAttachment', **kwargs):
+    def __init__(self, bl_object=None, connections=None, name='Attachment', **kwargs):
         super().__init__(bl_object=bl_object, name=name, **kwargs)
         self.connections = \
-            connections if connections is not None else []  # entries of base type BaseCurve
+            connections if connections is not None else []  # entries of base type Curve
 
     @abstractmethod
     def offset_distance(self) -> float:

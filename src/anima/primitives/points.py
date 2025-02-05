@@ -19,7 +19,7 @@ class Empty(Object):
         super().__init__(bl_object=obj, name=name)
         self.location = location
         if parent is not None:
-            self._set_parent(parent)
+            self.parent = parent
 
 
 class Point(Object):
@@ -40,5 +40,5 @@ class Point(Object):
 
         super().__init__(bl_object=circle, name=name)
         self.location = location
-        if parent:
-            self._set_parent(parent)
+        if parent is not None:
+            self.parent = parent

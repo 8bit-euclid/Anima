@@ -5,7 +5,7 @@ from typing import Any, Optional
 from array import array
 from scipy import integrate
 from anima.globals.general import (SMALL_OFFSET, Vector, add_line_segment,
-                                   add_object, deepcopy_object, disable_print, enable_print,
+                                   add_object, deepcopy_object, disable_print, enable_print, extract_argument,
                                    get_3d_vector, rotate_90)
 from .curves import DEFAULT_LINE_WIDTH, Curve
 from .endcaps import Endcap
@@ -20,11 +20,10 @@ class BezierSpline(Curve):
                  bias: float = 0.0, name: str = 'BezierSpline', **kwargs):
         self._spl_params: 'np.ndarray'[float] = None
         self._len_params: 'np.ndarray'[float] = None
-        self._cumu_bzr_lengths: array[float] = None
-        num_pts_key = 'num_lookup_pts'
-        if num_pts_key in kwargs:
-            self._num_lookup_pts = kwargs[num_pts_key]
-            del kwargs[num_pts_key]  # Remove so it is not passed on
+        self._cumu_bzr_lens: array[float] = None
+        num_pts_arg = 'num_lookup_pts'
+        if num_pts_arg in kwargs:
+            self._num_lookup_pts = extract_argument(num_pts_arg, kwargs)
         else:
             self._num_lookup_pts = NUM_PARAM_LOOKUP_PTS
 
@@ -58,8 +57,8 @@ class BezierSpline(Curve):
     def set_width(self, width):
         super().set_width(width)
 
-        assert self.bl_obj is not None, 'The base object has not yet been set.'
-        profile = self.bl_obj.data.bevel_object
+        assert self.object is not None, 'The base object has not yet been set.'
+        profile = self.object.data.bevel_object
         hw = 0.5 * width
         pts = [(-hw, 0), (hw, 0)]  # Centred about the origin
 
@@ -70,9 +69,9 @@ class BezierSpline(Curve):
                 bpts[i].co = get_3d_vector(pt)
         else:
             line_obj = add_line_segment('profile', *pts)
-            self.bl_obj.data.bevel_mode = 'OBJECT'
-            self.bl_obj.data.bevel_object = line_obj
-            line_obj.parent = self.bl_obj
+            self.object.data.bevel_mode = 'OBJECT'
+            self.object.data.bevel_object = line_obj
+            line_obj.parent = self.object
 
         # Set same width for all children
         for c in self.children:
@@ -82,7 +81,7 @@ class BezierSpline(Curve):
 
     def set_bias(self, bias: float):
         super().set_bias(bias)
-        self.bl_obj.data.offset = -bias * 0.5 * self._width
+        self.object.data.offset = -bias * 0.5 * self._width
 
         # Set the same bias for all children
         for c in self.children:
@@ -129,7 +128,7 @@ class BezierSpline(Curve):
             self._bezier_curve_info(spl_param, is_len_fraction=False)
         arc_len = self._bezier_length(bzr_index, bzr_param)
 
-        cumu_len = self._cumu_bzr_lengths[bzr_index]
+        cumu_len = self._cumu_bzr_lens[bzr_index]
         assert cumu_len >= 0, 'Cumulative length not yet computed.'
 
         return cumu_len + arc_len
@@ -158,14 +157,14 @@ class BezierSpline(Curve):
         self.set_right_handle_type(point_index, type)
 
     def set_resolution(self, res: int):
-        self.bl_obj.data.resolution_u = res
+        self.object.data.resolution_u = res
 
     # Property getters/setters ----------------------------------------------------------------------------- #
 
     @property
     def resolution(self) -> int:
         """Get the curve's resolution (number of sub-division intervals)."""
-        return self.bl_obj.data.resolution_u
+        return self.object.data.resolution_u
 
     @resolution.setter
     def resolution(self, res: int):
@@ -174,9 +173,9 @@ class BezierSpline(Curve):
 
     def __deepcopy__(self, memo: Optional[dict[int, Any]] = None):
         new_copy = super().__deepcopy__(memo)
-        new_bl_obj = new_copy.bl_obj
+        new_bl_obj = new_copy.object
         new_bl_obj.data.bevel_object = \
-            deepcopy_object(self.bl_obj.data.bevel_object)
+            deepcopy_object(self.object.data.bevel_object)
         new_bl_obj.data.bevel_object.parent = new_bl_obj
         return new_copy
 
@@ -194,7 +193,7 @@ class BezierSpline(Curve):
         return p0, h0, h1, p1
 
     def _spline_points(self):
-        return self.bl_obj.data.splines[0].bezier_points
+        return self.object.data.splines[0].bezier_points
 
     def _compute_spline_param(self, param: float, is_len_fraction: bool = True) -> float:
         assert 0.0 <= param <= 1.0, f'Parameter must be in range [0, 1]. Got: {param:.3f}'
@@ -243,11 +242,11 @@ class BezierSpline(Curve):
         if end_idx == 0:
             param_offs = self._compute_offset_param_0(param)
             bf = self._compute_spline_param(param_offs)
-            self.bl_obj.data.bevel_factor_start = bf
+            self.object.data.bevel_factor_start = bf
         else:
             param_offs = self._compute_offset_param_1(param)
             bf = self._compute_spline_param(param_offs)
-            self.bl_obj.data.bevel_factor_end = bf
+            self.object.data.bevel_factor_end = bf
 
     def _update_attachment(self, end_idx: int):
         if end_idx == 0:
@@ -344,12 +343,12 @@ class BezierSpline(Curve):
         return float(np.interp(s, self._len_params, self._spl_params))
 
     def _dimension(self) -> int:
-        return int(self.bl_obj.data.dimensions[0])
+        return int(self.object.data.dimensions[0])
 
     def _update_length(self):
         n_bezier = len(self._spline_points()) - 1
-        self._cumu_bzr_lengths = array('f', [-1]*n_bezier)
-        cumu_lens = self._cumu_bzr_lengths
+        self._cumu_bzr_lens = array('f', [-1]*n_bezier)
+        cumu_lens = self._cumu_bzr_lens
 
         cumu_lens[0] = 0
         for i in range(1, n_bezier):

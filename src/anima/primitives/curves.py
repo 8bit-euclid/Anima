@@ -18,7 +18,7 @@ class Curve(Object):
     """
 
     def __init__(self, bl_object=None, width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
-                 name: str = 'BaseCurve', **kwargs):
+                 name: str = 'Curve', **kwargs):
         super().__init__(bl_object=bl_object, name=name, **kwargs)
 
         self._width = width
