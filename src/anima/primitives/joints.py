@@ -178,7 +178,7 @@ class Joint(Attachment, Curve, Mesh):
         curve_0 = self.connections[0]
         curve_1 = self.connections[1]
         if self._initialised:
-            self.update_mesh(verts, faces)
+            self.set_mesh(verts, faces)
             curve_0._update_param_1()
             curve_1._update_param_0()
         else:
@@ -305,8 +305,8 @@ class Joint(Attachment, Curve, Mesh):
                 else verts_init[:vert_idx_1] + [pt]
             faces = faces_init[:len(verts) - 2]
 
-        # Update/create mesh
-        self.update_mesh(verts, faces)
+        # Update mesh
+        self.set_mesh(verts, faces)
 
     def _update_attachment(self, end_index: int):
         pass
