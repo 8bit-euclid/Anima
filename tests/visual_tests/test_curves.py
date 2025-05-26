@@ -175,7 +175,8 @@ def test_dashed_curves(end_frame: int):
     # curve2.translate(-1, 0)
 
     # dashed1 = DashedCurve(curve1, width=width)
-    dashed2 = DashedCurve(curve2, width=width)
+    # dashed2 = DashedCurve(curve2, width=width)
+    dashed2 = curve2.make_dashed()
 
     gap2 = dashed2._gap_len / dashed2._length
     dash2 = dashed2._dash_len / dashed2._length

@@ -35,29 +35,27 @@ class Curve(Object):
 
     def set_param_0(self, param: float):
         self._set_param(param, 0)
+        return self
 
     def set_param_1(self, param: float):
         self._set_param(param, 1)
+        return self
 
     def set_attachment_0(self, attmnt: type[Attachment]):
-        self._attachment_0 = attmnt
-        self._update_param_0()
-        from .endcaps import Endcap
-        if isinstance(attmnt, Endcap):
-            self._update_attachment_0()
+        self._set_attachment(attmnt, 0)
         return self
 
     def set_attachment_1(self, attmnt: type[Attachment]):
-        self._attachment_1 = attmnt
-        self._update_param_1()
-        from .endcaps import Endcap
-        if isinstance(attmnt, Endcap):
-            self._update_attachment_1()
+        self._set_attachment(attmnt, 1)
         return self
 
     def make_dashed(self, dash_len: float = DEFAULT_DASH_LENGTH, gap_len: float = DEFAULT_GAP_LENGTH,
                     offset: float = 0.0):
-        pass
+        """Instantiates and returns the dashed version of this curve. Note: DashedCurve hides this curve."""
+        from anima.primitives.dashed_curves import DashedCurve
+        return DashedCurve(self, width=self._width, bias=self._bias,
+                           dash_len=dash_len, gap_len=gap_len, offset=offset,
+                           name=self.name)
 
     @abstractmethod
     def set_width(self, width: float):
@@ -182,6 +180,15 @@ class Curve(Object):
 
     def _update_param_1(self):
         self.set_param_1(self._param_1)
+
+    def _set_attachment(self, attmnt: type[Attachment], end_idx: int):
+        setattr(self, f'_attachment_{end_idx}', attmnt)
+        getattr(self, f'_update_param_{end_idx}')()
+        from .endcaps import Endcap
+        if isinstance(attmnt, Endcap):
+            getattr(self, f'_update_attachment_{end_idx}')()
+        self.add_object(attmnt)
+        return self
 
     @abstractmethod
     def _update_attachment(self, end_idx: int):

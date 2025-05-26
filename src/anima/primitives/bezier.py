@@ -40,6 +40,7 @@ class BezierSpline(Curve):
 
         # Set the bezier points and handle types to 'auto'.
         for i, pt in enumerate(spline_points):
+            assert isinstance(pt, (Vector, tuple)), 'Expected a 2D/3D vector.'
             bpt = spline.bezier_points[i]
             bpt.co = get_3d_vector(pt)
             bpt.handle_left_type = 'AUTO'
@@ -73,9 +74,10 @@ class BezierSpline(Curve):
             self.object.data.bevel_object = line_obj
             line_obj.parent = self.object
 
-        # Set same width for all children
+        # Set same width for all children that are curves.
         for c in self.children:
-            c.set_width(width)
+            if isinstance(c, Curve):
+                c.set_width(width)
 
         return self
 
@@ -83,9 +85,10 @@ class BezierSpline(Curve):
         super().set_bias(bias)
         self.object.data.offset = -bias * 0.5 * self._width
 
-        # Set the same bias for all children
+        # Set the same bias for all children that are curves.
         for c in self.children:
-            c.set_bias(bias)
+            if isinstance(c, Curve):
+                c.set_bias(bias)
 
         update_params = [self._update_param_0, self._update_param_1]
         for i, att in enumerate(self._attachments()):
@@ -141,23 +144,29 @@ class BezierSpline(Curve):
     def set_left_handle(self, point_index: int, location, relative: bool = True):
         self.set_left_handle_type(point_index, 'FREE')
         self._set_handle('LEFT', point_index, location, relative)
+        return self
 
     def set_right_handle(self, point_index: int, location, relative: bool = True):
         self.set_right_handle_type(point_index, 'FREE')
         self._set_handle('RIGHT', point_index, location, relative)
+        return self
 
     def set_left_handle_type(self, point_index: int, type: str):
         self._set_handle_type('LEFT', point_index, type)
+        return self
 
     def set_right_handle_type(self, point_index: int, type: str):
         self._set_handle_type('RIGHT', point_index, type)
+        return self
 
     def set_both_handle_types(self, point_index: int, type: str):
         self.set_left_handle_type(point_index, type)
         self.set_right_handle_type(point_index, type)
+        return self
 
     def set_resolution(self, res: int):
         self.object.data.resolution_u = res
+        return self
 
     # Property getters/setters ----------------------------------------------------------------------------- #
 
@@ -360,10 +369,16 @@ class BezierSpline(Curve):
 
 
 class BezierCurve(BezierSpline):
-    def __init__(self, point_0: Vector | tuple, point_1: Vector | tuple, width: float = DEFAULT_LINE_WIDTH,
+    def __init__(self, point_0: Vector | tuple, point_1: Vector | tuple,
+                 control_pts: list[Vector | tuple] = None, width: float = DEFAULT_LINE_WIDTH,
                  bias: float = 0.0, name: str = 'BezierCurve', **kwargs):
         super().__init__(spline_points=[point_0, point_1],
                          width=width, bias=bias, name=name, **kwargs)
+        if control_pts is not None:
+            assert len(control_pts) == 2, \
+                'Only cubic Bezier curves are currently supported.'
+            self.set_handle_0(control_pts[0], relative=False)
+            self.set_handle_1(control_pts[1], relative=False)
 
     def set_handle_0(self, location, relative=True):
         """Set the handle position at point 0."""
