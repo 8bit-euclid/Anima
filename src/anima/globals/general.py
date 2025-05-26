@@ -49,6 +49,16 @@ def rotate_90(vector: Vector, clockwise=False):
     return vect
 
 
+def outer_product(a: Vector | tuple, b: Vector | tuple) -> Matrix:
+    A = Vector(a).resized(3)
+    B = Vector(b).resized(3)
+    return Matrix([
+        [A.x * B.x, A.x * B.y, A.x * B.z],
+        [A.y * B.x, A.y * B.y, A.y * B.z],
+        [A.z * B.x, A.z * B.y, A.z * B.z]
+    ]).to_3x3()
+
+
 def are_vectors_close(v_1: Vector | Iterable, v_2: Vector | Iterable, rel_tol: float = DEFAULT_RELATIVE_SMALL,
                       abs_tol: float = DEFAULT_ABSOLUTE_SMALL):
     for a_1, a_2 in zip(v_1, v_2):
@@ -120,6 +130,14 @@ def active_object():
 def deselect_all():
     bpy.ops.object.select_all(action='DESELECT')
     bpy.context.view_layer.objects.active = None
+
+
+def hide_relationship_lines():
+    for area in bpy.context.screen.areas:
+        if area.type == 'VIEW_3D':
+            space = area.spaces.active
+            space.overlay.show_relationship_lines = False
+            break
 
 
 def add_empty_hook(name, parent, vertex_index):

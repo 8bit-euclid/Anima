@@ -25,7 +25,7 @@ class Object(ABC):
         if bl_object is None:
             bl_object = add_object()
         bl_object.name = name
-        self.bl_obj = bl_object
+        self._bl_object = bl_object
         self.shape_keys = []
         self._write_logs = False
 
@@ -46,7 +46,7 @@ class Object(ABC):
             bl_data_path (str): The Blender data path to the property to keyframe.
             index (int, optional): The index of the property to keyframe. Defaults to -1.
             frame (int, optional): The frame at which to insert the keyframe. Defaults to the current frame"""
-        self.bl_obj.keyframe_insert(bl_data_path, index=index, frame=frame)
+        self._bl_object.keyframe_insert(bl_data_path, index=index, frame=frame)
 
     def add_handler(self, handler):
         """Add a handler for the specified object property.
@@ -61,7 +61,7 @@ class Object(ABC):
         Returns:
             bpy.types.ShapeKey: The created shape key.
         """
-        shape_key = self.bl_obj.shape_key_add(name)
+        shape_key = self._bl_object.shape_key_add(name)
         self.shape_keys.append(shape_key)
         return shape_key
 
@@ -85,6 +85,10 @@ class Object(ABC):
         for child in self.children:
             child.unhide()
 
+    def copy(self):
+        """Get a deep copy of this object."""
+        return deepcopy(self)
+
     # Location-related methods ----------------------------------------------------------------------------- #
 
     def set_location(self, x=None, y=None, z=None, apply=False):
@@ -102,9 +106,9 @@ class Object(ABC):
         z_set = z is not None
         assert x_set or y_set or z_set, "At least one location dimension must be specified."
         loc = self.location
-        self.bl_obj.location = (x if x_set else loc.x,
-                                y if y_set else loc.y,
-                                z if z_set else loc.z)
+        self._bl_object.location = (x if x_set else loc.x,
+                                    y if y_set else loc.y,
+                                    z if z_set else loc.z)
         if apply:
             ebpy.apply_location(ref=self.object)
 
@@ -128,7 +132,7 @@ class Object(ABC):
         """Get the object's location.
         Returns:
             tuple: A 3D Vector representing the location in x, y, z dimensions."""
-        return self.bl_obj.location
+        return self._bl_object.location
 
     @location.setter
     def location(self, loc):
@@ -154,7 +158,7 @@ class Object(ABC):
         y_set = y is not None
         z_set = z is not None
         assert x_set or y_set or z_set, "At least one rotation dimension must be specified."
-        obj = self.bl_obj
+        obj = self._bl_object
         rot = obj.rotation_euler
         obj.rotation_mode = 'XYZ'
         obj.rotation_euler = (x if x_set else rot.x,
@@ -174,7 +178,7 @@ class Object(ABC):
         """
         rotation = Euler((x, y, z), 'XYZ')
         if local:
-            self.bl_obj.rotation_euler.rotate(rotation)
+            self._bl_object.rotation_euler.rotate(rotation)
         else:
             rotation_matrix = rotation.to_matrix().to_4x4()
             self.object.matrix_world = rotation_matrix @ self.world_matrix
@@ -230,7 +234,7 @@ class Object(ABC):
         """Get the object's rotation (Euler angles).
         Returns:
             tuple: A 3D Vector representing the rotation in Euler angles."""
-        return self.bl_obj.rotation_euler
+        return self._bl_object.rotation_euler
 
     @rotation.setter
     def rotation(self, rot):
@@ -245,28 +249,28 @@ class Object(ABC):
         """Get the local matrix.
         Returns:
             Matrix: The local matrix of the object."""
-        return self.bl_obj.matrix_local
+        return self._bl_object.matrix_local
 
     @local_matrix.setter
     def local_matrix(self, matrix):
         """Set the local matrix.
         Args:
             matrix (Matrix): The new local matrix to set for the object."""
-        self.bl_obj.matrix_local = matrix
+        self._bl_object.matrix_local = matrix
 
     @property
     def world_matrix(self):
         """Get the world matrix.
         Returns:
             Matrix: The world matrix of the object."""
-        return self.bl_obj.matrix_world
+        return self._bl_object.matrix_world
 
     @world_matrix.setter
     def world_matrix(self, matrix):
         """Set the world matrix.
         Args:
             matrix (Matrix): The new world matrix to set for the object."""
-        self.bl_obj.matrix_world = matrix
+        self._bl_object.matrix_world = matrix
 
     # Scale-related methods -------------------------------------------------------------------------------- #
 
@@ -284,10 +288,10 @@ class Object(ABC):
         y_set = y is not None
         z_set = z is not None
         assert x_set or y_set or z_set, "At least one scale dimension must be specified."
-        scale = self.bl_obj.scale
-        self.bl_obj.scale = (x if x_set else scale.x,
-                             y if y_set else scale.y,
-                             z if z_set else scale.z)
+        scale = self._bl_object.scale
+        self._bl_object.scale = (x if x_set else scale.x,
+                                 y if y_set else scale.y,
+                                 z if z_set else scale.z)
         if apply:
             apply_scale(ref=self.object)
 
@@ -307,7 +311,7 @@ class Object(ABC):
         """Get the object's scale.
         Returns:
             tuple: A tuple of 3 floats representing the scale in x, y, z dimensions."""
-        return self.bl_obj.scale
+        return self._bl_object.scale
 
     @scale.setter
     def scale(self, scale):
@@ -316,6 +320,25 @@ class Object(ABC):
             scale (tuple or list): A tuple or list of 3 floats representing the scale in x, y, z dimensions"""
         self.set_scale(*scale)
 
+    # Other geometric operations --------------------------------------------------------------------------- #
+
+    def reflect(self, plane_normal, plane_point=(0, 0, 0)):
+        """ Reflects an object about an arbitrary plane. """
+        plane_normal = Vector(plane_normal).normalized()
+        plane_point = Vector(plane_point)
+
+        # Compute reflection matrix
+        N = outer_product(plane_normal, plane_normal)
+        I = Matrix.Identity(3)
+        R = I - 2 * N  # Reflection matrix
+
+        # Convert to 4x4 transformation matrix
+        refl_matrix = Matrix.Translation(
+            plane_point) @ R.to_4x4() @ Matrix.Translation(-plane_point)
+
+        # Apply transformation
+        self.world_matrix = refl_matrix @ self.world_matrix
+
     # Property getters/setters for underlying blender object attributes ------------------------------------ #
 
     @property
@@ -323,19 +346,19 @@ class Object(ABC):
         """Get the object's name.
         Returns:
             str: The name of the object."""
-        return self.bl_obj.name
+        return self._bl_object.name
 
     @name.setter
     def name(self, name):
         """Set the object's name.
         Args:
             name (str): The new name for the object."""
-        self.bl_obj.name = name
+        self._bl_object.name = name
 
     @property
     def object(self):
         """Get the underlying Blender object."""
-        return self.bl_obj
+        return self._bl_object
 
     # Debugging tools -------------------------------------------------------------------------------------- #
 
@@ -361,14 +384,14 @@ class Object(ABC):
             attr_name (str): The name of the custom property to get.
         Returns:
             Any: The value of the custom property."""
-        return self.bl_obj[attr_name]
+        return self._bl_object[attr_name]
 
     def __setitem__(self, attr_name, value):
         """Set a custom property using the [] operator.
         Args:
             attr_name (str): The name of the custom property to set.
             value (Any): The value to set for the custom property."""
-        self.bl_obj[attr_name] = value
+        self._bl_object[attr_name] = value
 
     def __deepcopy__(self, memo: Optional[dict[int, Any]] = None):
         """Deepcopy all contents of the object except those in _deepcopy_excluded_attrs().
@@ -404,7 +427,7 @@ class Object(ABC):
             setattr(new_copy, attr, None)
 
         # Copy Blender object manually.
-        new_copy._blender_obj = deepcopy_object(self.object)
+        new_copy._bl_object = deepcopy_object(self.object)
 
         return new_copy
 
@@ -414,7 +437,7 @@ class Object(ABC):
             set[str]: A set of attribute names to exclude from deep copying."""
         assert len(self.shape_keys) == 0, \
             'Cannot deepcopy objects with shape keys yet.'
-        return {'bl_obj', 'shape_keys', 'parent'}
+        return {'_bl_object', 'shape_keys', 'parent'}
 
     # Private methods -------------------------------------------------------------------------------------- #
 
@@ -424,9 +447,9 @@ class Object(ABC):
             bool: True if the Blender object has data, else False.
         Raises:
             AssertionError: If the Blender object is not set."""
-        assert self.bl_obj is not None, \
+        assert self._bl_object is not None, \
             "The Blender object is not set. Cannot check for data."
-        return self.bl_obj.data is not None
+        return self._bl_object.data is not None
 
     def _set_parent(self, parent: type['Object']):
         """Sets the parent (of type BaseObject) of the current object.
@@ -437,7 +460,7 @@ class Object(ABC):
         assert is_animable(parent), \
             "Can only set a parent of type BaseObject."
         self.parent = parent
-        self.bl_obj.parent = parent.bl_obj
+        self._bl_object.parent = parent._bl_object
 
     def _set_visibility(self, val: bool):
         """Sets the object's visibility in both the viewport and render.
@@ -450,13 +473,13 @@ class Object(ABC):
         """Sets the object's visibility in the viewport.
         Args:
             val (bool): True if the object should be visible in the viewport, else False."""
-        self.bl_obj.hide_viewport = not val
+        self._bl_object.hide_viewport = not val
 
     def _set_render_visibility(self, val: bool):
         """Sets the object's visibility in the render.
         Args:
             val (bool): True if the object should be visible in the render, else False."""
-        self.bl_obj.hide_render = not val
+        self._bl_object.hide_render = not val
 
     def _log_info(self, visitor: callable):
         """Logs information about the object using the provided visitor function.

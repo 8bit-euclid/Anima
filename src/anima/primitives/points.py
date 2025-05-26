@@ -13,7 +13,7 @@ class Empty(Object):
     """
 
     def __init__(self, location=(0, 0, 0), parent=None, name='Empty'):
-        mesh = create_mesh(name, verts=[(0, 0, 0)], faces=[])
+        mesh = create_mesh(f'{name}_mesh', verts=[(0, 0, 0)], faces=[])
         obj = add_object(name, mesh, parent=parent)
 
         super().__init__(bl_object=obj, name=name)
