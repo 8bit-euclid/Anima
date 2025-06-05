@@ -3,11 +3,14 @@ from .attachments import Attachment
 from anima.globals.general import Vector, reciprocal
 from abc import abstractmethod
 
-DEFAULT_LINE_WIDTH = 0.02
-NORMAL = DEFAULT_LINE_WIDTH
-THIN = 0.5 * NORMAL
-THICK = 1.5 * NORMAL
 
+# Line widths
+DEFAULT_LINE_WIDTH = 0.02
+NORMAL_LINE_WIDTH = DEFAULT_LINE_WIDTH
+THIN_LINE_WIDTH = 0.5 * NORMAL_LINE_WIDTH
+THICK_LINE_WIDTH = 1.5 * NORMAL_LINE_WIDTH
+
+# Dash and gap lengths
 DEFAULT_DASH_LENGTH = 0.1
 DEFAULT_GAP_LENGTH = 0.02
 
