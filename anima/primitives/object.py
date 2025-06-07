@@ -4,13 +4,13 @@ from abc import ABC
 from copy import deepcopy
 from typing import Any, Optional
 from anima.globals.easybpy import apply_scale
-from anima.globals.general import create_mesh, Vector, Matrix, Euler, is_anima_object, add_object, \
+from anima.globals.general import Vector, Matrix, Euler, is_animable, add_object, \
     deepcopy_object, make_active, deselect_all, ebpy
 
 
-class BaseObject(ABC):
+class Object(ABC):
     """
-    Base class from which all visualisable objects will derive. Contains common members and methods, and
+    Base class from which any 'animable' object. Contains common members and methods, and
     encapsulates the underlying Blender object.
     """
 
@@ -18,87 +18,48 @@ class BaseObject(ABC):
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {kwargs}")
 
-        self.parent: type[BaseObject] = None
-        self.children: list[type[BaseObject]] = []
+        self.parent: type[Object] = None
+        self.children: list[type[Object]] = []
 
         if bl_object is None:
             bl_object = add_object()
         bl_object.name = name
         self.bl_obj = bl_object
         self.shape_keys = []
-        self.hooks = []
         self._write_logs = False
 
-    # Segregate
-    def set_mesh(self, verts, faces, edges=None):
-        """Sets the object's mesh based on lists of vertices, faces, and edges."""
-        if edges is None:
-            edges = []
-
-        # Create mesh and create/update object.
-        mesh = create_mesh(self.name + '_mesh', verts, faces, edges)
-        self.bl_obj.data = mesh
-
-    # Segregate
-    def update_mesh(self, verts, faces, edges=None):
-        """Updates the object's mesh based on lists of vertices, faces, and edges."""
-        if edges is None:
-            edges = []
-        mesh = self.bl_obj.data
-        mesh.clear_geometry()
-        mesh.from_pydata(verts, edges, faces)
-        mesh.update()
-
-    # Segregate
-    def update_vertices(self, verts):
-        mesh = self.bl_obj.data
-        assert len(verts) == len(mesh.vertices)
-        for i, v in enumerate(verts):
-            mesh.vertices[i].co = v
-
-    # Segregate
-    def update_faces(self, faces):
-        pass
-
     def add_subobject(self, object):
-        """Adds an object of base type BaseObject and sets current object as parent."""
-        assert is_anima_object(object), \
-            "Can only add sub-objects of type BaseObject."
+        """Adds a sub-object (of type BaseObject) as a child and sets current object as its parent.
+        Args:
+            object (BaseObject): The sub-object to add.
+        Raises:
+            AssertionError: If the object is not animable.
+        """
+        assert is_animable(object), "Can only add animable sub-objects."
         object._set_parent(self)
         self.children.append(object)
 
     def add_keyframe(self, bl_data_path, index=-1, frame=bpy.context.scene.frame_current):
-        """Adds a keframe for a given propety at the given frame."""
+        """Add a keframe for the specified object propety at the given frame.
+        Args:
+            bl_data_path (str): The Blender data path to the property to keyframe.
+            index (int, optional): The index of the property to keyframe. Defaults to -1.
+            frame (int, optional): The frame at which to insert the keyframe. Defaults to the current frame"""
         self.bl_obj.keyframe_insert(bl_data_path, index=index, frame=frame)
 
-    def add_handler(self, bl_data_path):
+    def add_handler(self, handler):
+        """Add a handler for the specified object property.
+        Args:
+            handler (function): The handler function to add"""
         pass
 
-    def create_vertex_hook(self, name, vertex_index):
-        """Create and return a hook for a given vertex in this object's mesh."""
-
-        assert self._has_data(), f'The object {self.name} has no mesh set.'
-        obj = self.bl_obj
-        hook = ebpy.add_hook(obj)
-
-        # Create empty. Note: Lazy import to prevent cyclic imports.
-        from .points import Empty
-        empty = Empty(location=obj.data.vertices[vertex_index].co,
-                      parent=self, name=name)
-
-        # Link the hook to the empty.
-        hook.object = empty.object
-        hook.vertex_indices_set([vertex_index])
-
-        # Add empty as a child and store hook ref.
-        self.add_subobject(empty)
-        self.hooks.append(hook)
-
-        # Todo - encapsulate hook in Hook class
-        return empty
-
     def create_shape_key(self, name):
-        """Create and return a shape key for this object."""
+        """Create and return a shape key for this object.
+        Args:
+            name (str): The name of the shape key to create.
+        Returns:
+            bpy.types.ShapeKey: The created shape key.
+        """
         shape_key = self.bl_obj.shape_key_add(name)
         self.shape_keys.append(shape_key)
         return shape_key
@@ -126,16 +87,35 @@ class BaseObject(ABC):
     # Location-related methods ----------------------------------------------------------------------------- #
 
     def set_location(self, x=None, y=None, z=None, apply=False):
-        """Sets the object's location in world space."""
+        """Sets the object's location in world space.
+        Args:
+            x (float, optional): The x-coordinate of the location. Defaults to None.
+            y (float, optional): The y-coordinate of the location. Defaults to None.
+            z (float, optional): The z-coordinate of the location. Defaults to None.
+            apply (bool, optional): If True, permanently apply the location to the object. Defaults to False.
+        Raises:
+            AssertionError: If no location dimension is specified (x, y, or z).
+        """
+        x_set = x is not None
+        y_set = y is not None
+        z_set = z is not None
+        assert x_set or y_set or z_set, "At least one location dimension must be specified."
         loc = self.location
-        self.bl_obj.location = (x if x is not None else loc.x,
-                                y if y is not None else loc.y,
-                                z if z is not None else loc.z)
+        self.bl_obj.location = (x if x_set else loc.x,
+                                y if y_set else loc.y,
+                                z if z_set else loc.z)
         if apply:
             ebpy.apply_location(ref=self.bl_obj)
 
-    def translate(self, x=0, y=0, z=0, local=False, apply=False):
-        """Translates the object in world/local space (defaults to world)."""
+    def translate(self, x: float = 0, y: float = 0, z: float = 0, local: bool = False, apply: bool = False):
+        """Translates the object in world/local space (defaults to world).
+        Args:
+            x (float, optional): The translation in the x dimension. Defaults to 0.
+            y (float, optional): The translation in the y dimension. Defaults to 0.
+            z (float, optional): The translation in the z dimension. Defaults to 0.
+            local (bool, optional): If True, translates in local space; otherwise, translates in world space. Defaults to False.
+            apply (bool, optional): If True, permanently apply the translation to the object. Defaults to False.
+        """
         self.make_active()
         ref_frame = 'LOCAL' if local else 'GLOBAL'
         bpy.ops.transform.translate(value=(x, y, z), orient_type=ref_frame)
@@ -144,34 +124,55 @@ class BaseObject(ABC):
 
     @property
     def location(self):
-        """Get the object's location."""
+        """Get the object's location.
+        Returns:
+            tuple: A 3D Vector representing the location in x, y, z dimensions."""
         return self.bl_obj.location
 
     @location.setter
     def location(self, loc):
-        """Set the object's location."""
+        """Set the object's location.
+        Args:
+            loc (tuple or list): A tuple or list of 3 floats representing the location in x, y, z dimensions.
+        """
         self.set_location(*loc)
 
     # Rotation-related methods ----------------------------------------------------------------------------- #
 
     def set_rotation(self, x=None, y=None, z=None, apply=False):
-        """Sets the object's rotation (Euler angles in radians) in world space."""
+        """Sets the object's rotation (Euler angles in radians) in world space.
+        Args:
+            x (float, optional): The rotation angle around the x-axis in radians. Defaults to None.
+            y (float, optional): The rotation angle around the y-axis in radians. Defaults to None.
+            z (float, optional): The rotation angle around the z-axis in radians. Defaults to None.
+            apply (bool, optional): If True, permanently apply the rotation to the object. Defaults to False.
+        Raises:
+            AssertionError: If no rotation dimension is specified (x, y, or z).
+        """
+        x_set = x is not None
+        y_set = y is not None
+        z_set = z is not None
+        assert x_set or y_set or z_set, "At least one rotation dimension must be specified."
         obj = self.bl_obj
         rot = obj.rotation_euler
         obj.rotation_mode = 'XYZ'
-        obj.rotation_euler = (x if x is not None else rot.x,
-                              y if y is not None else rot.y,
-                              z if z is not None else rot.z)
+        obj.rotation_euler = (x if x_set else rot.x,
+                              y if y_set else rot.y,
+                              z if z_set else rot.z)
         if apply:
             ebpy.apply_rotation(ref=self.bl_obj)
 
-    def rotate(self, x=0, y=0, z=0, local=False, apply=False):
-        """Rotates the object by the given Euler angles (x, y, z) in world/local space (defaults to world)."""
+    def rotate(self, x: float = 0, y: float = 0, z: float = 0, local: bool = False, apply: bool = False):
+        """Rotates the object by the given Euler angles (x, y, z) in world/local space (defaults to world).
+        Args:
+            x (float, optional): The rotation angle around the x-axis in radians. Defaults to 0.
+            y (float, optional): The rotation angle around the y-axis in radians. Defaults to 0.
+            z (float, optional): The rotation angle around the z-axis in radians. Defaults to 0.
+            local (bool, optional): If True, rotates in local space; otherwise, rotates in world space. Defaults to False.
+            apply (bool, optional): If True, permanently apply the rotation to the object. Defaults to False.
+        """
         rotation = Euler((x, y, z), 'XYZ')
         if local:
-            # bpy.ops.transform.rotate(
-            #     value=0.597005, orient_axis='X', orient_type='LOCAL')
-
             self.bl_obj.rotation_euler.rotate(rotation)
         else:
             rotation_matrix = rotation.to_matrix().to_4x4()
@@ -180,14 +181,32 @@ class BaseObject(ABC):
         if apply:
             ebpy.apply_rotation(ref=self.bl_obj)
 
-    def rotate_about(self, axis, local=False, apply=False):
+    def rotate_about(self, axis: tuple | list[float] | Vector, local: bool = False, apply: bool = False):
+        """Rotates the object about a given axis.
+        Args:
+            axis: The axis of rotation, specified as a tuple/list/Vector of 2/3 floats or a Vector.
+            local (bool, optional): If True, rotates in local space; otherwise, rotates in world space. Defaults to False.
+            apply (bool, optional): If True, permanently apply the rotation to the object. Defaults to False.
+        """
+        raise NotImplementedError(
+            "The rotate_about method is not implemented yet. ")
         if apply:
             ebpy.apply_rotation(ref=self.bl_obj)
 
-    def set_orientation(self, x_axis, y_axis, apply=False):
+    def set_orientation(self, x_axis: tuple | list[float] | Vector,
+                        y_axis: tuple | list[float] | Vector, apply: bool = False):
+        """Sets the object's orientation based on two orthogonal axes.
+        Args:
+            x_axis: A tuple/list/Vector of 2/3 floats representing the x-axis direction.
+            y_axis: A tuple/list/Vector of 2/3 floats representing the y-axis direction.
+            apply (bool, optional): If True, permanently apply the rotation to the object. Defaults to False.
+        Raises:
+            AssertionError: If the axes are not orthogonal.
+        """
         x_axis = Vector(x_axis)
         y_axis = Vector(y_axis)
-        assert math.isclose(x_axis.dot(y_axis), 0), "Axes are not orthogonal."
+        assert math.isclose(x_axis.dot(y_axis), 0), \
+            "X and Y axes are not orthogonal."
 
         # Compute orthonormal basis
         x_axis.normalize()
@@ -207,90 +226,110 @@ class BaseObject(ABC):
 
     @property
     def rotation(self):
-        """Get the object's rotation (Euler angles)."""
+        """Get the object's rotation (Euler angles).
+        Returns:
+            tuple: A 3D Vector representing the rotation in Euler angles."""
         return self.bl_obj.rotation_euler
 
     @rotation.setter
     def rotation(self, rot):
-        """Set the object's rotation (Euler angles)."""
+        """Set the object's rotation (Euler angles).
+        Args:
+            rot (tuple or list): A tuple or list of 3 floats representing the rotation in Euler angles.
+        """
         self.set_rotation(*rot)
 
     @property
     def local_matrix(self):
-        """Get the local matrix."""
+        """Get the local matrix.
+        Returns:
+            Matrix: The local matrix of the object."""
         return self.bl_obj.matrix_local
 
     @local_matrix.setter
     def local_matrix(self, matrix):
-        """Set the local matrix."""
+        """Set the local matrix.
+        Args:
+            matrix (Matrix): The new local matrix to set for the object."""
         self.bl_obj.matrix_local = matrix
 
     @property
     def world_matrix(self):
-        """Get the world matrix."""
+        """Get the world matrix.
+        Returns:
+            Matrix: The world matrix of the object."""
         return self.bl_obj.matrix_world
 
     @world_matrix.setter
     def world_matrix(self, matrix):
-        """Set the world matrix."""
+        """Set the world matrix.
+        Args:
+            matrix (Matrix): The new world matrix to set for the object."""
         self.bl_obj.matrix_world = matrix
 
     # Scale-related methods -------------------------------------------------------------------------------- #
 
-    def set_scale(self, x=None, y=None, z=None, apply=False):
-        """Sets the object's scale."""
+    def set_scale(self, x: float = None, y: float = None, z: float = None, apply: bool = False):
+        """Sets the object's scale.
+        Args:
+            x (float, optional): The scale in the x dimension. Defaults to None.
+            y (float, optional): The scale in the y dimension. Defaults to None.
+            z (float, optional): The scale in the z dimension. Defaults to None.
+            apply (bool, optional): If True, permanently apply the scale to the object. Defaults to False.
+        Raises:
+            AssertionError: If no scale dimension is specified (x, y, or z).
+        """
+        x_set = x is not None
+        y_set = y is not None
+        z_set = z is not None
+        assert x_set or y_set or z_set, "At least one scale dimension must be specified."
         scale = self.bl_obj.scale
-        self.bl_obj.scale = (x if x is not None else scale.x,
-                             y if y is not None else scale.y,
-                             z if z is not None else scale.z)
+        self.bl_obj.scale = (x if x_set else scale.x,
+                             y if y_set else scale.y,
+                             z if z_set else scale.z)
         if apply:
             apply_scale(ref=self.bl_obj)
 
-    def scale_by(self, x_fact=1.0, y_fact=1.0, z_fact=1.0, apply=False):
-        """Scale the object by the given factors."""
+    def scale_by(self, x_fact: float = 1.0, y_fact: float = 1.0, z_fact: float = 1.0, apply: bool = False):
+        """Scale the object by the given factors.
+        Args:
+            x_fact (float, optional): The factor by which to scale in the x dimension. Defaults to 1.0.
+            y_fact (float, optional): The factor by which to scale in the y dimension. Defaults to 1.0.
+            z_fact (float, optional): The factor by which to scale in the z dimension. Defaults to 1.0.
+            apply (bool, optional): If True, permanently apply the scale to the object. Defaults to False."""
         self.scale *= Vector((x_fact, y_fact, z_fact))
         if apply:
             apply_scale(ref=self.bl_obj)
 
     @property
     def scale(self):
-        """Get the object's scale."""
+        """Get the object's scale.
+        Returns:
+            tuple: A tuple of 3 floats representing the scale in x, y, z dimensions."""
         return self.bl_obj.scale
 
     @scale.setter
     def scale(self, scale):
-        """Set the object's scale."""
+        """Set the object's scale.
+        Args:
+            scale (tuple or list): A tuple or list of 3 floats representing the scale in x, y, z dimensions"""
         self.set_scale(*scale)
 
     # Property getters/setters for underlying blender object attributes ------------------------------------ #
 
     @property
     def name(self):
-        """Get the object's name."""
+        """Get the object's name.
+        Returns:
+            str: The name of the object."""
         return self.bl_obj.name
 
     @name.setter
     def name(self, name):
-        """Set the object's name."""
+        """Set the object's name.
+        Args:
+            name (str): The new name for the object."""
         self.bl_obj.name = name
-
-    @property
-    def vertices(self):
-        """Get the mesh's vertices."""
-        assert self._has_data(), f'The object {self.name} has no mesh set.'
-        return self.bl_obj.data.vertices
-
-    @property
-    def faces(self):
-        """Get the mesh's faces."""
-        assert self._has_data(), f'The object {self.name} has no mesh set.'
-        return self.bl_obj.data.polygons
-
-    @property
-    def edges(self):
-        """Get the mesh's edges."""
-        assert self._has_data(), f'The object {self.name} has no mesh set.'
-        return self.bl_obj.data.edges
 
     @property
     def object(self):
@@ -300,26 +339,45 @@ class BaseObject(ABC):
     # Debugging tools -------------------------------------------------------------------------------------- #
 
     def debug(self) -> bool:
+        """Check if debugging is enabled for this object.
+        Returns:
+            bool: True if debugging is enabled, else False."""
         return self._write_logs
 
     def debug_on(self):
+        """Turn on debugging for this object."""
         self._write_logs = True
 
     def debug_off(self):
+        """Turn off debugging for this object."""
         self._write_logs = False
 
     # Magic methods ---------------------------------------------------------------------------------------- #
 
     def __getitem__(self, attr_name):
-        """Get a custom property using the [] operator."""
+        """Get a custom property using the [] operator.
+        Args:
+            attr_name (str): The name of the custom property to get.
+        Returns:
+            Any: The value of the custom property."""
         return self.bl_obj[attr_name]
 
     def __setitem__(self, attr_name, value):
-        """Set a custom property using the [] operator."""
+        """Set a custom property using the [] operator.
+        Args:
+            attr_name (str): The name of the custom property to set.
+            value (Any): The value to set for the custom property."""
         self.bl_obj[attr_name] = value
 
     def __deepcopy__(self, memo: Optional[dict[int, Any]] = None):
-        """Deepcopy the object."""
+        """Deepcopy all contents of the object except those in _deepcopy_excluded_attrs().
+        Args:
+            memo (dict[int, Any], optional): A memo dictionary to keep track of already copied objects.
+                Defaults to None.
+        Returns:
+            BaseObject: A new instance of the object with all attributes copied, except those specified in
+                `_deepcopy_excluded_attrs()`.
+        """
         if memo is None:
             memo = {}
 
@@ -333,7 +391,7 @@ class BaseObject(ABC):
         memo[self_id] = new_copy
 
         # Copy all attributes except those in attrs_to_excl
-        attrs_to_excl = self._deepcopy_excluded_attrs
+        attrs_to_excl = self._deepcopy_excluded_attrs()
         attrs_to_copy = {
             key: value for key, value in self.__dict__.items()
             if key not in attrs_to_excl
@@ -349,48 +407,66 @@ class BaseObject(ABC):
 
         return new_copy
 
-    @property
     def _deepcopy_excluded_attrs(self) -> set[str]:
-        """Attributes to exclude from deep copying."""
+        """Attributes to exclude from deep copying.
+        Returns:
+            set[str]: A set of attribute names to exclude from deep copying."""
         assert len(self.shape_keys) == 0, \
             'Cannot deepcopy objects with shape keys yet.'
-        assert len(self.hooks) == 0, \
-            'Cannot deepcopy objects with hooks yet.'
-        return {'bl_obj', 'shape_keys', 'hooks', 'parent'}
+        return {'bl_obj', 'shape_keys', 'parent'}
 
     # Private methods -------------------------------------------------------------------------------------- #
 
     def _has_data(self):
-        """Does the Blender object have data?"""
+        """Does the Blender object have data?
+        Returns:
+            bool: True if the Blender object has data, else False.
+        Raises:
+            AssertionError: If the Blender object is not set."""
+        assert self.bl_obj is not None, \
+            "The Blender object is not set. Cannot check for data."
         return self.bl_obj.data is not None
 
-    def _set_parent(self, parent):
-        """Sets the parent (of type BaseObject) of the current object."""
-        assert is_anima_object(parent), \
+    def _set_parent(self, parent: type['Object']):
+        """Sets the parent (of type BaseObject) of the current object.
+        Args:
+            parent (BaseObject): The parent object to set.
+        Raises:
+            AssertionError: If the parent is not of type BaseObject."""
+        assert is_animable(parent), \
             "Can only set a parent of type BaseObject."
         self.parent = parent
         self.bl_obj.parent = parent.bl_obj
 
-    def _set_visibility(self, val):  # True if visible, else False
-        """Sets the object's visibility in both the viewport and render."""
+    def _set_visibility(self, val: bool):
+        """Sets the object's visibility in both the viewport and render.
+        Args:
+            val (bool): True if the object should be visible, else False."""
         self._set_viewport_visibility(val)
         self._set_render_visibility(val)
 
-    def _set_viewport_visibility(self, val):  # True if visible, else False
-        """Sets the object's visibility in the viewport."""
+    def _set_viewport_visibility(self, val: bool):
+        """Sets the object's visibility in the viewport.
+        Args:
+            val (bool): True if the object should be visible in the viewport, else False."""
         self.bl_obj.hide_viewport = not val
 
-    def _set_render_visibility(self, val):  # True if visible, else False
-        """Sets the object's visibility in the render."""
+    def _set_render_visibility(self, val: bool):
+        """Sets the object's visibility in the render.
+        Args:
+            val (bool): True if the object should be visible in the render, else False."""
         self.bl_obj.hide_render = not val
 
-    def _log_info(self, visitor):
+    def _log_info(self, visitor: callable):
+        """Logs information about the object using the provided visitor function.
+        Args:
+            visitor (callable): A function that takes the object as an argument and logs its information."""
         print(f'Object {self.name} logs:')
         if self._write_logs:
             visitor(self)
 
 
-class CustomObject(BaseObject):
+class CustomObject(Object):
     def __init__(self, bl_object, name='Custom', **kwargs):
         assert bl_object is not None, 'Must specify underlying blender object.'
         super().__init__(bl_object=bl_object, name=name, **kwargs)

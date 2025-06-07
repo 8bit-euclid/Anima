@@ -169,24 +169,33 @@ def add_cuboid(length: float, width: float, height: float, location=(0, 0, 0)):
 
 
 def set_mode(mode: str):
+    """Sets the current mode to the specified mode.
+    Args:
+        mode (str): The mode to set. Can be 'OBJECT', 'EDIT', etc."""
     bpy.ops.object.mode_set(mode=mode)
 
 
 def set_edit_mode():
+    """Sets the current mode to EDIT mode."""
     set_mode('EDIT')
 
 
 def set_object_mode():
+    """Sets the current mode to OBJECT mode."""
     set_mode('OBJECT')
 
 
 def flip_normals_active_obj():
+    """Flips the normals of the active object in edit mode."""
     set_edit_mode()
     bpy.ops.mesh.flip_normals()
     set_object_mode()
 
 
 def extrude_active_obj(displacement: Vector):
+    """Extrudes the active object in edit mode by the given displacement vector.
+    Args:
+        displacement (Vector): The vector by which to extrude the object."""
     set_edit_mode()
     bpy.ops.mesh.extrude_region_move(
         TRANSFORM_OT_translate={"value": displacement})
@@ -194,11 +203,17 @@ def extrude_active_obj(displacement: Vector):
 
 
 def time(time_str: str) -> timedelta:
-    """Accepts a time string of the form mm:ss or mm:ss:mmm and returns the corresponding timedelta object"""
-
+    """Accepts a time string of the form mm:ss or mm:ss:mmm and returns the corresponding timedelta object.
+    Args:
+        time_str (str): The time string to convert.
+    Returns:
+        timedelta: The corresponding timedelta object.
+    Raises:
+        AssertionError: If the time string is not in the correct format.
+    """
     units = time_str.split(':')
-    assert len(units) in [
-        2, 3], "Accepted time formats are mm:ss and mm:ss:mmm"
+    assert len(units) in [2, 3], \
+        "Accepted time formats are mm:ss and mm:ss:mmm"
     assert len(units[0]) == 2
     assert len(units[1]) == 2
 
@@ -206,11 +221,18 @@ def time(time_str: str) -> timedelta:
     if len(units) == 3:
         assert len(units[2]) == 3
         delta += timedelta(milliseconds=int(units[2]))
-
     return delta
 
 
 def to_frame(delta):
+    """Converts a time delta or string to a frame index based on the current scene's FPS.
+    Args:
+        delta (timedelta | str): The time delta or string to convert.
+    Returns:
+        int: The corresponding frame index.
+    Raises:
+        AssertionError: If the delta is greater than 1 hour.
+    """
     if isinstance(delta, str):
         delta = time(delta)
 
@@ -220,23 +242,36 @@ def to_frame(delta):
 
 
 def save_as(file_name: str):
+    """Saves the current Blender file with the given file name.
+    Args:
+        file_name (str): The name of the file to save."""
     file_path = "blend/" + file_name + ".blend"
     bpy.ops.wm.save_mainfile(filepath=file_path)
 
 
-def is_blender_object(object):
-    return hasattr(object, 'location') and hasattr(object, 'data')
+def is_blender_object(obj):
+    """Check if the object is a Blender object by checking its type.
+    Args:
+        obj: The object to check.
+    Returns:
+        bool: True if the object is a Blender object, False otherwise."""
+    return isinstance(obj, bpy.types.Object)
 
 
-def is_anima_object(object):
-    from ..primitives.object import BaseObject
-    return issubclass(type(object), BaseObject)
+def is_animable(object):
+    """Check if the object is animable, i.e. it is a subclass of BaseObject."""
+    from ..primitives.object import Object
+    return issubclass(type(object), Object)
 
 
 def get_blender_object(object):
+    """Get the Blender object from an animable object or return the object itself if it is a Blender object.
+    Raises:
+        Exception: If the object is neither a Blender object nor an animable object.
+    """
     if is_blender_object(object):
         return object
-    elif is_anima_object(object):
+    elif is_animable(object):
         return object.bl_obj
     else:
         raise Exception(f'Unrecognised object of type {type(object)}')

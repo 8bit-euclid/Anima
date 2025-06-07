@@ -5,17 +5,17 @@ from dataclasses import dataclass, field
 from anima.globals.general import Vector, clip
 from anima.primitives.chains import CurveChain
 from anima.primitives.joints import Joint
-from .curves import BaseCurve, DEFAULT_LINE_WIDTH, DEFAULT_DASH_LENGTH, DEFAULT_GAP_LENGTH
+from .curves import Curve, DEFAULT_LINE_WIDTH, DEFAULT_DASH_LENGTH, DEFAULT_GAP_LENGTH
 
 
-class DashedCurve(BaseCurve):
+class DashedCurve(Curve):
     @dataclass
     class Dash:
-        curve: type[BaseCurve] = field(default=None)
+        curve: type[Curve] = field(default=None)
         ref_param_0: float = field(default=0.0)
         ref_param_1: float = field(default=0.0)
 
-    def __init__(self, curve: type[BaseCurve], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
+    def __init__(self, curve: type[Curve], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
                  dash_len: float = DEFAULT_DASH_LENGTH, gap_len: float = DEFAULT_GAP_LENGTH,
                  offset: float = 0.0, name: str = 'DashedCurve'):
         self._base_curve = curve
@@ -125,11 +125,11 @@ class DashedCurve(BaseCurve):
         # Add all new dash curves as children of this object.
         if num_new > 0:
             for d in dashes[-num_new:]:
-                self.add_object(d.curve)
+                self.add_subobject(d.curve)
 
         # Todo - remove any extra dash curves.
 
-    def _check_dash_len(self, crv: type[BaseCurve]):
+    def _check_dash_len(self, crv: type[Curve]):
         # If joints exist, ensure that the dash length is not smaller than any of them.
         if isinstance(crv, CurveChain):
             for c in crv._all_entities:

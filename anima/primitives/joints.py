@@ -1,10 +1,12 @@
 import math
 import bisect
 from enum import Enum
-from .curves import BaseCurve, DEFAULT_LINE_WIDTH
+
+from .curves import Curve, DEFAULT_LINE_WIDTH
 from .bezier import BezierSpline
 from .points import Point
-from .attachments import BaseAttachment
+from .attachments import Attachment
+from anima.primitives.mesh import Mesh
 from anima.globals.general import Vector, Euler, UnitZ, are_vectors_close
 
 DEFAULT_FILLET_FACTOR = 0.0
@@ -12,7 +14,7 @@ DEFAULT_RADIUS_FACTOR = 0.5
 DEFAULT_NUM_SUBDIV = 15
 
 
-class Joint(BaseAttachment, BaseCurve):
+class Joint(Attachment, Curve, Mesh):
     """
     Todo
     """
@@ -23,7 +25,7 @@ class Joint(BaseAttachment, BaseCurve):
         BEVEL = 3
         # POINT = 4
 
-    def __init__(self, curve_1: BaseCurve, curve_2: BaseCurve, width: float = DEFAULT_LINE_WIDTH,
+    def __init__(self, curve_1: Curve, curve_2: Curve, width: float = DEFAULT_LINE_WIDTH,
                  bias: float = 0.0, fillet_factor: float = DEFAULT_FILLET_FACTOR, num_subdiv: int = 0,
                  name: str = 'Joint'):
         """

@@ -1,7 +1,7 @@
 from .object import *
 
 
-class Polygon(BaseObject):
+class Polygon(Object):
     def __init__(self, vertices):
         self.vertices = vertices
 

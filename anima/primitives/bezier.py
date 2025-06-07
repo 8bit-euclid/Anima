@@ -1,7 +1,4 @@
-import bisect
 import math
-from operator import le
-
 import numpy as np
 import bpy
 from typing import Any, Optional
@@ -10,7 +7,7 @@ from scipy import integrate
 from anima.globals.general import (SMALL_OFFSET, Vector, add_line_segment,
                                    add_object, deepcopy_object, disable_print, enable_print,
                                    get_3d_vector, rotate_90)
-from .curves import DEFAULT_LINE_WIDTH, BaseCurve
+from .curves import DEFAULT_LINE_WIDTH, Curve
 from .endcaps import Endcap
 
 DEFAULT_RESOLUTION = 100
@@ -18,7 +15,7 @@ RELATIVE_LENGTH_ERR = 1.0e-3  # 0.1% of the length
 NUM_PARAM_LOOKUP_PTS = 40
 
 
-class BezierSpline(BaseCurve):
+class BezierSpline(Curve):
     def __init__(self, spline_points: list[Vector | tuple], width: float = DEFAULT_LINE_WIDTH,
                  bias: float = 0.0, name: str = 'BezierSpline', **kwargs):
         self._spl_params: 'np.ndarray'[float] = None

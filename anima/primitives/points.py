@@ -1,12 +1,12 @@
 from anima.globals.general import *
-from anima.primitives.object import BaseObject
+from anima.primitives.object import Object
 from anima.primitives.curves import DEFAULT_LINE_WIDTH
 import bpy
 
 DEFAULT_POINT_RADIUS = 1.1 * DEFAULT_LINE_WIDTH
 
 
-class Empty(BaseObject):
+class Empty(Object):
     """
     An object with just a point location and no mesh. It is invisible in the final render and can be used as 
     reference points for other geometry or as a hook that drives some object property.  
@@ -22,7 +22,7 @@ class Empty(BaseObject):
             self._set_parent(parent)
 
 
-class Point(BaseObject):
+class Point(Object):
     """
     A point object that is visible in both the viewport and the render.
     """
