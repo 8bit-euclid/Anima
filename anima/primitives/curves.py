@@ -1,5 +1,5 @@
-from .object import BaseObject
-from .attachments import BaseAttachment
+from .object import Object
+from .attachments import Attachment
 from anima.globals.general import Vector, reciprocal
 from abc import abstractmethod
 
@@ -12,7 +12,7 @@ DEFAULT_DASH_LENGTH = 0.1
 DEFAULT_GAP_LENGTH = 0.02
 
 
-class BaseCurve(BaseObject):
+class Curve(Object):
     """
     Base class from which all curve objects will derive.
     """
@@ -25,8 +25,8 @@ class BaseCurve(BaseObject):
         self._bias = bias
         self._param_0 = 0.0
         self._param_1 = 1.0
-        self._attachment_0: type[BaseAttachment] = None
-        self._attachment_1: type[BaseAttachment] = None
+        self._attachment_0: type[Attachment] = None
+        self._attachment_1: type[Attachment] = None
         self._length = 0.0
         self._length_inverse = 0.0
 
@@ -39,7 +39,7 @@ class BaseCurve(BaseObject):
     def set_param_1(self, param: float):
         self._set_param(param, 1)
 
-    def set_attachment_0(self, attmnt: type[BaseAttachment]):
+    def set_attachment_0(self, attmnt: type[Attachment]):
         self._attachment_0 = attmnt
         self._update_param_0()
         from .endcaps import Endcap
@@ -47,7 +47,7 @@ class BaseCurve(BaseObject):
             self._update_attachment_0()
         return self
 
-    def set_attachment_1(self, attmnt: type[BaseAttachment]):
+    def set_attachment_1(self, attmnt: type[Attachment]):
         self._attachment_1 = attmnt
         self._update_param_1()
         from .endcaps import Endcap
@@ -151,7 +151,7 @@ class BaseCurve(BaseObject):
         return self._attachment_0
 
     @attachment_0.setter
-    def attachment_0(self, attmnt: type[BaseAttachment]):
+    def attachment_0(self, attmnt: type[Attachment]):
         """Set the curve's attachment_0."""
         self.set_attachment_0(attmnt)
 
@@ -161,7 +161,7 @@ class BaseCurve(BaseObject):
         return self._attachment_1
 
     @attachment_1.setter
-    def attachment_1(self, attmnt: type[BaseAttachment]):
+    def attachment_1(self, attmnt: type[Attachment]):
         """Set the curve's attachment_1."""
         self.set_attachment_1(attmnt)
 
