@@ -1,17 +1,17 @@
 import math
 import bisect
-from .curves import BaseCurve, DEFAULT_LINE_WIDTH
+from .curves import Curve, DEFAULT_LINE_WIDTH
 from .joints import Joint, RoundJoint, DEFAULT_LINE_WIDTH
 from anima.globals.general import Vector, are_vectors_close, reciprocal, clip
 
 
-class CurveChain(BaseCurve):
-    def __init__(self, curves: list[type[BaseCurve]], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
+class CurveChain(Curve):
+    def __init__(self, curves: list[type[Curve]], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
                  name: str = 'CurveChain'):
         for c in curves:
             assert not isinstance(c, Joint), \
                 "The curves in a curve chain cannot be joints."
-        self._curves: list[type[BaseCurve]] = curves
+        self._curves: list[type[Curve]] = curves
         self._joints: list[type[Joint]] = []
         self._cumu_lengths: list[float] = []
         self._curve_0_idx: int = None
@@ -32,7 +32,7 @@ class CurveChain(BaseCurve):
 
         # Add all entities as children of this object.
         for c in self._all_entities:
-            self.add_object(c)
+            self.add_subobject(c)
 
         # Set the width and bias.
         self.set_width(width)
@@ -65,7 +65,7 @@ class CurveChain(BaseCurve):
 
     # Private methods -------------------------------------------------------------------------------------- #
     @property
-    def _all_entities(self) -> list[type[BaseCurve]]:
+    def _all_entities(self) -> list[type[Curve]]:
         """Attributes to exclude from deep copying"""
         curves = self._curves
         joints = self._joints
@@ -93,7 +93,7 @@ class CurveChain(BaseCurve):
         # todo
         super()._update_attachment(end_index)
 
-    def _compute_curve_info(self, param: float) -> tuple[type[BaseCurve], int, float]:
+    def _compute_curve_info(self, param: float) -> tuple[type[Curve], int, float]:
         cumu_lens = self._cumu_lengths
         sz = len(cumu_lens)
 

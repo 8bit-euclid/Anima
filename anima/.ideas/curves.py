@@ -1,12 +1,12 @@
 from anima.globals.general import *
-from anima.primitives.object import BaseObject
+from anima.primitives.object import Object
 from anima.animation.action import Interval
 
 MAX_SEGMENT_ANGLE_OFFSET = math.radians(75)
 MIN_DETACHED_ANGLE_OFFSET = math.radians(30)
 
 
-class Rectangle(BaseObject):
+class Rectangle(Object):
     def __init__(self, width, height):
         self.obj = add_object("Rectangle")
         super().__init__(bl_object=self.obj, name="Rectangle")

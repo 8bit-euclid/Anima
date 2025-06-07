@@ -1,5 +1,5 @@
 from .action import Action
-from anima.primitives.curves import BaseCurve
+from anima.primitives.curves import Curve
 
 
 class Construct(Action):
@@ -9,7 +9,7 @@ class Construct(Action):
     def set_intro(self, interval):
         obj = self.obj
 
-        if isinstance(obj, BaseCurve):
+        if isinstance(obj, Curve):
             # keyframe on data.bevel_factor_end for curve objects.
             pass
         else:
