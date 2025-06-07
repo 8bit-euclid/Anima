@@ -1,5 +1,4 @@
 from anima.globals.general import *
-from anima.startup.customs import *
 from anima.primitives.object import BaseObject
 from anima.animation.action import Interval
 
@@ -27,9 +26,6 @@ class Rectangle(BaseObject):
         # Set current shape key value to be driven by the load ratio.
         i = 1
         hook = self.hook[i].object
-        driver = ebpy.create_driver(hook, "location", 0)
-        driver_expr = f"halves(t)"
-        add_driver_script(driver, self.obj, '["R"]', 't', driver_expr)
 
         # for i in range(4):
         # hook = self.hook[i].object
@@ -227,12 +223,6 @@ class SegmentChain:
                 for sk in shape_keys:
                     sk.data[j].co = obj_verts[j - 2].co
                 shape_key.data[j].co = obj_verts[j].co
-
-            # Set current shape key value to be driven by the load ratio.
-            driver = ebpy.create_driver(shape_key, "value")
-            driver_expr = f"max(0.0, min(1.0, (t - {a}) / {b}))"
-            add_driver_script(driver, self.obj,
-                              '["load_ratio"]', 't', driver_expr)
 
             # Update cumulative segment length.
             cumu_seg_len += curr_seg_len
