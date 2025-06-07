@@ -20,21 +20,25 @@ class TeXtoSVGConverter:
             content = TeXFile().set_defaults()\
                                .add_text(content)
 
-        self.document_str = str(content)
-        self.temp_dir = None
+        self.content_str = str(content)
+        self.tmp_dir = None
 
     def __enter__(self) -> dict[Glyph]:
-        self.temp_dir = tempfile.TemporaryDirectory()
-        temp_path = Path(self.temp_dir.name)
-        tex_file = temp_path/"doc.tex"
-        dvi_file = temp_path/"doc.dvi"
-        svg_file = temp_path/"doc.svg"
+        """Context manager to handle LaTeX compilation, SVG generation, and file cleanup.
+        Returns:
+            A dictionary mapping glyph IDs to Glyph objects."""
+        # Create a temporary directory to store the LaTeX, SVG, and other generated files
+        self.tmp_dir = tempfile.TemporaryDirectory()
+        tmp_path = Path(self.tmp_dir.name)
+        tex_file = tmp_path/"doc.tex"
+        dvi_file = tmp_path/"doc.dvi"
+        svg_file = tmp_path/"doc.svg"
 
         # Write LaTeX content
-        tex_file.write_text(self.document_str, encoding="utf-8")
+        tex_file.write_text(self.content_str, encoding="utf-8")
 
         # Run lualatex to generate DVI
-        run_proc = partial(subprocess.run, cwd=temp_path,
+        run_proc = partial(subprocess.run, cwd=tmp_path,
                            capture_output=True, check=True, text=True)
         cmd = "lualatex"
         try:
@@ -48,17 +52,28 @@ class TeXtoSVGConverter:
         # Convert DVI to SVG
         cmd = "dvisvgm"
         try:
-            res = run_proc([cmd, "--no-fonts", "--exact-bbox",
+            res = run_proc([cmd, "--no-fonts", "--exact-bbox", "--precision=6",
                            str(dvi_file), "-o", str(svg_file)])
             print_logs(cmd, res)
         except subprocess.CalledProcessError as err:
             print_logs(cmd, err)
             raise RuntimeError("DVI to SVG conversion failed.") from err
 
+        # print("DVI file content:\n")
+        # read_dvi_file(str(dvi_file))
+
+        # Print contents of the SVG file for debugging
+        with open(svg_file, 'r', encoding='utf-8') as f:
+            print(f"SVG file content:\n{f.read()}")
+
         return self._extract_glyphs(svg_file)
 
     def _extract_glyphs(self, svg_file: Path) -> dict[Glyph]:
-        """Extract cubic Bézier curves and bounding boxes using svgpathtools."""
+        """Extract cubic Bézier curves and bounding boxes using svgpathtools.
+        Args:
+            svg_file: Path to the SVG file generated from the LaTeX document.
+        Returns:
+            A dictionary mapping glyph IDs to Glyph objects, each containing its subpaths and positions."""
 
         all_paths, all_attrs = svgtools.svg2paths(svg_file)
 
@@ -84,11 +99,15 @@ class TeXtoSVGConverter:
         return glyphs
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.temp_dir.cleanup()
+        self.tmp_dir.cleanup()
 
 
 def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.CalledProcessError):
-    """Print the stdout and stderr result of a subprocess."""
+    """Print the stdout and stderr result of a subprocess.
+
+    Args:
+        command: The command that was run.
+        result: The result of the subprocess run, which can be a CompletedProcess or CalledProcessError."""
     if isinstance(result, subprocess.CompletedProcess) and not PRINT_LOGS:
         return
 
@@ -101,13 +120,25 @@ def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.Ca
 
 
 def signed_area(points):
+    """Calculate the signed area of a polygon defined by a list of points.
+    Args:
+        points: A list of (x, y) tuples representing the vertices of the polygon.
+    Returns:        
+        The signed area of the polygon. Positive if the points are ordered counter-clockwise, negative if clockwise.
+    """
     # points: list of (x, y) tuples
     return 0.5 * sum((x1 * y2 - x2 * y1)
                      for (x1, y1), (x2, y2) in zip(points, points[1:] + [points[0]]))
 
 
 def is_inner_loop(points):
-    return signed_area(points) < 0  # negative = clockwise = inner_loop
+    """Determine if the given points form an inner loop (clockwise order).
+    Args:
+        points: A list of (x, y) tuples representing the vertices of the polygon.
+    Returns:
+        True if the points are ordered clockwise (inner loop), else False (outer loop).
+    """
+    return signed_area(points) < 0  # negative = clockwise
 
 
 def test_text_to_glyphs():
@@ -115,12 +146,13 @@ def test_text_to_glyphs():
     # text = 'T'
     # text = 'S'
     # text = 'Hello World!'
+    text = 'office'
     # text = '$E = mc^2$'
     # text = r'boob\\y'
     # text = 'C'
     # text = '8'
     # text = 'O{\Huge 8}'
-    text = 'O'
+    # text = 'O'
     # text = 'Aghhhgg!!aaGH'
     with TeXtoSVGConverter(text) as glyphs:
         for glyph in glyphs.values():

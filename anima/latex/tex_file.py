@@ -1,19 +1,24 @@
-DEFAULT_FONT = "TeX Gyre Termes"
+DEFAULT_FONT = 'TeX Gyre Termes'
 DEFAULT_FONT_SIZE = 10  # Font size in points (LaTeX default is 10pt)
+GLYPH_MAP_FILE = 'glyph_mapping.lua'  # Lua file for glyph mapping
 
 
 class TeXFile:
     def __init__(self):
         self._document_class: str = None
-        self._lines: list[str] = []
+        self._other_commands: list[str] = []
         self._packages: dict[str, str] = {}
         self._new_commands: dict[str, str] = {}
         self._text: list[str] = []
 
     def set_defaults(self):
         """Set default document class and font."""
-        return self.set_document_class('standalone', ['preview'])\
-                   .set_main_font(DEFAULT_FONT)
+        self.set_document_class('standalone', ['preview'])\
+            .set_main_font(DEFAULT_FONT)\
+            .add_package('amsmath')\
+            .add_package('amssymb')\
+            .set_lua_shipout()
+        return self
 
     def set_document_class(self, name: str, options: str | list[str] | None = None):
         """Set the document class in the preamble.
@@ -30,7 +35,7 @@ class TeXFile:
         return self
 
     def set_main_font(self, name: str):
-        """Set the main font for the document. Assumes that the fonstspec package is used.
+        """Set the main font for the document. Adds the fonstspec package if not already added. Note that ligatures are disabled by default.
 
         Args:
             name: Name of the font package (e.g. 'Times New Roman', 'TeX Gyre Termes', etc.)
@@ -38,7 +43,8 @@ class TeXFile:
         """
         if 'fontspec' not in self._packages:
             self.add_package('fontspec')
-        return self.add_to_preamble(fr'\setmainfont{{{name}}}')
+        disable_ligatures = 'Ligatures=NoCommon'
+        return self.add_to_preamble(fr'\setmainfont{{{name}}}[{disable_ligatures}]')
 
     def add_package(self, name: str, options: str | list[str] | None = None):
         """Add a LaTeX package to the preamble.
@@ -64,12 +70,11 @@ class TeXFile:
             name: Command name (with or without leading backslash)
             definition: Command definition
         """
-        import re
-
         if not name.startswith('\\'):
             name = '\\' + name
 
         # Find all argument placeholders (#1, #2, etc.) if any exist
+        import re
         args = re.findall(r'#(\d+)', definition)
 
         if not args:
@@ -82,13 +87,13 @@ class TeXFile:
         self._new_commands[name] = cmd
         return self
 
-    def add_to_preamble(self, line: str):
+    def add_to_preamble(self, entry: str):
         """Add a generic line to the preamble.
 
         Args:
-            line: Generic LaTeX line to add
+            entry: Generic LaTeX entry to add
         """
-        self._lines.append(line)
+        self._other_commands.append(entry)
         return self
 
     def add_text(self, text: str, font: str | None = None, font_size: int | float | None = None):
@@ -110,12 +115,20 @@ class TeXFile:
         self._text.append(text)
         return self
 
+    def set_lua_shipout(self):
+        """Add necessary packages and setup lua commands for shipout of character-glyph mapping data during TeX->DVI compilation."""
+        self.add_package('luacode')\
+            .add_to_preamble(rf"\directlua{{{require('{GLYPH_MAP_FILE}')}}}")\
+            .add_to_preamble(r"\AtBeginShipout{\directlua{svg_mapper.shipout()}}")
+        return self
+
     def clear(self):
         """Clear all packages and commands."""
         self._document_class = None
         self._packages.clear()
-        self._lines.clear()
+        self._other_commands.clear()
         self._new_commands.clear()
+        self._text.clear()
         return self
 
     def __str__(self):
@@ -123,12 +136,13 @@ class TeXFile:
         assert self._document_class is not None, "The document class has not been set."
         assert self._text, "The document body is empty."
 
-        # Document preamble
         parts = [self._document_class]
+
+        # Document preamble
         if self._packages:
             parts.extend(list(self._packages.values()))
-        if self._lines:
-            parts.extend(self._lines)
+        if self._other_commands:
+            parts.extend(self._other_commands)
         if self._new_commands:
             parts.extend(list(self._new_commands.values()))
 
