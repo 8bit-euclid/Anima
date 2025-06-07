@@ -3,7 +3,6 @@ import math
 from abc import ABC
 from copy import deepcopy
 from typing import Any, Optional
-from anima.animation.driver import Driver
 from anima.globals.easybpy import apply_scale
 from anima.globals.general import create_mesh, Vector, Matrix, Euler, is_anima_object, add_object, \
     deepcopy_object, make_active, deselect_all, ebpy
@@ -30,6 +29,7 @@ class BaseObject(ABC):
         self.hooks = []
         self._write_logs = False
 
+    # Segregate
     def set_mesh(self, verts, faces, edges=None):
         """Sets the object's mesh based on lists of vertices, faces, and edges."""
         if edges is None:
@@ -39,6 +39,7 @@ class BaseObject(ABC):
         mesh = create_mesh(self.name + '_mesh', verts, faces, edges)
         self.bl_obj.data = mesh
 
+    # Segregate
     def update_mesh(self, verts, faces, edges=None):
         """Updates the object's mesh based on lists of vertices, faces, and edges."""
         if edges is None:
@@ -48,16 +49,18 @@ class BaseObject(ABC):
         mesh.from_pydata(verts, edges, faces)
         mesh.update()
 
+    # Segregate
     def update_vertices(self, verts):
         mesh = self.bl_obj.data
         assert len(verts) == len(mesh.vertices)
         for i, v in enumerate(verts):
             mesh.vertices[i].co = v
 
+    # Segregate
     def update_faces(self, faces):
         pass
 
-    def add_object(self, object):
+    def add_subobject(self, object):
         """Adds an object of base type BaseObject and sets current object as parent."""
         assert is_anima_object(object), \
             "Can only add sub-objects of type BaseObject."
@@ -88,17 +91,11 @@ class BaseObject(ABC):
         hook.vertex_indices_set([vertex_index])
 
         # Add empty as a child and store hook ref.
-        self.add_object(empty)
+        self.add_subobject(empty)
         self.hooks.append(hook)
 
         # Todo - encapsulate hook in Hook class
         return empty
-
-    def create_driver(self, bl_data_path, index=-1) -> Driver:
-        """Create and return a driver for a given property in this object."""
-        driver = Driver()
-        driver.set_output_variable(self.bl_obj, bl_data_path, index)
-        return driver
 
     def create_shape_key(self, name):
         """Create and return a shape key for this object."""

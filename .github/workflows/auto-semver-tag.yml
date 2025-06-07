@@ -1,0 +1,39 @@
+# This workflow automatically creates a semantic version tag when code is merged into the main branch. The tags will conform to the convention in https://semver.org/.
+
+name: Auto-generate semver tag on merge to main
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write  # Required to push tags using GITHUB_TOKEN
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed, to get all tags
+
+      - name: Get next version
+        id: version
+        uses: PaulHatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "v"
+          bump_each_commit: false
+          version_format: "${major}.${minor}.${patch}"
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Create git tag
+        env:
+          TAG: v${{ steps.version.outputs.version }}
+        run: |
+          git tag $TAG
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git $TAG
