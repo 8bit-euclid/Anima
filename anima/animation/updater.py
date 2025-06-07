@@ -1,7 +1,6 @@
 import bpy
 from enum import Enum
 from anima.primitives.points import Empty
-from anima.animation.driver import Driver
 
 
 class Updater:
@@ -30,13 +29,9 @@ class Updater:
 
         self.handlers.clear()
 
-    def add_input_variable(self, object, bl_data_path):
-        """Adds an input variable."""
-        d = Driver('dummy')
-        d.set_output_variable(self.obj, '["out"]')
-        d.add_input_variable('x', object, bl_data_path)
-        d.set_expression('x')
-
     def add_function(self, function):
-        """Adds a function as a handler."""
+        """Adds a function as a handler.
+
+        Args:
+            function (callable): The function to be added as a handler."""
         self.handlers.append(function)

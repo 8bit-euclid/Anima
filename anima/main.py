@@ -1,13 +1,10 @@
 import bpy
 
-import anima.startup as startup
 from anima.globals.general import *
 from anima.tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
 
 
 def main():
-    startup.driver_callables.copy_startup_files()
-    startup.blender_startup.register()
     clear_scene()
     # ebpy.set_render_fps(30)
     # ebpy.set_render_fps(35)

@@ -193,17 +193,6 @@ def extrude_active_obj(displacement: Vector):
     set_object_mode()
 
 
-def add_driver_script(driver, object, data_path, var_name, expression):
-    driver.type = 'SCRIPTED'
-    driver.expression = expression
-
-    var = driver.variables.new()
-    var.name = var_name
-    var.targets[0].id_type = 'OBJECT'
-    var.targets[0].id = object
-    var.targets[0].data_path = data_path
-
-
 def time(time_str: str) -> timedelta:
     """Accepts a time string of the form mm:ss or mm:ss:mmm and returns the corresponding timedelta object"""
 
@@ -233,11 +222,6 @@ def to_frame(delta):
 def save_as(file_name: str):
     file_path = "blend/" + file_name + ".blend"
     bpy.ops.wm.save_mainfile(filepath=file_path)
-
-
-def driver_callable(func):
-    func.driver_callable = True
-    return func
 
 
 def is_blender_object(object):
