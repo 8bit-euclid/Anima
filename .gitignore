@@ -1,3 +1,11 @@
+# Blender runtime files (ignore these)
+# .blender/temp/
+# .blender/cache/
+# .blender/recent-files.txt
+
+# Keep the user preferences template (don't ignore)
+!.blender/config/userpref.blend
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
