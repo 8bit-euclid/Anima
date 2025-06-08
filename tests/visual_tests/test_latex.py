@@ -1,5 +1,7 @@
+import shutil
 import subprocess
 import tempfile
+from anima.globals.general import find_project_root
 import svgpathtools as svgtools
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -10,7 +12,7 @@ from anima.latex.tex_file import TeXFile, DEFAULT_FONT_SIZE
 TEX_POINT_TO_BL_UNIT = 0.005   # Length (in Blender units) of 1pt (in LaTeX)
 SAMPLING_LENGTH = \
     0.01 * DEFAULT_FONT_SIZE * TEX_POINT_TO_BL_UNIT  # For points along glyph curves
-PRINT_LOGS = False  # Print LaTeX and DVI logs to console
+PRINT_LOGS = True  # Print LaTeX and DVI logs to console
 
 
 class TeXtoSVGConverter:
@@ -33,9 +35,18 @@ class TeXtoSVGConverter:
         tex_file = tmp_path/"doc.tex"
         dvi_file = tmp_path/"doc.dvi"
         svg_file = tmp_path/"doc.svg"
+        lua_filename = "glyph_mapping.lua"
+        lua_file = tmp_path/lua_filename
 
         # Write LaTeX content
         tex_file.write_text(self.content_str, encoding="utf-8")
+
+        # Copy the glyph mapping Lua file to the temporary directory
+        root = find_project_root()
+        src_file = root/f"anima/latex/scripts/{lua_filename}"
+        trg_file = lua_file
+        print(f"Copying {src_file} to {trg_file}")
+        shutil.copy(src_file, trg_file)
 
         # Run lualatex to generate DVI
         run_proc = partial(subprocess.run, cwd=tmp_path,

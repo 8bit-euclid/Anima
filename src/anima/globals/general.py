@@ -1,8 +1,8 @@
 import inspect
 import bpy
-import os
 import sys
 import math
+from pathlib import Path
 from copy import deepcopy
 from typing import Iterable
 from mathutils import Vector, Matrix, Euler
@@ -266,6 +266,26 @@ def save_as(file_name: str):
         file_name (str): The name of the file to save."""
     file_path = "blend/" + file_name + ".blend"
     bpy.ops.wm.save_mainfile(filepath=file_path)
+
+
+def find_project_root(marker: str = '.git') -> Path:
+    """Find the root directory of the project by looking for a .git directory or setup.py file."""
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent/marker).exists():
+            return parent
+    raise FileNotFoundError(
+        "Project root not found. Ensure you are running this script from within a Git repo.")
+
+
+def find_project_root(marker: str = '.git') -> Path:
+    """Find the root directory of the project by looking for a .git directory or setup.py file."""
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent/marker).exists():
+            return parent
+    raise FileNotFoundError(
+        "Project root not found. Ensure you are running this script from within a Git repo.")
 
 
 def is_blender_object(obj):

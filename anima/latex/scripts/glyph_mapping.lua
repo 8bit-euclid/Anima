@@ -99,8 +99,13 @@ function shipout()
     glyph_counter = 0
     
     -- Get shipout box and process
-    local shipout_box = tex.getbox("ShipoutBox")
-    local page_height = shipout_box.height / scale
+    local shipout_box = tex.box[255] -- 255 is the default shipout box in TeX
+    -- local shipout_box = \ShipoutBox
+    if shipout_box then
+        local page_height = shipout_box.height / scale
+    else
+        tex.error("Shipout box is nil")
+    end
     
     -- Process all nodes with position tracking
     process_nodes(shipout_box.list, shipout_box, 0, 0)

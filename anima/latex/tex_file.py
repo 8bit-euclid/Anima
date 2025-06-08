@@ -1,6 +1,11 @@
+import os
+from pathlib import Path
+import shutil
+
+
 DEFAULT_FONT = 'TeX Gyre Termes'
 DEFAULT_FONT_SIZE = 10  # Font size in points (LaTeX default is 10pt)
-GLYPH_MAP_FILE = 'glyph_mapping.lua'  # Lua file for glyph mapping
+GLYPH_MAP_FILENAME = 'glyph_mapping'  # Lua file for glyph mapping
 
 
 class TeXFile:
@@ -17,7 +22,7 @@ class TeXFile:
             .set_main_font(DEFAULT_FONT)\
             .add_package('amsmath')\
             .add_package('amssymb')\
-            .set_lua_shipout()
+            .configure_lua_shipout()
         return self
 
     def set_document_class(self, name: str, options: str | list[str] | None = None):
@@ -115,11 +120,12 @@ class TeXFile:
         self._text.append(text)
         return self
 
-    def set_lua_shipout(self):
-        """Add necessary packages and setup lua commands for shipout of character-glyph mapping data during TeX->DVI compilation."""
+    def configure_lua_shipout(self):
+        """Add necessary packages and setup lua commands for shipout of character-glyph mapping metadata during TeX->DVI compilation."""
+        ensure_lua_script_exists()
         self.add_package('luacode')\
-            .add_to_preamble(rf"\directlua{{{require('{GLYPH_MAP_FILE}')}}}")\
-            .add_to_preamble(r"\AtBeginShipout{\directlua{svg_mapper.shipout()}}")
+            .add_to_preamble(rf"\directlua{{require('{GLYPH_MAP_FILENAME}')}}")\
+            .add_to_preamble(rf"\AddToHook{{shipout/before}}{{\directlua{{{GLYPH_MAP_FILENAME}.shipout()}}}}")
         return self
 
     def clear(self):
@@ -131,8 +137,8 @@ class TeXFile:
         self._text.clear()
         return self
 
-    def __str__(self):
-        """Return the string representation of the document."""
+    def to_string(self):
+        """Return the string representation of the LaTeX document."""
         assert self._document_class is not None, "The document class has not been set."
         assert self._text, "The document body is empty."
 
@@ -152,6 +158,22 @@ class TeXFile:
         parts.append(r'\end{document}')
 
         return '\n'.join(parts)
+
+    def __str__(self):
+        """Return the string representation of the LaTeX document."""
+        return self.to_string()
+
+
+def ensure_lua_script_exists():
+    """Ensure that the glyph mapping Lua file exists in the project root.
+    Raises:
+        AssertionError: If the glyph mapping Lua file does not exist.
+    """
+    # Get absolute path of current script's directory
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    lua_file = Path(curr_dir) / f'scripts/{GLYPH_MAP_FILENAME}.lua'
+    assert lua_file.exists(), \
+        f"Glyph mapping Lua file '{lua_file}' does not exist."
 
 
 def get_options_str(options: str | list[str]):
