@@ -22,5 +22,17 @@ RUN wget -q https://download.blender.org/release/Blender${BLENDER_MM_VERSION}/${
     && mv ${BLENDER_NAME} /opt/blender \
     && rm ${BLENDER_NAME}.tar.xz
 
+# Create Blender config directory and copy user preferences template
+ARG BLENDER_CONFIG_DIR=/root/.config/blender/${BLENDER_MM_VERSION}/config
+RUN mkdir -p ${BLENDER_CONFIG_DIR}
+COPY .blender/config/userpref.blend ${BLENDER_CONFIG_DIR}/userpref.blend
+
+# # Install Python dependencies
+# ARG PIP=blender/blender-${BLENDER_VERSION}-linux-x64/${BLENDER_MM_VERSION}/python/bin/pip3
+# RUN ${PIP} install --no-cache-dir \
+#         numpy \
+#         scipy 
+
 WORKDIR /app
 CMD ["/opt/blender/blender"]
+# CMD ["/opt/blender/blender", "--background", "--python-console"]
