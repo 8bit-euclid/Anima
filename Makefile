@@ -1,3 +1,8 @@
-.PHONY: test
+.PHONY: build test
+
+build:
+	pip install -e .
+
 test:
-	PYTHONPATH=. pytest --disable-warnings --ignore=./anima/tests
+	PYTHONPATH=. pytest --verbose --disable-warnings --ignore=tests/visual_tests/
+

@@ -1,7 +1,7 @@
 import bpy
 
 from anima.globals.general import *
-from anima.tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
+from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
 
 
 def main():
