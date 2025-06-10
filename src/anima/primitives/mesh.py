@@ -29,7 +29,7 @@ class Mesh(Object):
 
         # Create mesh and create/update object.
         mesh = create_mesh(self.name + '_mesh', verts, faces, edges)
-        self.bl_obj.data = mesh
+        self.object.data = mesh
 
     def update_mesh(self, verts, faces, edges=None):
         """Updates the object's mesh based on lists of vertices, faces, and edges.
@@ -39,7 +39,7 @@ class Mesh(Object):
             edges (list, optional): A list of edges, where each edge is a tuple of vertex indices. Defaults to None."""
         if edges is None:
             edges = []
-        mesh = self.bl_obj.data
+        mesh = self.object.data
         mesh.clear_geometry()
         mesh.from_pydata(verts, edges, faces)
         mesh.update()
@@ -48,7 +48,7 @@ class Mesh(Object):
         """Updates the vertices of the object's mesh.
         Args:
             verts (list): A list of vertex coordinates, where each vertex is a tuple or list of 2/3 floats."""
-        mesh = self.bl_obj.data
+        mesh = self.object.data
         assert len(verts) == len(mesh.vertices)
         for i, v in enumerate(verts):
             mesh.vertices[i].co = v
@@ -69,7 +69,7 @@ class Mesh(Object):
         """
 
         assert self._has_data(), f'The object {self.name} has no mesh set.'
-        obj = self.bl_obj
+        obj = self.object
         hook = ebpy.add_hook(obj)
 
         # Create empty. Note: Lazy import to prevent cyclic imports.
@@ -94,7 +94,7 @@ class Mesh(Object):
         Returns:
             bpy.types.MeshVertices: The vertices of the mesh."""
         assert self._has_data(), f'The object {self.name} has no mesh set.'
-        return self.bl_obj.data.vertices
+        return self.object.data.vertices
 
     @property
     def faces(self):
@@ -102,7 +102,7 @@ class Mesh(Object):
         Returns:
             bpy.types.MeshPolygons: The faces of the mesh."""
         assert self._has_data(), f'The object {self.name} has no mesh set.'
-        return self.bl_obj.data.polygons
+        return self.object.data.polygons
 
     @property
     def edges(self):
@@ -110,7 +110,7 @@ class Mesh(Object):
         Returns:
             bpy.types.MeshEdges: The edges of the mesh."""
         assert self._has_data(), f'The object {self.name} has no mesh set.'
-        return self.bl_obj.data.edges
+        return self.object.data.edges
 
     # Private methods -------------------------------------------------------------------------------------- #
 

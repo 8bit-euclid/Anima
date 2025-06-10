@@ -29,6 +29,7 @@ cd Anima
 ```
 
 ### 2. Install the Blender Development Extension in VSCode
+
 ### 3. Build the Project
 
 ```bash
