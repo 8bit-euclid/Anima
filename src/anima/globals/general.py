@@ -311,9 +311,9 @@ def get_blender_object(object):
     if is_blender_object(object):
         return object
     elif is_animable(object):
-        return object.bl_obj
+        return object.object
     else:
-        raise Exception(f'Unrecognised object of type {type(obj)}')
+        raise Exception(f'Unrecognised object of type {type(object)}')
 
 
 # Store the original stdout so we can restore it later
