@@ -1,11 +1,10 @@
 import os
 from pathlib import Path
-import shutil
 
 
 DEFAULT_FONT = 'TeX Gyre Termes'
 DEFAULT_FONT_SIZE = 10  # Font size in points (LaTeX default is 10pt)
-GLYPH_MAP_FILENAME = 'glyph_mapping'  # Lua file for glyph mapping
+GLYPH_MAP_MODULE = 'glyph_mapping'  # Lua file for glyph mapping
 
 
 class TeXFile:
@@ -124,8 +123,8 @@ class TeXFile:
         """Add necessary packages and setup lua commands for shipout of character-glyph mapping metadata during TeX->DVI compilation."""
         ensure_lua_script_exists()
         self.add_package('luacode')\
-            .add_to_preamble(rf"\directlua{{require('{GLYPH_MAP_FILENAME}')}}")\
-            .add_to_preamble(rf"\AddToHook{{shipout/before}}{{\directlua{{{GLYPH_MAP_FILENAME}.shipout()}}}}")
+            .add_to_preamble(rf"\directlua{{require('{GLYPH_MAP_MODULE}')}}")\
+            .add_to_preamble(rf"\AddToHook{{shipout/before}}{{\directlua{{{GLYPH_MAP_MODULE}.shipout()}}}}")
         return self
 
     def clear(self):
@@ -138,7 +137,12 @@ class TeXFile:
         return self
 
     def to_string(self):
-        """Return the string representation of the LaTeX document."""
+        """Return the string representation of the LaTeX document.
+        Raises:
+            AssertionError: If the document class is not set or the document body is empty.
+        Returns:
+            str: The LaTeX document as a string.
+        """
         assert self._document_class is not None, "The document class has not been set."
         assert self._text, "The document body is empty."
 
@@ -160,7 +164,9 @@ class TeXFile:
         return '\n'.join(parts)
 
     def __str__(self):
-        """Return the string representation of the LaTeX document."""
+        """Return the string representation of the LaTeX document.
+        Returns:
+            str: The LaTeX document as a string."""
         return self.to_string()
 
 
@@ -171,7 +177,7 @@ def ensure_lua_script_exists():
     """
     # Get absolute path of current script's directory
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    lua_file = Path(curr_dir) / f'scripts/{GLYPH_MAP_FILENAME}.lua'
+    lua_file = Path(curr_dir)/f'scripts/{GLYPH_MAP_MODULE}.lua'
     assert lua_file.exists(), \
         f"Glyph mapping Lua file '{lua_file}' does not exist."
 
