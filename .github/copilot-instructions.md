@@ -1,4 +1,6 @@
 - Generate neat, minimalistic, and elegant code, but always prefer readability over brevity.
 - Provide clear and concise comments to explain the purpose and functionality of the code.
 - Follow best practices for code organization, including proper indentation and file structure.
+- Use descriptive variable and function names to enhance code clarity.
+- Use type hints to improve code readability and maintainability.
 - Write unit tests to validate the functionality of the code and ensure its reliability.
