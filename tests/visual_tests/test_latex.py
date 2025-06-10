@@ -35,8 +35,11 @@ class TeXtoSVGConverter:
         tex_file = tmp_path/"doc.tex"
         dvi_file = tmp_path/"doc.dvi"
         svg_file = tmp_path/"doc.svg"
+
+        # Define paths for Lua and JSON files
         lua_filename = "glyph_mapping.lua"
         lua_file = tmp_path/lua_filename
+        json_file = tmp_path/'glyph_map.json'  # Must match 'output_file' in lua_file
 
         # Write LaTeX content
         tex_file.write_text(self.content_str, encoding="utf-8")
@@ -60,6 +63,18 @@ class TeXtoSVGConverter:
             print_logs(cmd, err)
             raise RuntimeError("LaTeX compilation failed.") from err
 
+        # Open and read the JSON file
+        import json
+        with open(json_file, 'r') as file:
+            data = json.load(file)
+
+        # # Print the content
+        # print(data)
+
+        # Optional: pretty-print it
+        import pprint
+        pprint.pprint(data)
+
         # Convert DVI to SVG
         cmd = "dvisvgm"
         try:
@@ -69,9 +84,6 @@ class TeXtoSVGConverter:
         except subprocess.CalledProcessError as err:
             print_logs(cmd, err)
             raise RuntimeError("DVI to SVG conversion failed.") from err
-
-        # print("DVI file content:\n")
-        # read_dvi_file(str(dvi_file))
 
         # Print contents of the SVG file for debugging
         with open(svg_file, 'r', encoding='utf-8') as f:
