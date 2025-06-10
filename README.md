@@ -1,6 +1,6 @@
 ANIMA
 
-# Anima - Blender Python Animation Framework
+# Anima
 
 **Anima** is a Python framework for Blender focused on mathematical visualizations, procedural animations, and educational content. It provides tools for animating curves, rendering LaTeX text, managing scenes, and supporting a streamlined development workflow.
 
@@ -28,11 +28,7 @@ git clone https://github.com/8bit-euclid/Anima.git
 cd Anima
 ```
 
-### 2. Set Up Your Development Environment
-
-- Install the **Blender Development** extension in Visual Studio Code.
-- Configure the Blender executable path in VSCode settings.
-
+### 2. Install the Blender Development Extension in VSCode
 ### 3. Build the Project
 
 ```bash
