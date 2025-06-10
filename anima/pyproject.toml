@@ -16,3 +16,8 @@ dependencies = [
 
 [tool.setuptools_scm]
 fallback_version = "0.1.0"
+
+[tool.pytest.ini_options]
+addopts = [
+    "--ignore=tests/",
+]
