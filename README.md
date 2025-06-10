@@ -55,6 +55,17 @@ To start Blender using the **Blender Development** extension in Visual Studio Co
 5. Run `anima` in Blender by selecting **Blender: Run Script** from the command palette (`Ctrl+Shift+P` → "Blender: Run Script").
 6. Repeat step 5 to hot-reload recent changes into Blender.
 
+## Optional: Set a Key Binding for "Blender: Run Script"
+
+To streamline step 5, you can assign a custom key binding (e.g., `Ctrl+Shift+B`) to the **Blender: Run Script** command in VSCode:
+
+1. Open the command palette (`Ctrl+Shift+P`) and search for "Preferences: Open Keyboard Shortcuts".
+2. In the search bar, type `Blender: Run Script`.
+3. Click the pencil icon next to the command and press your desired key combination (e.g. `Ctrl+Shift+B`).
+4. Press **Enter** to save the key binding.
+
+Now, you can quickly hot-reload recent changes in Blender using your chosen shortcut.
+
 ## Status
 
 This project is a work in progress. Usage instructions and examples will be added as development continues.
