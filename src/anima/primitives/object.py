@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Any, Optional
 from anima.globals.easybpy import apply_scale
 from anima.globals.general import Vector, Matrix, Euler, is_animable, add_object, \
-    deepcopy_object, make_active, deselect_all, ebpy
+    deepcopy_object, make_active, deselect_all, ebpy, outer_product
 
 
 class Object(ABC):
@@ -40,12 +40,15 @@ class Object(ABC):
         object._set_parent(self)
         self.children.append(object)
 
-    def add_keyframe(self, bl_data_path, index=-1, frame=bpy.context.scene.frame_current):
+    def add_keyframe(self, bl_data_path, index=-1, frame=None):
         """Add a keframe for the specified object propety at the given frame.
         Args:
             bl_data_path (str): The Blender data path to the property to keyframe.
             index (int, optional): The index of the property to keyframe. Defaults to -1.
             frame (int, optional): The frame at which to insert the keyframe. Defaults to the current frame"""
+        if frame is None:
+            frame = bpy.context.scene.frame_current
+        assert isinstance(frame, int), "Frame must be an integer."
         self._bl_object.keyframe_insert(bl_data_path, index=index, frame=frame)
 
     def add_handler(self, handler):

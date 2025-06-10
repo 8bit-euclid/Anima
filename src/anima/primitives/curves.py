@@ -190,7 +190,7 @@ class Curve(Object):
         from .endcaps import Endcap
         if isinstance(attmnt, Endcap):
             getattr(self, f'_update_attachment_{end_idx}')()
-        self.add_object(attmnt)
+        self.add_subobject(attmnt)
         return self
 
     @abstractmethod
