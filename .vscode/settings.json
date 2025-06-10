@@ -1,4 +1,7 @@
 {
    "editor.foldingMaximumRegions": 100,
-   "makefile.configureOnOpen": false
+   "makefile.configureOnOpen": false,
+   "python.analysis.extraPaths": [
+      "./src"
+   ]
 }

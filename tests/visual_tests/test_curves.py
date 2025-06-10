@@ -1,5 +1,3 @@
-
-
 from anima.animation.updater import Updater
 from anima.diagnostics.profiler import Profiler
 from anima.globals.general import clip
