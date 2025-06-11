@@ -9,7 +9,7 @@ TESTS_DIR = 'tests'
 
 def run():
     """Run the main module of the project."""
-    configure_src_path()
+    configure_python_path()
     configure_reload()
 
     # Load and run the main module
@@ -17,10 +17,12 @@ def run():
     proj.main()
 
 
-def configure_src_path():
-    """Add the src directory to the Python path."""
-    src_path = Path(__file__).parent / "src"
-    sys.path.insert(0, str(src_path))
+def configure_python_path():
+    """Add the project root and the src directory to the Python path."""
+    root_dir = Path(__file__).parent
+    src_dir = root_dir/'src'
+    sys.path.insert(0, str(root_dir))
+    sys.path.insert(0, str(src_dir))
 
 
 def configure_reload():
