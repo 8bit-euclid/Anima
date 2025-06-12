@@ -1,25 +1,15 @@
-import unittest
+import pytest
 from anima.primitives.chains import CurveChain
 from anima.primitives.lines import Segment
+from tests.test_utils import assert_death, assert_vector_equal
 
 
-class TestCurveChain(unittest.TestCase):
-    def __init__(self, methodName="runTest"):
-        super().__init__(methodName)
-
+class TestCurveChain:
+    def setup_method(self):
         self.crv1 = Segment((0, 0), (1, 0))
         self.crv2 = Segment((1, 0), (1, 1))
         self.crv3 = Segment((1, 1), (2, 1))
-
         self.chain = CurveChain([self.crv1, self.crv2, self.crv3])
-
-    def assert_vector_equal(self, v1, v2, places=None):
-        for i in range(len(v1)):
-            self.assertAlmostEqual(v1[i], v2[i], places)
-
-    def assert_death(self, func, *args, **kwargs):
-        with self.assertRaises(AssertionError) as _:
-            func(*args, **kwargs)
 
     def test_geometry(self):
         pass
@@ -35,7 +25,3 @@ class TestCurveChain(unittest.TestCase):
 
     def test_length(self):
         pass
-
-
-if __name__ == '__main__':
-    unittest.main()
