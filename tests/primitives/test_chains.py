@@ -1,7 +1,7 @@
 import pytest
 from anima.primitives.chains import CurveChain
 from anima.primitives.lines import Segment
-from tests.test_utils import assert_death, assert_vector_equal
+from tests.test_utils import assert_death, assert_vectors_equal
 
 
 class TestCurveChain:

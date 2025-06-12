@@ -2,7 +2,7 @@ import pytest
 import random
 from anima.globals.general import Vector
 from anima.primitives.bezier import BezierSpline
-from tests.test_utils import assert_death, assert_vector_equal
+from tests.test_utils import assert_death, assert_vectors_equal
 
 
 class TestBezier:
@@ -19,12 +19,12 @@ class TestBezier:
         # Left endpoint
         pt = self.spline1.point(0.0)
         bpt = self.spline1.spline_point(0).co
-        assert_vector_equal(pt, bpt)
+        assert_vectors_equal(pt, bpt)
 
         # Right endpoint
         pt = self.spline1.point(1.0)
         bpt = self.spline1.spline_point(2).co
-        assert_vector_equal(pt, bpt)
+        assert_vectors_equal(pt, bpt)
 
         # Death tests
         assert_death(self.spline1.point, -0.1)
@@ -37,12 +37,12 @@ class TestBezier:
         bpt = spt.co
         hnd = spt.handle_right
         btn = (hnd - bpt).normalized()
-        assert_vector_equal(tn, btn, places=6)
+        assert_vectors_equal(tn, btn, places=6)
 
         # Right endpoint tangent. Should be horizontal.
         tn = self.spline1.tangent(1.0, normalise=True)
         btn = Vector((1, 0, 0))
-        assert_vector_equal(tn, btn)
+        assert_vectors_equal(tn, btn)
 
         # Death tests
         assert_death(self.spline1.tangent, -0.1)
