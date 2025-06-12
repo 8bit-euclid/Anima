@@ -8,22 +8,39 @@ from pathlib import Path
 from functools import partial
 from anima.latex.glyph import Glyph, Subpath
 from anima.latex.tex_file import TeXFile, DEFAULT_FONT_SIZE
+from collections import defaultdict as ddict
 
 TEX_POINT_TO_BL_UNIT = 0.005   # Length (in Blender units) of 1pt (in LaTeX)
 SAMPLING_LENGTH = \
     0.01 * DEFAULT_FONT_SIZE * TEX_POINT_TO_BL_UNIT  # For points along glyph curves
-PRINT_LOGS = True  # Print LaTeX and DVI logs to console
+TEX_DEBUG_MODE = True  # Print LaTeX and DVI logs to console
+# TEX_DEBUG_MODE = False  # Print LaTeX and DVI logs to console
+
+# Lua and JSON filenames for char-glyph mapping data.
+LUA_FILENAME = "glyph_mapping.lua"  # Lua script for data shipout
+JSON_FILENAME = "glyph_map.json"  # Must match 'output_file' in the lua file
+SVG_NS = \
+    {'svg': 'http://www.w3.org/2000/svg'}  # Namespace for SVG elements in XML
 
 
-class TeXtoSVGConverter:
+class TeXFileProcessor:
+    """Processes LaTeX documents to extract glyph data from SVG output.
+    Compiles LaTeX to DVI, converts to SVG, and extracts glyph metadata.
+    Handles shipout of character-glyph mapping data via Lua script."""
+
     def __init__(self, content: str | TeXFile):
+        """Initialize the converter with LaTeX content.
+        Args:
+            content: A string containing LaTeX content (body) or a TeXFile object."""
         # Use provided latex document or setup a default one
         if isinstance(content, str):
             content = TeXFile().set_defaults()\
                                .add_text(content)
 
         self.content_str = str(content)
-        self.tmp_dir = None
+        self.tmp_dir: tempfile.TemporaryDirectory = None
+        self.tex_path: Path = None  # Path to the temporary directory for LaTeX files
+        self.tex_name = "doc"  # Base name for .tex, .dvi, .svg, etc.
 
     def __enter__(self) -> dict[Glyph]:
         """Context manager to handle LaTeX compilation, SVG generation, and file cleanup.
@@ -31,72 +48,112 @@ class TeXtoSVGConverter:
             A dictionary mapping glyph IDs to Glyph objects."""
         # Create a temporary directory to store the LaTeX, SVG, and other generated files
         self.tmp_dir = tempfile.TemporaryDirectory()
-        tmp_path = Path(self.tmp_dir.name)
-        tex_file = tmp_path/"doc.tex"
-        dvi_file = tmp_path/"doc.dvi"
-        svg_file = tmp_path/"doc.svg"
+        self.tex_path = Path(self.tmp_dir.name)
 
-        # Define paths for Lua and JSON files
-        lua_filename = "glyph_mapping.lua"
-        lua_file = tmp_path/lua_filename
-        json_file = tmp_path/'glyph_map.json'  # Must match 'output_file' in lua_file
+        # Run the LaTeX compilation and conversion to SVG. A JSON file with glyph metadata is also generated.
+        json_file = self._convert_tex_to_dvi()
+        svg_file = self._convert_dvi_to_svg()
+
+        return self._extract_glyphs(svg_file, json_file)
+
+    def _convert_tex_to_dvi(self) -> Path:
+        """Compile the LaTeX file to DVI format and prepare for glyph extraction.
+        Raises:
+            RuntimeError: If the LaTeX compilation fails.
+        """
+        tex_path = self.tex_path
+        tex_file = tex_path/f'{self.tex_name}.tex'
+        lua_file = tex_path/LUA_FILENAME
 
         # Write LaTeX content
         tex_file.write_text(self.content_str, encoding="utf-8")
 
         # Copy the glyph mapping Lua file to the temporary directory
         root = find_project_root()
-        src_file = root/f"anima/latex/scripts/{lua_filename}"
-        trg_file = lua_file
-        print(f"Copying {src_file} to {trg_file}")
-        shutil.copy(src_file, trg_file)
+        src_file = root/f'src/anima/latex/scripts/{LUA_FILENAME}'
+        shutil.copy(src_file, lua_file)
 
         # Run lualatex to generate DVI
-        run_proc = partial(subprocess.run, cwd=tmp_path,
+        run_proc = partial(subprocess.run, cwd=tex_path,
                            capture_output=True, check=True, text=True)
         cmd = "lualatex"
         try:
             res = run_proc([cmd, "-interaction=nonstopmode",
-                           "-output-format=dvi", str(tex_file)])
+                            "-output-format=dvi", str(tex_file)])
             print_logs(cmd, res)
         except subprocess.CalledProcessError as err:
             print_logs(cmd, err)
             raise RuntimeError("LaTeX compilation failed.") from err
 
-        # Open and read the JSON file
-        import json
-        with open(json_file, 'r') as file:
-            data = json.load(file)
+        return self._get_json_file()
 
-        # # Print the content
-        # print(data)
+    def _convert_dvi_to_svg(self) -> Path:
+        """Convert the DVI file to SVG format using dvisvgm.
+        Raises:
+            RuntimeError: If the DVI to SVG conversion fails."""
+        tex_path = self.tex_path
+        svg_file = tex_path/f'{self.tex_name}.svg'
 
-        # Optional: pretty-print it
-        import pprint
-        pprint.pprint(data)
-
-        # Convert DVI to SVG
+        run_proc = partial(subprocess.run, cwd=tex_path,
+                           capture_output=True, check=True, text=True)
         cmd = "dvisvgm"
         try:
+            dvi_file = tex_path/f'{self.tex_name}.dvi'
             res = run_proc([cmd, "--no-fonts", "--exact-bbox", "--precision=6",
-                           str(dvi_file), "-o", str(svg_file)])
+                            str(dvi_file), "-o", str(svg_file)])
             print_logs(cmd, res)
         except subprocess.CalledProcessError as err:
             print_logs(cmd, err)
             raise RuntimeError("DVI to SVG conversion failed.") from err
 
-        # Print contents of the SVG file for debugging
-        with open(svg_file, 'r', encoding='utf-8') as f:
-            print(f"SVG file content:\n{f.read()}")
+        return self._get_svg_file()
 
-        return self._extract_glyphs(svg_file)
+    def _get_json_file(self) -> Path:
+        """Get the JSON file containing the char-glyph mapping metadata.
+        Raises:
+            RuntimeError: If the JSON file is not found."""
+        json_file = self.tex_path/JSON_FILENAME
+        if not json_file.exists():
+            raise RuntimeError(f"JSON file '{json_file}' not found. "
+                               "Ensure that the Lua script correctly generated the glyph metadata.")
+        if TEX_DEBUG_MODE:
+            import json
+            import pprint
 
-    def _extract_glyphs(self, svg_file: Path) -> dict[Glyph]:
+            # Pretty-print data
+            with open(json_file, 'r') as file:
+                print(f"JSON file content:\n")
+                pprint.pprint(json.load(file))
+        return json_file
+
+    def _get_svg_file(self) -> Path:
+        """Get the SVG file generated from the LaTeX document.
+        Raises:
+            RuntimeError: If the SVG file is not found."""
+        svg_file = self.tex_path/f'{self.tex_name}.svg'
+        if not svg_file.exists():
+            raise RuntimeError(f"SVG file '{svg_file}' not found. "
+                               "Ensure that the DVI to SVG conversion was successful.")
+        if TEX_DEBUG_MODE:
+            # Print contents of the SVG file for debugging
+            with open(svg_file, 'r', encoding='utf-8') as f:
+                print(f"SVG file content:\n\n{f.read()}")
+        return svg_file
+
+    def _extract_glyphs(self, svg_file: Path, glyph_map_file: Path) -> dict[Glyph]:
         """Extract cubic Bézier curves and bounding boxes using svgpathtools.
         Args:
             svg_file: Path to the SVG file generated from the LaTeX document.
+            glyph_map_file: Path to the JSON file containing char-glyph mapping metadata.
         Returns:
             A dictionary mapping glyph IDs to Glyph objects, each containing its subpaths and positions."""
+
+        # Check that the total number of glyphs in the JSON file matches the SVG file
+        json_count = count_glyphs_in_json(glyph_map_file)
+        svg_count = count_glyphs_in_svg(svg_file)
+        if json_count != svg_count:
+            raise RuntimeError(
+                f"Glyph count mismatch: JSON has {json_count}, SVG has {svg_count}")
 
         all_paths, all_attrs = svgtools.svg2paths(svg_file)
 
@@ -108,21 +165,44 @@ class TeXtoSVGConverter:
             glyphs[id] = Glyph([Subpath(path) for path in subpaths])
 
         # Store the positions of the instances of each glyph.
+        positions: ddict[str, list[tuple[float, float]]] = ddict(list)
         tree = ET.parse(svg_file)
         root = tree.getroot()
-        ns = {'svg': 'http://www.w3.org/2000/svg'}
-        for use in root.findall('.//svg:use', ns):
+        for use in root.findall('.//svg:use', SVG_NS):
             gid = use.attrib['{http://www.w3.org/1999/xlink}href'][1:]
             assert gid in glyphs, f"Glyph ID '{gid}' not found in the glyphs dict."
 
             x = float(use.attrib.get('x', 0))
             y = float(use.attrib.get('y', 0))
-            glyphs[gid].positions.append((x, -y))  # Invert y-coordinate
+            positions[gid].append((x, -y))  # Invert y-coordinate
 
         return glyphs
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.tmp_dir.cleanup()
+
+
+def count_glyphs_in_json(json_file: Path) -> int:
+    """Count the number of glyphs in the JSON file.
+    Args:
+        json_file: Path to the JSON file containing glyph mapping data.
+    Returns:
+        The number of glyphs in the JSON file."""
+    import json
+    with open(json_file, 'r') as file:
+        data = json.load(file)
+    return len(data.get('glyphs', []))
+
+
+def count_glyphs_in_svg(svg_file: Path) -> int:
+    """Count the number of glyphs in the SVG file.
+    Args:
+        svg_file: Path to the SVG file generated from the LaTeX document.
+    Returns:
+        The number of unique glyphs in the SVG file."""
+    tree = ET.parse(svg_file)
+    root = tree.getroot()
+    return len(root.findall('.//svg:use', SVG_NS))
 
 
 def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.CalledProcessError):
@@ -131,22 +211,20 @@ def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.Ca
     Args:
         command: The command that was run.
         result: The result of the subprocess run, which can be a CompletedProcess or CalledProcessError."""
-    if isinstance(result, subprocess.CompletedProcess) and not PRINT_LOGS:
+    if isinstance(result, subprocess.CompletedProcess) and not TEX_DEBUG_MODE:
         return
 
-    if result.stdout.strip():
-        print(command + " output:\n")
-        print(result.stdout)
-    if result.stderr.strip():
-        print(command + " errors:\n")
-        print(result.stderr)
+    for name in ('stdout', 'stderr'):
+        output = getattr(result, name, '')
+        if output and output.strip():
+            print(f"{command} {name}:\n{output}")
 
 
 def signed_area(points):
     """Calculate the signed area of a polygon defined by a list of points.
     Args:
-        points: A list of (x, y) tuples representing the vertices of the polygon.
-    Returns:        
+        points: A list of(x, y) tuples representing the vertices of the polygon.
+    Returns:
         The signed area of the polygon. Positive if the points are ordered counter-clockwise, negative if clockwise.
     """
     # points: list of (x, y) tuples
@@ -155,11 +233,11 @@ def signed_area(points):
 
 
 def is_inner_loop(points):
-    """Determine if the given points form an inner loop (clockwise order).
+    """Determine if the given points form an inner loop(clockwise order).
     Args:
-        points: A list of (x, y) tuples representing the vertices of the polygon.
+        points: A list of(x, y) tuples representing the vertices of the polygon.
     Returns:
-        True if the points are ordered clockwise (inner loop), else False (outer loop).
+        True if the points are ordered clockwise(inner loop), else False (outer loop).
     """
     return signed_area(points) < 0  # negative = clockwise
 
@@ -170,14 +248,16 @@ def test_text_to_glyphs():
     # text = 'S'
     # text = 'Hello World!'
     # text = 'office'
-    text = '$E = mc^2$'
+    # text = '$E = mc^2$'
+    text = r'$E^2 = (\mathit{mc}^2)^2 + (pc)^2$'
+    # text = r'$E = \mathit{mc}^2$'
     # text = r'boob\\y'
     # text = 'C'
     # text = '8'
     # text = 'O{\Huge 8}'
     # text = 'O'
     # text = 'Aghhhgg!!aaGH'
-    with TeXtoSVGConverter(text) as glyphs:
+    with TeXFileProcessor(text) as glyphs:
         for glyph in glyphs.values():
             glyph.create_curves()
             glyph.create_mesh()

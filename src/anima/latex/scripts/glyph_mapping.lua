@@ -2,7 +2,7 @@ module(...,package.seeall)
 
 -- Configuration
 local scale = 65536  -- 2^16sp = 1pt
-local output_file = "glyph_map.json"
+local output_file = "glyph_map.json" -- Must match JSON_FILENAME
 
 -- Node type constants
 local HLIST = node.id("hlist")
@@ -15,11 +15,9 @@ local KERN = node.id("kern")
 local glyph_data = {}
 local glyph_counter = 0
 
--- Transform DVI coordinates to SVG coordinates
+-- Convert DVI coordinates (origin at bottom-left) to SVG coordinates (origin at top-left)
+-- Both use points (pt) as units; flip Y axis for SVG
 local function dvi_to_svg(dvi_x, dvi_y, page_height)
-    -- DVI uses bottom-left origin like PDF
-    -- dvisvgm typically uses 1pt = 1 SVG unit
-    -- SVG uses top-left origin, so we need to flip Y
     return dvi_x, page_height - dvi_y
 end
 
@@ -295,7 +293,7 @@ function shipout()
             
             -- Note: see 'glyph_data' for additional data that is not used in the output
             table.insert(output_data.glyphs, {
-                seq_id = glyph.sequence_id,
+                sequence_id = glyph.sequence_id,
                 character = glyph.utf8,
                 position = {
                     x = svg_x, 
