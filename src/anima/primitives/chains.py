@@ -61,6 +61,7 @@ class CurveChain(Curve):
         return crv.normal(t, normalise)
 
     def length(self, t: float = 1.0) -> float:
+        assert 0.0 <= t <= 1.0, f'Parameter must be in range [0, 1]. Got: {t:.3f}'
         return t * self._length
 
     # Private methods -------------------------------------------------------------------------------------- #
