@@ -64,8 +64,8 @@ class Joint(Attachment, Curve, Mesh):
         assert 0 <= fillet_factor <= 1, 'Currently, only a fillet factor in [0, 1] is supported.'
         self._fillet_factor = fillet_factor
         self._num_subdiv = num_subdiv
-        self._vertices = []
-        self._faces = []
+        self._frame_points = []
+        self._frame_faces = []
         self._vertex_angles = []
         self._offset_distance = 0.0
         self._orientation = 1  # 1 if CW turn, else -1
@@ -125,8 +125,8 @@ class Joint(Attachment, Curve, Mesh):
         self._offset_distance = (p2 - p3_).magnitude
 
         # Create the vertex list for the different joint types.
-        self._vertices = []
-        verts = self._vertices
+        self._frame_points = []
+        verts = self._frame_points
         type = self._type
         sgn = self._orientation
         if type == Joint.Type.MITER:
@@ -170,8 +170,8 @@ class Joint(Attachment, Curve, Mesh):
         assert all(angles[i] <= angles[i+1] for i in range(len(angles) - 1))
 
         # Create mesh faces
-        self._faces = []
-        faces = self._faces
+        self._frame_faces = []
+        faces = self._frame_faces
         for i in range(len(verts) - 2):
             faces.append([0, i + 1, i + 2])
 
@@ -269,8 +269,8 @@ class Joint(Attachment, Curve, Mesh):
         if type not in [Joint.Type.MITER, Joint.Type.BEVEL, Joint.Type.ROUND]:
             raise Exception(f'Unsupported joint type: {type}')
 
-        verts_init = self._vertices
-        faces_init = self._faces
+        verts_init = self._frame_points
+        faces_init = self._frame_faces
 
         p1 = verts_init[0]  # Assumed to be the first entry
         p2 = verts_init[1]
