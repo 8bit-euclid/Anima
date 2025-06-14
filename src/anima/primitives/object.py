@@ -10,12 +10,15 @@ from anima.globals.general import Vector, Matrix, Euler, is_animable, add_object
 
 class Object(ABC):
     """
-    Base class from which any 'animable' object. Contains common members and methods, and
-    encapsulates the underlying Blender object.
+    Base class for all animable objects. Encapsulates the underlying Blender object and provides
+    common members and methods for manipulation, parenting, transformation, and animation.
+    All subclasses should use cooperative inheritance (i.e., call super()) to maintain the correct
+    method resolution order (MRO), especially in multiple inheritance scenarios.
+    See: https://docs.python.org/3/library/functions.html#super for more details.
     """
 
     def __init__(self, *, bl_object=None, name='Object', **kwargs):
-        # There should be no additional keyword arguments.
+        # There should be no additional keyword arguments (assuming cooperative inheritance).
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {kwargs}")
 
@@ -49,7 +52,9 @@ class Object(ABC):
         if frame is None:
             frame = bpy.context.scene.frame_current
         assert isinstance(frame, int), "Frame must be an integer."
-        self._bl_object.keyframe_insert(bl_data_path, index=index, frame=frame)
+        assert hasattr(self.object, bl_data_path), \
+            f"Invalid data path: {bl_data_path}"
+        self.object.keyframe_insert(bl_data_path, index=index, frame=frame)
 
     def add_handler(self, handler):
         """Add a handler for the specified object property.
