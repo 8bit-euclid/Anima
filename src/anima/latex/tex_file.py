@@ -100,7 +100,7 @@ class TeXFile:
         self._other_commands.append(entry)
         return self
 
-    def add_text(self, text: str, font: str | None = None, font_size: int | float | None = None):
+    def add_to_body(self, text: str, font: str | None = None, font_size: int | float | None = None):
         """Add text to the document body.
 
         Args:
