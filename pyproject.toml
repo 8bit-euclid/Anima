@@ -11,7 +11,8 @@ dependencies = [
    "bpy==4.4.0",
    "pytest==8.4.0",
    "numpy==2.3.0",
-   "mathutils==3.3.0"
+   "mathutils==3.3.0",
+   "pylatexenc==2.10"
 ]
 
 [tool.setuptools.packages.find]
