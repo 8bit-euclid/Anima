@@ -345,9 +345,3 @@ def has_instance_variable(obj, name):
 
     # Ensure it's an instance variable (not a class variable)
     return name in obj.__dict__
-
-
-def extract_argument(name, kwargs, default=None):
-    val = kwargs[name] if name in kwargs else default
-    del kwargs[name]
-    return val
