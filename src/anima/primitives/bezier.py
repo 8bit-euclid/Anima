@@ -5,7 +5,7 @@ from typing import Any, Optional
 from array import array
 from scipy import integrate
 from anima.globals.general import (SMALL_OFFSET, Vector, add_line_segment,
-                                   add_object, deepcopy_object, disable_print, enable_print, extract_argument,
+                                   add_object, deepcopy_object, disable_print, enable_print,
                                    get_3d_vector, rotate_90)
 from .curves import DEFAULT_LINE_WIDTH, Curve
 from .endcaps import Endcap
@@ -21,11 +21,8 @@ class BezierSpline(Curve):
         self._spl_params: 'np.ndarray'[float] = None
         self._len_params: 'np.ndarray'[float] = None
         self._cumu_bzr_lens: array[float] = None
-        num_pts_arg = 'num_lookup_pts'
-        if num_pts_arg in kwargs:
-            self._num_lookup_pts = extract_argument(num_pts_arg, kwargs)
-        else:
-            self._num_lookup_pts = NUM_PARAM_LOOKUP_PTS
+        self._num_lookup_pts = \
+            kwargs.pop('num_lookup_pts', NUM_PARAM_LOOKUP_PTS)
 
         # Create a new curve object
         curve_data = bpy.data.curves.new(name=name, type='CURVE')
