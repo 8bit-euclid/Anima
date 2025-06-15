@@ -28,27 +28,27 @@ class TeXFileProcessor:
     Compiles LaTeX to DVI, converts to SVG, and extracts glyph metadata.
     Handles shipout of character-glyph mapping data via Lua script."""
 
-    def __init__(self, content: str | TeXFile):
+    def __init__(self, content: TeXFile | str):
         """Initialize the converter with LaTeX content.
         Args:
-            content: A string containing LaTeX content (body) or a TeXFile object."""
+            content: A TeXFile object or string containing LaTeX content (body)."""
         # Use provided latex document or setup a default one
         if isinstance(content, str):
             content = TeXFile().set_defaults()\
                                .add_to_body(content)
 
-        self.content_str = str(content)
-        self.temp_dir: tempfile.TemporaryDirectory = None
-        self.tex_path: Path = None  # Path to the temporary directory for LaTeX files
-        self.tex_name = "doc"  # Base name for .tex, .dvi, .svg, etc.
+        self._text = str(content)
+        self._temp_dir: tempfile.TemporaryDirectory = None
+        self._tex_path: Path = None  # Path to the temporary directory for LaTeX files
+        self._tex_name = "doc"  # Base name for .tex, .dvi, .svg, etc.
 
     def __enter__(self) -> dict[Glyph]:
         """Context manager to handle LaTeX compilation, SVG generation, and file cleanup.
         Returns:
             A dictionary mapping glyph IDs to Glyph objects."""
         # Create a temporary directory to store the LaTeX, SVG, and other generated files
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.tex_path = Path(self.temp_dir.name)
+        self._temp_dir = tempfile.TemporaryDirectory()
+        self._tex_path = Path(self._temp_dir.name)
 
         # Run the LaTeX compilation and conversion to SVG. A JSON file with glyph metadata is also generated.
         json_file = self._convert_tex_to_dvi()
@@ -57,19 +57,19 @@ class TeXFileProcessor:
         return self._extract_glyphs(svg_file, json_file)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.temp_dir.cleanup()
+        self._temp_dir.cleanup()
 
     def _convert_tex_to_dvi(self) -> Path:
         """Compile the LaTeX file to DVI format and prepare for glyph extraction.
         Raises:
             RuntimeError: If the LaTeX compilation fails.
         """
-        tex_path = self.tex_path
+        tex_path = self._tex_path
         tex_file = tex_path/f'{self.tex_name}.tex'
         lua_file = tex_path/LUA_FILENAME
 
         # Write LaTeX content
-        tex_file.write_text(self.content_str, encoding="utf-8")
+        tex_file.write_text(self._text, encoding="utf-8")
 
         # Copy the glyph mapping Lua file to the temporary directory
         root = find_project_root()
@@ -94,7 +94,7 @@ class TeXFileProcessor:
         """Convert the DVI file to SVG format using dvisvgm.
         Raises:
             RuntimeError: If the DVI to SVG conversion fails."""
-        tex_path = self.tex_path
+        tex_path = self._tex_path
         svg_file = tex_path/f'{self.tex_name}.svg'
 
         run_proc = partial(subprocess.run, cwd=tex_path,
@@ -115,7 +115,7 @@ class TeXFileProcessor:
         """Get the JSON file containing the char-glyph mapping metadata.
         Raises:
             RuntimeError: If the JSON file is not found."""
-        json_file = self.tex_path/JSON_FILENAME
+        json_file = self._tex_path/JSON_FILENAME
         if not json_file.exists():
             raise RuntimeError(f"JSON file '{json_file}' not found. "
                                "Ensure that the Lua script correctly generated the glyph metadata.")
@@ -133,7 +133,7 @@ class TeXFileProcessor:
         """Get the SVG file generated from the LaTeX document.
         Raises:
             RuntimeError: If the SVG file is not found."""
-        svg_file = self.tex_path/f'{self.tex_name}.svg'
+        svg_file = self._tex_path/f'{self.tex_name}.svg'
         if not svg_file.exists():
             raise RuntimeError(f"SVG file '{svg_file}' not found. "
                                "Ensure that the DVI to SVG conversion was successful.")
