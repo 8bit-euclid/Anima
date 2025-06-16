@@ -280,6 +280,7 @@ function shipout()
     -- Prepare output data
     local output_data = {
         glyphs = {},
+        glyph_count = glyph_counter,
         page_dimensions = {
             width = page_width,
             height = page_height
@@ -294,10 +295,10 @@ function shipout()
             
             -- Note: see 'glyph_data' for additional data that is not used in the output
             table.insert(output_data.glyphs, {
-                sequence_id = glyph.sequence_id,
-                utf8_code = glyph.utf8_code,
-                ascii_code = glyph.ascii_code,
-                position = {
+                seq_id = glyph.sequence_id,
+                utf8 = glyph.utf8_code,
+                ascii = glyph.ascii_code,
+                location = {
                     x = svg_x, 
                     y = svg_y
                 },
