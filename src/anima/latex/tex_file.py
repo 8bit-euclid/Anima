@@ -4,7 +4,6 @@ from pathlib import Path
 
 DEFAULT_FONT = 'TeX Gyre Termes'
 DEFAULT_FONT_SIZE = 10  # Font size in points (LaTeX default is 10pt)
-GLYPH_MAP_MODULE = 'glyph_mapping'  # Lua file for glyph mapping
 
 
 class TeXFile:
@@ -20,8 +19,7 @@ class TeXFile:
         self.set_document_class('standalone', ['preview'])\
             .set_main_font(DEFAULT_FONT)\
             .add_package('amsmath')\
-            .add_package('amssymb')\
-            .configure_lua_shipout()
+            .add_package('amssymb')
         return self
 
     def set_document_class(self, name: str, options: str | list[str] | None = None):
@@ -119,14 +117,6 @@ class TeXFile:
         self._text.append(text)
         return self
 
-    def configure_lua_shipout(self):
-        """Add necessary packages and setup lua commands for shipout of character-glyph mapping metadata during TeX->DVI compilation."""
-        ensure_lua_script_exists()
-        self.add_package('luacode')\
-            .add_to_preamble(rf"\directlua{{require('{GLYPH_MAP_MODULE}')}}")\
-            .add_to_preamble(rf"\AddToHook{{shipout/before}}{{\directlua{{{GLYPH_MAP_MODULE}.shipout()}}}}")
-        return self
-
     def clear(self):
         """Clear all packages and commands."""
         self._document_class = None
@@ -168,18 +158,6 @@ class TeXFile:
         Returns:
             str: The LaTeX document as a string."""
         return self.to_string()
-
-
-def ensure_lua_script_exists():
-    """Ensure that the glyph mapping Lua file exists in the project root.
-    Raises:
-        AssertionError: If the glyph mapping Lua file does not exist.
-    """
-    # Get absolute path of current script's directory
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    lua_file = Path(curr_dir)/f'scripts/{GLYPH_MAP_MODULE}.lua'
-    assert lua_file.exists(), \
-        f"Glyph mapping Lua file '{lua_file}' does not exist."
 
 
 def get_options_str(options: str | list[str]):

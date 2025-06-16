@@ -14,19 +14,13 @@ TEX_POINT_TO_BL_UNIT = 0.005   # Length (in Blender units) of 1pt (in LaTeX)
 SAMPLING_LENGTH = \
     0.01 * DEFAULT_FONT_SIZE * TEX_POINT_TO_BL_UNIT  # For points along glyph curves
 TEX_DEBUG_MODE = True  # Print LaTeX and DVI logs to console
-# TEX_DEBUG_MODE = False  # Print LaTeX and DVI logs to console
-
-# Lua and JSON filenames for char-glyph mapping data.
-LUA_FILENAME = "glyph_mapping.lua"  # Lua script for data shipout
-JSON_FILENAME = "glyph_map.json"  # Must match 'output_file' in the lua file
-SVG_NS = \
+SVG_NAMESPACE = \
     {'svg': 'http://www.w3.org/2000/svg'}  # Namespace for SVG elements in XML
 
 
 class TeXFileProcessor:
     """Processes LaTeX documents to extract glyph data from SVG output.
-    Compiles LaTeX to DVI, converts to SVG, and extracts glyph metadata.
-    Handles shipout of character-glyph mapping data via Lua script."""
+    Compiles LaTeX to DVI, converts to SVG, and extracts glyph metadata."""
 
     def __init__(self, content: TeXFile | str):
         """Initialize the converter with LaTeX content.
@@ -51,30 +45,24 @@ class TeXFileProcessor:
         self._tex_path = Path(self._temp_dir.name)
 
         # Run the LaTeX compilation and conversion to SVG. A JSON file with glyph metadata is also generated.
-        json_file = self._convert_tex_to_dvi()
-        svg_file = self._convert_dvi_to_svg()
+        self._convert_tex_to_dvi()
+        self._convert_dvi_to_svg()
 
-        return self._extract_glyphs(svg_file, json_file)
+        return self._extract_glyphs(self._get_svg_file())
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._temp_dir.cleanup()
 
-    def _convert_tex_to_dvi(self) -> Path:
+    def _convert_tex_to_dvi(self):
         """Compile the LaTeX file to DVI format and prepare for glyph extraction.
         Raises:
             RuntimeError: If the LaTeX compilation fails.
         """
         tex_path = self._tex_path
         tex_file = tex_path/f'{self._tex_name}.tex'
-        lua_file = tex_path/LUA_FILENAME
 
         # Write LaTeX content
         tex_file.write_text(self._text, encoding="utf-8")
-
-        # Copy the glyph mapping Lua file to the temporary directory
-        root = find_project_root()
-        src_file = root/f'src/anima/latex/scripts/{LUA_FILENAME}'
-        shutil.copy(src_file, lua_file)
 
         # Run lualatex to generate DVI
         run_proc = partial(subprocess.run, cwd=tex_path,
@@ -88,9 +76,7 @@ class TeXFileProcessor:
             print_logs(cmd, err)
             raise RuntimeError("LaTeX compilation failed.") from err
 
-        return self._get_json_file()
-
-    def _convert_dvi_to_svg(self) -> Path:
+    def _convert_dvi_to_svg(self):
         """Convert the DVI file to SVG format using dvisvgm.
         Raises:
             RuntimeError: If the DVI to SVG conversion fails."""
@@ -109,23 +95,6 @@ class TeXFileProcessor:
             print_logs(cmd, err)
             raise RuntimeError("DVI to SVG conversion failed.") from err
 
-        return self._get_svg_file()
-
-    def _get_json_file(self) -> Path:
-        """Get the JSON file containing the char-glyph mapping metadata.
-        Raises:
-            RuntimeError: If the JSON file is not found."""
-        json_file = self._tex_path/JSON_FILENAME
-        if not json_file.exists():
-            raise RuntimeError(f"JSON file '{json_file}' not found. "
-                               "Ensure that the Lua script correctly generated the glyph metadata.")
-        if TEX_DEBUG_MODE:
-            with open(json_file, 'r') as file:
-                print(f"JSON file content:\n")
-                print(file.read())
-
-        return json_file
-
     def _get_svg_file(self) -> Path:
         """Get the SVG file generated from the LaTeX document.
         Raises:
@@ -140,20 +109,12 @@ class TeXFileProcessor:
                 print(f"SVG file content:\n\n{f.read()}")
         return svg_file
 
-    def _extract_glyphs(self, svg_file: Path, glyph_map_file: Path) -> dict[Glyph]:
+    def _extract_glyphs(self, svg_file: Path) -> dict[Glyph]:
         """Extract cubic Bézier curves and bounding boxes using svgpathtools.
         Args:
             svg_file: Path to the SVG file generated from the LaTeX document.
-            glyph_map_file: Path to the JSON file containing char-glyph mapping metadata.
         Returns:
             A dictionary mapping glyph IDs to Glyph objects, each containing its subpaths and positions."""
-
-        # Check that the total number of glyphs in the JSON file matches the SVG file
-        json_count = count_glyphs_in_json(glyph_map_file)
-        svg_count = count_glyphs_in_svg(svg_file)
-        if json_count != svg_count:
-            raise RuntimeError(
-                f"Glyph count mismatch: JSON has {json_count}, SVG has {svg_count}")
 
         all_paths, all_attrs = svgtools.svg2paths(svg_file)
 
@@ -168,7 +129,7 @@ class TeXFileProcessor:
         positions: ddict[str, list[tuple[float, float]]] = ddict(list)
         tree = ET.parse(svg_file)
         root = tree.getroot()
-        for use in root.findall('.//svg:use', SVG_NS):
+        for use in root.findall('.//svg:use', SVG_NAMESPACE):
             gid = use.attrib['{http://www.w3.org/1999/xlink}href'][1:]
             assert gid in glyphs, f"Glyph ID '{gid}' not found in the glyphs dict."
 
@@ -177,29 +138,6 @@ class TeXFileProcessor:
             positions[gid].append((x, -y))  # Invert y-coordinate
 
         return glyphs
-
-
-def count_glyphs_in_json(json_file: Path) -> int:
-    """Count the number of glyphs in the JSON file.
-    Args:
-        json_file: Path to the JSON file containing glyph mapping data.
-    Returns:
-        The number of glyphs in the JSON file."""
-    import json
-    with open(json_file, 'r') as file:
-        data = json.load(file, strict=False)
-    return len(data.get('glyphs', []))
-
-
-def count_glyphs_in_svg(svg_file: Path) -> int:
-    """Count the number of glyphs in the SVG file.
-    Args:
-        svg_file: Path to the SVG file generated from the LaTeX document.
-    Returns:
-        The number of unique glyphs in the SVG file."""
-    tree = ET.parse(svg_file)
-    root = tree.getroot()
-    return len(root.findall('.//svg:use', SVG_NS))
 
 
 def signed_area(points):
