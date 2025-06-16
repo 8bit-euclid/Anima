@@ -65,7 +65,7 @@ class TeXFileProcessor:
             RuntimeError: If the LaTeX compilation fails.
         """
         tex_path = self._tex_path
-        tex_file = tex_path/f'{self.tex_name}.tex'
+        tex_file = tex_path/f'{self._tex_name}.tex'
         lua_file = tex_path/LUA_FILENAME
 
         # Write LaTeX content
@@ -95,13 +95,13 @@ class TeXFileProcessor:
         Raises:
             RuntimeError: If the DVI to SVG conversion fails."""
         tex_path = self._tex_path
-        svg_file = tex_path/f'{self.tex_name}.svg'
+        svg_file = tex_path/f'{self._tex_name}.svg'
 
         run_proc = partial(subprocess.run, cwd=tex_path,
                            capture_output=True, check=True, text=True)
         cmd = "dvisvgm"
         try:
-            dvi_file = tex_path/f'{self.tex_name}.dvi'
+            dvi_file = tex_path/f'{self._tex_name}.dvi'
             res = run_proc([cmd, "--no-fonts", "--exact-bbox", "--precision=6",
                             str(dvi_file), "-o", str(svg_file)])
             print_logs(cmd, res)
@@ -120,20 +120,17 @@ class TeXFileProcessor:
             raise RuntimeError(f"JSON file '{json_file}' not found. "
                                "Ensure that the Lua script correctly generated the glyph metadata.")
         if TEX_DEBUG_MODE:
-            import json
-            import pprint
-
-            # Pretty-print data
             with open(json_file, 'r') as file:
                 print(f"JSON file content:\n")
-                pprint.pprint(json.load(file))
+                print(file.read())
+
         return json_file
 
     def _get_svg_file(self) -> Path:
         """Get the SVG file generated from the LaTeX document.
         Raises:
             RuntimeError: If the SVG file is not found."""
-        svg_file = self._tex_path/f'{self.tex_name}.svg'
+        svg_file = self._tex_path/f'{self._tex_name}.svg'
         if not svg_file.exists():
             raise RuntimeError(f"SVG file '{svg_file}' not found. "
                                "Ensure that the DVI to SVG conversion was successful.")
@@ -190,7 +187,7 @@ def count_glyphs_in_json(json_file: Path) -> int:
         The number of glyphs in the JSON file."""
     import json
     with open(json_file, 'r') as file:
-        data = json.load(file)
+        data = json.load(file, strict=False)
     return len(data.get('glyphs', []))
 
 
