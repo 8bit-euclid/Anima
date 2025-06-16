@@ -37,14 +37,14 @@ local function get_font_info(glyph_node)
     if not font_info then
         return {
             name = "unknown",
-            size = 10,
+            size = 0,
             id = font_id
         }
     end
     
     return {
         name = font_info.fullname or font_info.name or "unknown",
-        size = (font_info.size or 10 * scale) / scale,
+        size = (font_info.size or 0 * scale) / scale,
         id = font_id
     }
 end
@@ -90,38 +90,40 @@ local function process_nodes(head, current_h, current_v, depth)
     local node_ptr = head
     while node_ptr do
         if node_ptr.id == GLYPH then
-            glyph_counter = glyph_counter + 1
-            
             -- Get character safely
-            local char_code = node_ptr.char or 0
+            local ascii_char = node_ptr.char or 0
             local utf8_char = ""
             
             -- Safe UTF-8 conversion
-            if char_code > 0 then
-                local success, result = pcall(utf8.char, char_code)
+            if ascii_char > 0 then
+                local success, result = pcall(utf8.char, ascii_char)
                 if success then
                     utf8_char = result
                 else
-                    utf8_char = "?"
+                    utf8_char = ""
                 end
             end
             
             -- Store glyph information with current position
-            glyph_data[glyph_counter] = {
-                char = char_code,
-                unicode = string.format("U+%04X", char_code),
-                utf8 = utf8_char,
+            local sequence_id = glyph_counter
+            glyph_data[sequence_id] = {
+                sequence_id = sequence_id,
+                ascii_code = ascii_char,
+                unicode = string.format("U+%04X", ascii_char),
+                utf8_code = utf8_char,
                 width = (node_ptr.width or 0) / scale,
                 height = (node_ptr.height or 0) / scale,
                 depth = (node_ptr.depth or 0) / scale,
-                font = get_font_info(node_ptr),
-                sequence_id = glyph_counter,
+                font_info = get_font_info(node_ptr),
                 dvi_h = current_h,
                 dvi_v = current_v
             }
             
             -- Advance horizontal position by glyph width
             current_h = current_h + (node_ptr.width or 0) / scale
+
+            -- Increment glyph counter
+            glyph_counter = glyph_counter + 1
             
         elseif node_ptr.id == HLIST then
             -- Process horizontal list
@@ -278,7 +280,6 @@ function shipout()
     -- Prepare output data
     local output_data = {
         glyphs = {},
-        glyph_count = glyph_counter,
         page_dimensions = {
             width = page_width,
             height = page_height
@@ -286,7 +287,7 @@ function shipout()
     }
     
     -- Transform coordinates and build output
-    for i = 1, glyph_counter do
+    for i = 0, glyph_counter - 1 do
         local glyph = glyph_data[i]
         if glyph and glyph.dvi_h and glyph.dvi_v then
             local svg_x, svg_y = dvi_to_svg(glyph.dvi_h, glyph.dvi_v, page_height)
@@ -294,11 +295,13 @@ function shipout()
             -- Note: see 'glyph_data' for additional data that is not used in the output
             table.insert(output_data.glyphs, {
                 sequence_id = glyph.sequence_id,
-                character = glyph.utf8,
+                utf8_code = glyph.utf8_code,
+                ascii_code = glyph.ascii_code,
                 position = {
                     x = svg_x, 
                     y = svg_y
-                }
+                },
+                -- font_info = glyph.font_info,
             })
         end
     end
