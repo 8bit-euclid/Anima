@@ -45,6 +45,28 @@ class Subpath:
             # curve.hide()  # Must unhide when creating instances.
             self.curves.append(curve)
 
+    def create_vertices(self):
+        pass
+        # for curve in self.curves:
+        #     # Always start with the first point of the curve.
+        #     p0 = curve.point(0)
+        #     self.vertices.append(Vector(p0[0], p0[1]))
+
+        #     if isinstance(curve, Segment):
+        #         # For segments, no need for intermediate points.
+        #         continue
+        #     elif isinstance(curve, BezierCurve):
+        #         # For Bezier curves, we need to sample points along the curve.
+        #         num_samples = 10
+        #         for t in range(num_samples + 1):
+        #             t = t / num_samples
+        #             pt = curve.point(t)
+        #             self.vertices.append(Vector(pt[0], pt[1]))
+        #     else:
+        #         raise Exception(f"Unsupported curve type: {type(curve)}")
+
+        #     l = curve.length()
+
 
 class GlyphBorder:
     def __init__(self, subpaths: list[type[Subpath]]):
@@ -71,32 +93,4 @@ class GlyphBody(Mesh):
         super().__init__()
 
     def construct(self):
-        """Construct the body by creating curves and vertices for each subpath."""
-        self.border.construct()
-        self.create_curves()
-        self.create_mesh()
-
-
-def compute_subpath_vertices(subpath: Subpath):
-    """Create vertices for each curve in this subpath"""
-    pass
-
-    # for curve in self.curves:
-    #     # Always start with the first point of the curve.
-    #     p0 = curve.point(0)
-    #     self.vertices.append(Vector(p0[0], p0[1]))
-
-    #     if isinstance(curve, Segment):
-    #         # For segments, no need for intermediate points.
-    #         continue
-    #     elif isinstance(curve, BezierCurve):
-    #         # For Bezier curves, we need to sample points along the curve.
-    #         num_samples = 10
-    #         for t in range(num_samples + 1):
-    #             t = t / num_samples
-    #             pt = curve.point(t)
-    #             self.vertices.append(Vector(pt[0], pt[1]))
-    #     else:
-    #         raise Exception(f"Unsupported curve type: {type(curve)}")
-
-    #     l = curve.length()
+        pass

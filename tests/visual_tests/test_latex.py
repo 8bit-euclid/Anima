@@ -7,17 +7,24 @@ def test_text_to_glyphs():
     # text = 'S'
     # text = 'Hello World!'
     # text = 'office'
+    # text = r'$e^{i\pi} + 1 = 0$'
+    # text = r'${e^{i\pi}} + 1 = \mathbf{0}$'
+    # text = r"""a
+    # a"""
+    text = r"""
+    \begin{align}
+    e^{i\pi} + 1 = 0 \\
+    0 = 0
+    \end{align}
+    """
     # text = '$E = mc^2$'
-    text = r'$E^2 = (\mathit{mc}^2)^2 + (pc)^2$\textsuperscript{2}'
+    # text = r'$E^2 = (\mathit{mc}^2)^2 + (pc)^2$'
     # text = r'$E = \mathit{mc}^2$'
-    # text = r'boob\\y'
     # text = 'C'
     # text = '8'
     # text = 'O{\Huge 8}'
     # text = 'O'
-    # text = 'Aghhhgg!!aaGH'
     with TeXFileProcessor(text) as glyphs:
-        for glyph in glyphs.values():
-            glyph.create_curves()
-            glyph.create_mesh()
+        for _, glyph in glyphs.items():
+            glyph.construct()
             # glyph.create_instances()

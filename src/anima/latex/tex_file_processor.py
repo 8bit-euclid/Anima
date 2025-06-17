@@ -1,7 +1,5 @@
-import shutil
 import subprocess
 import tempfile
-from anima.globals.general import find_project_root
 import svgpathtools as svgtools
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -62,6 +60,8 @@ class TeXFileProcessor:
         tex_file = tex_path/f'{self._tex_name}.tex'
 
         # Write LaTeX content
+        if TEX_DEBUG_MODE:
+            print(f"Processing LaTeX content:\n{self._text}\n")
         tex_file.write_text(self._text, encoding="utf-8")
 
         # Run lualatex to generate DVI
