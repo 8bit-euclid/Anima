@@ -2,7 +2,7 @@ import pytest
 import random
 from anima.globals.general import Vector
 from anima.primitives.lines import Segment
-from anima.primitives.bezier import BezierSpline
+from anima.primitives.bezier_spline import BezierSpline
 from anima.primitives.chains import CurveChain
 from anima.primitives.joints import MiterJoint, BevelJoint, RoundJoint
 from tests.test_utils import assert_death, assert_vectors_equal

@@ -2,7 +2,7 @@ import math
 import bisect
 from enum import Enum
 from .curves import Curve, DEFAULT_LINE_WIDTH
-from .bezier import BezierSpline
+from .bezier_spline import BezierSpline
 from .points import Point
 from .attachments import Attachment
 from anima.primitives.mesh import Mesh

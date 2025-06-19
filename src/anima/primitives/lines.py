@@ -1,5 +1,5 @@
 from .curves import DEFAULT_LINE_WIDTH
-from .bezier import BezierCurve
+from .bezier_curve import BezierCurve
 from anima.globals.general import Vector, get_3d_vector
 
 

@@ -16,8 +16,19 @@ NUM_PARAM_LOOKUP_PTS = 40
 
 
 class BezierSpline(Curve):
+    """A Bezier spline is a curve defined by a series of spline points and each connected segment is represented by a Bezier curve. We only support cubic Bezier curves, currently.
+    """
+
     def __init__(self, spline_points: list[Vector | tuple], width: float = DEFAULT_LINE_WIDTH,
                  bias: float = 0.0, name: str = 'BezierSpline', **kwargs):
+        """Initialise a Bezier spline with the given points.
+        Args:
+            spline_points: A list of 2D or 3D points defining the spline.
+            width: The width of the spline.
+            bias: The bias of the spline.
+            name: The name of the spline object.
+            kwargs: Additional keyword arguments for the Curve base class.
+        """
         self._spl_params: 'np.ndarray'[float] = None
         self._len_params: 'np.ndarray'[float] = None
         self._cumu_bzr_lens: array[float] = None
@@ -87,7 +98,7 @@ class BezierSpline(Curve):
             if isinstance(c, Curve):
                 c.set_bias(bias)
 
-        update_params = [self._update_param_0, self._update_param_1]
+        update_params = (self._update_param_0, self._update_param_1)
         for i, att in enumerate(self._attachments()):
             if att is not None:
                 from .joints import Joint
@@ -178,6 +189,12 @@ class BezierSpline(Curve):
         self.set_resolution(res)
 
     def __deepcopy__(self, memo: Optional[dict[int, Any]] = None):
+        """Create a deep copy of the BezierSpline object.
+        Args:
+            memo: Optional dictionary to keep track of already copied objects.
+        Returns:
+            A new BezierSpline object with the same properties as the original.
+        """
         new_copy = super().__deepcopy__(memo)
         new_bl_obj = new_copy.object
         new_bl_obj.data.bevel_object = \
@@ -363,48 +380,3 @@ class BezierSpline(Curve):
         self._map_u_to_s()
 
         super()._update_length()
-
-
-class BezierCurve(BezierSpline):
-    def __init__(self, point_0: Vector | tuple, point_1: Vector | tuple,
-                 control_pts: list[Vector | tuple] = None, width: float = DEFAULT_LINE_WIDTH,
-                 bias: float = 0.0, name: str = 'BezierCurve', **kwargs):
-        super().__init__(spline_points=[point_0, point_1],
-                         width=width, bias=bias, name=name, **kwargs)
-        if control_pts is not None:
-            assert len(control_pts) == 2, \
-                'Only cubic Bezier curves are currently supported.'
-            self.set_handle_0(control_pts[0], relative=False)
-            self.set_handle_1(control_pts[1], relative=False)
-
-    def set_handle_0(self, location, relative=True):
-        """Set the handle position at point 0."""
-        self.set_right_handle(0, location, relative)
-        return self
-
-    def set_handle_1(self, location, relative=True):
-        """Set the handle position at point 1."""
-        self.set_left_handle(1, location, relative)
-        return self
-
-    # Property getters/setters ----------------------------------------------------------------------------- #
-
-    @property
-    def handle_0(self) -> Vector:
-        """Get the curve's handle 0."""
-        return self._get_handle(side='RIGHT', point_index=0, relative=True)
-
-    @handle_0.setter
-    def handle_0(self, direction: Vector | tuple):
-        """Set the curve's handle 0."""
-        self.set_handle_0(direction)
-
-    @property
-    def handle_1(self) -> Vector:
-        """Get the curve's handle 1"""
-        return self._get_handle(side='LEFT', point_index=1, relative=True)
-
-    @handle_1.setter
-    def handle_1(self, direction: Vector | tuple):
-        """Set the curve's handle 1."""
-        self.set_handle_1(direction)
