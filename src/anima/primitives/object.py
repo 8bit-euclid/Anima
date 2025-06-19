@@ -26,7 +26,7 @@ class Object(ABC):
         self.children: list[type[Object]] = []
 
         if bl_object is None:
-            bl_object = add_object()
+            bl_object = add_object(name=name)
         bl_object.name = name
         self._bl_object = bl_object
         self.shape_keys = []
