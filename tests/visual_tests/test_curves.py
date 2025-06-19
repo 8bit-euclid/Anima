@@ -1,7 +1,8 @@
 from anima.animation.updater import Updater
 from anima.diagnostics.profiler import Profiler
 from anima.globals.general import clip
-from anima.primitives.bezier import BezierCurve, BezierSpline
+from anima.primitives.bezier_spline import BezierSpline
+from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.chains import CurveChain
 from anima.primitives.curves import DEFAULT_LINE_WIDTH
 from anima.primitives.dashed_curves import DashedCurve
