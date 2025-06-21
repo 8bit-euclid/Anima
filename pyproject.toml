@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "anima"
 dynamic = ["version"]
-requires-python = "==3.11.9"
+requires-python = "==3.11.9" # Ensure this matches Blender's Python version
 dependencies = [
    "scipy==1.15.3",
    "bpy==4.4.0",
@@ -14,6 +14,7 @@ dependencies = [
    "mathutils==3.3.0",
    "pylatexenc==2.10",
    "loguru==0.7.3",
+   "plastex==3.1",
 ]
 
 [tool.setuptools.packages.find]
@@ -31,3 +32,6 @@ testpaths = ["tests"]
 addopts = [
     "--ignore=tests/visual_tests/",
 ]
+
+[tool.blender]
+python_path = "~/Applications/blender/blender-4.3.2-linux-x64/4.3/python/bin/python3.11"
