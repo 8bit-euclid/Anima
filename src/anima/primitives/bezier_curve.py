@@ -7,6 +7,16 @@ class BezierCurve(BezierSpline):
     def __init__(self, point_0: Vector | tuple, point_1: Vector | tuple,
                  control_pts: list[Vector | tuple] = None, width: float = DEFAULT_LINE_WIDTH,
                  bias: float = 0.0, name: str = 'BezierCurve', **kwargs):
+        """Initialize a cubic Bezier curve with two points and optional control points.
+        Args:
+            point_0 (Vector | tuple): The first point of the curve.
+            point_1 (Vector | tuple): The second point of the curve.
+            control_pts (list[Vector | tuple]): Optional control points for the curve.
+            width (float): The width of the curve.
+            bias (float): The bias for the curve.
+            name (str): The name of the curve.
+            **kwargs: Additional keyword arguments for BezierSpline initialization.
+        """
         super().__init__(spline_points=[point_0, point_1],
                          width=width, bias=bias, name=name, **kwargs)
         if control_pts is not None:
