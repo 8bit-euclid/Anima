@@ -268,24 +268,34 @@ def save_as(file_name: str):
     bpy.ops.wm.save_mainfile(filepath=file_path)
 
 
-def find_project_root(marker: str = '.git') -> Path:
-    """Find the root directory of the project by looking for a .git directory or setup.py file."""
+def get_project_root(marker: str = '.git') -> Path:
+    """Find the root directory of the project by looking for a 'marker' file.
+    Args:
+        marker (str): The name of the file that indicates the project root (default is '.git').
+    Returns:
+        Path: The path to the project root directory.
+    Raises:
+        FileNotFoundError: If the marker file is not found in any parent directories."""
     current = Path(__file__).resolve()
     for parent in current.parents:
         if (parent/marker).exists():
             return parent
     raise FileNotFoundError(
-        "Project root not found. Ensure you are running this script from within a Git repo.")
+        f"Project root not found. Ensure it contains {marker}.")
 
 
-def find_project_root(marker: str = '.git') -> Path:
-    """Find the root directory of the project by looking for a .git directory or setup.py file."""
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent/marker).exists():
-            return parent
-    raise FileNotFoundError(
-        "Project root not found. Ensure you are running this script from within a Git repo.")
+def get_pyproject_path() -> Path:
+    """Find the path to the pyproject.toml file.
+    Returns:
+        Path: The path to the pyproject.toml file.
+    Raises:
+        FileNotFoundError: If the pyproject.toml file is not found in the project root."""
+    root = get_project_root()
+    pyproject = root / "pyproject.toml"
+    if not pyproject.exists():
+        raise FileNotFoundError(
+            f"pyproject.toml not found in {root}. Ensure it exists.")
+    return pyproject
 
 
 def is_blender_object(obj):
