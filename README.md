@@ -41,7 +41,11 @@ python_path = "/path/to/blender/python"
 
 ### 4. Build the Project
 
-### 4. Install Blender Dependencies
+```bash
+make build
+```
+
+### 5. Install Blender Dependencies
 The same dependencies are used for both the Blender Python environment and the Anima development environment. To install the required dependencies in the former, run:
 
 ```bash
@@ -50,7 +54,7 @@ make install-blender-deps
 
 > **Note:** If you add or change dependencies in `pyproject.toml`, you must run `make install-blender-deps` again.
 
-### 5. Run Tests
+### 6. Run Tests
 
 Verify the installation by running:
 
