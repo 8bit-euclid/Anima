@@ -29,11 +29,11 @@ def assert_2d(dim):
     assert dim == 2, "Can only handle 2D, currently."
 
 
-def get_2d_vector(v=(0, 0)):
+def make_2d_vector(v=(0, 0)):
     return Vector(v).resized(2)
 
 
-def get_3d_vector(v=(0, 0, 0)):
+def make_3d_vector(v=(0, 0, 0)):
     return Vector(v).resized(3)
 
 
@@ -160,7 +160,7 @@ def add_line_segment(name: str, point_0, point_1):
     spline = curve_data.splines.new(type='BEZIER')
     spline.bezier_points.add(count=1)
     for i, pt in enumerate([point_0, point_1]):
-        spline.bezier_points[i].co = get_3d_vector(pt)
+        spline.bezier_points[i].co = make_3d_vector(pt)
 
     return add_object(name, curve_data)
 
