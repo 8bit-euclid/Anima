@@ -6,7 +6,7 @@ from array import array
 from scipy import integrate
 from anima.globals.general import (SMALL_OFFSET, Vector, add_line_segment,
                                    add_object, deepcopy_object, disable_print, enable_print,
-                                   get_3d_vector, rotate_90)
+                                   make_3d_vector, rotate_90)
 from .curves import DEFAULT_LINE_WIDTH, Curve
 from .endcaps import Endcap
 
@@ -50,7 +50,7 @@ class BezierSpline(Curve):
         for i, pt in enumerate(spline_points):
             assert isinstance(pt, (Vector, tuple)), 'Expected a 2D/3D vector.'
             bpt = spline.bezier_points[i]
-            bpt.co = get_3d_vector(pt)
+            bpt.co = make_3d_vector(pt)
             bpt.handle_left_type = 'AUTO'
             bpt.handle_right_type = 'AUTO'
 
@@ -75,7 +75,7 @@ class BezierSpline(Curve):
             bpts = profile.data.splines[0].bezier_points
             assert len(bpts) == 2, 'Expected a segment as the bevel profile.'
             for i, pt in enumerate(pts):
-                bpts[i].co = get_3d_vector(pt)
+                bpts[i].co = make_3d_vector(pt)
         else:
             line_obj = add_line_segment('profile', *pts)
             self.object.data.bevel_mode = 'OBJECT'
@@ -239,7 +239,7 @@ class BezierSpline(Curve):
         return loc - pt.co if relative else loc
 
     def _set_handle(self, side: str, point_index: int, location, relative: bool = True):
-        loc = get_3d_vector(location)
+        loc = make_3d_vector(location)
         pt = self.spline_point(point_index)
         assert side in ['LEFT', 'RIGHT']
         handle_str = 'handle_' + side.lower()

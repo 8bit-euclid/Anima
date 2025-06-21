@@ -1,6 +1,6 @@
 from .curves import DEFAULT_LINE_WIDTH
 from .bezier_curve import BezierCurve
-from anima.globals.general import Vector, get_3d_vector
+from anima.globals.general import Vector, make_3d_vector
 
 
 class Segment(BezierCurve):
@@ -18,15 +18,15 @@ class Segment(BezierCurve):
 
 class Ray(Segment):
     def __init__(self, point, direction, width=DEFAULT_LINE_WIDTH, bias=0.0, name='Ray', **kwargs):
-        pt_0 = get_3d_vector(point)
-        pt_1 = pt_0 + 100.0 * get_3d_vector(direction)
+        pt_0 = make_3d_vector(point)
+        pt_1 = pt_0 + 100.0 * make_3d_vector(direction)
         super().__init__(pt_0, pt_1, width=width, bias=bias, name=name, **kwargs)
 
 
 class Line(Segment):
     def __init__(self, point, direction, width=DEFAULT_LINE_WIDTH, bias=0.0, name='Line', **kwargs):
-        dir = get_3d_vector(direction)
-        pt = get_3d_vector(point)
+        dir = make_3d_vector(direction)
+        pt = make_3d_vector(point)
         pt_0 = pt - 100.0 * dir
         pt_1 = pt + 100.0 * dir
         super().__init__(pt_0, pt_1, width=width, bias=bias, name=name, **kwargs)
