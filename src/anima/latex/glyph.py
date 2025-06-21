@@ -1,16 +1,24 @@
-from anima.latex.glyph_utils import GlyphBody, GlyphBorder, Subpath
+import svgpathtools as svgtools
+from anima.latex.glyph_utils import GlyphBody, GlyphBorder, GlyphBBox
 
 
 class Glyph:
     """A glyph is a unique collection of subpaths, each representing a part of the glyph's shape."""
 
-    def __init__(self, subpaths: list[Subpath] = None):
-        self.border: GlyphBorder = GlyphBorder(subpaths) if subpaths else None
-        self.body: GlyphBody = GlyphBody(self.border) if self.border else None
+    def __init__(self, path: svgtools.Path):
+        """
+        Initialize a Glyph with a list of subpaths and an optional bounding box.
+        Args:
+            path (svgtools.Path): The SVG path object representing the glyph.
+        """
+        assert isinstance(path, svgtools.Path), \
+            "Path must be an instance of svgpathtools.Path"
+        # Invert bbox y-coordinates
+        bbox = GlyphBBox(*path.bbox())
+        bbox.y_min *= -1
+        bbox.y_max *= -1
 
-    def construct(self):
-        """Construct the glyph by creating its subpath curves and mesh."""
-        if self.border:
-            self.border.construct()
-        if self.body:
-            self.body.construct()
+        self.text: str = ""
+        self.bbox: GlyphBBox = bbox
+        self.border: GlyphBorder = GlyphBorder(path)
+        self.body: GlyphBody = GlyphBody(self.border)

@@ -1,7 +1,7 @@
 import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
-from anima.latex.tex_file import TeXFile
+from anima.latex.tex_document import TeXDocument
 
 
 class Compiler(ABC):
@@ -11,7 +11,7 @@ class Compiler(ABC):
         self.compiler = compiler_name
 
     @abstractmethod
-    def compile(self, tex_file: str | Path | TeXFile) -> str:
+    def compile(self, tex_file: str | Path | TeXDocument) -> str:
         pass
 
 
@@ -24,7 +24,7 @@ class TeXCompiler(Compiler):
         assert self.output_format in ['dvi', 'pdf'], \
             "Output format must be either 'dvi' or 'pdf'."
 
-    def compile(self, tex_file: str | Path | TeXFile) -> str:
+    def compile(self, tex_file: str | Path | TeXDocument) -> str:
         """Compile a LaTeX file using the specified compiler.
 
         Args:

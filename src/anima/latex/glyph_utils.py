@@ -1,9 +1,18 @@
 import svgpathtools as svgtools
+from dataclasses import dataclass
 from anima.globals.general import Vector
 from anima.primitives.curves import Curve
-from anima.primitives.bezier import BezierCurve
+from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.lines import Segment
 from anima.primitives.mesh import Mesh
+
+
+@dataclass
+class GlyphBBox:
+    x_min: float = 0
+    x_max: float = 0
+    y_min: float = 0
+    y_max: float = 0
 
 
 class Subpath:
@@ -16,12 +25,19 @@ class Subpath:
         Raises:
             ValueError: If the path is not closed.
         """
-        assert path.isclosed()
+        assert path.isclosed(), " A subpath must be a closed path."
         self.path: type[svgtools.Path] = path
         self.curves: list[type[Curve]] = []
         self.vertices: list[type[Vector]] = []
 
-    def create_curves(self):
+        self._construct()
+
+    def _construct(self):
+        """Construct the subpath by creating curves and vertices."""
+        self._create_curves()
+        self._create_vertices()
+
+    def _create_curves(self):
         """Create a Curve object for each segment of this subpath's path."""
         for seg in self.path:
             start = seg.start
@@ -45,42 +61,24 @@ class Subpath:
             # curve.hide()  # Must unhide when creating instances.
             self.curves.append(curve)
 
-    def create_vertices(self):
+    def _create_vertices(self):
         pass
-        # for curve in self.curves:
-        #     # Always start with the first point of the curve.
-        #     p0 = curve.point(0)
-        #     self.vertices.append(Vector(p0[0], p0[1]))
-
-        #     if isinstance(curve, Segment):
-        #         # For segments, no need for intermediate points.
-        #         continue
-        #     elif isinstance(curve, BezierCurve):
-        #         # For Bezier curves, we need to sample points along the curve.
-        #         num_samples = 10
-        #         for t in range(num_samples + 1):
-        #             t = t / num_samples
-        #             pt = curve.point(t)
-        #             self.vertices.append(Vector(pt[0], pt[1]))
-        #     else:
-        #         raise Exception(f"Unsupported curve type: {type(curve)}")
-
-        #     l = curve.length()
 
 
 class GlyphBorder:
-    def __init__(self, subpaths: list[type[Subpath]]):
-        """Initialize a GlyphBorder with a given list of subpaths.
-        Args:
-            subpaths: A list of Subpath objects representing the border of the glyph.
-        """
-        self.subpaths: list[type[Subpath]] = subpaths
+    """A GlyphBorder represents the outer border of a glyph, possibly conmprising multiple subpaths. The orientation (cw/ccw) of the subpaths determines whether they are outer or inner loops. There must be exactly one outer loop (ccw) and zero or more inner loops (cw)."""
 
-    def construct(self):
-        """Construct the border by creating curves and vertices for each subpath."""
-        for subpath in self.subpaths:
-            subpath.create_curves()
-            subpath.create_vertices()
+    def __init__(self, path: svgtools.Path):
+        """Initialize a GlyphBorder with a given SVG path object.
+        Args:
+            path: An svgtools.Path object representing the border of the glyph.
+        Raises:
+            AssertionError: If the path is not an instance of svgtools.Path.
+        """
+        assert isinstance(path, svgtools.Path), \
+            "Path must be an instance of svgtools.Path"
+        self.subpaths: list[Subpath] = \
+            [Subpath(s) for s in path.continuous_subpaths()]
 
 
 class GlyphBody(Mesh):
@@ -92,5 +90,29 @@ class GlyphBody(Mesh):
         self.border: GlyphBorder = border
         super().__init__()
 
-    def construct(self):
+        self._construct()
+
+    def _construct(self):
         pass
+
+
+def signed_area(points: list[tuple[float, float]]) -> float:
+    """Calculate the signed area of a polygon defined by a list of points.
+    Args:
+        points: A list of(x, y) tuples representing the vertices of the polygon.
+    Returns:
+        The signed area of the polygon. Positive if the points are ordered counter-clockwise, negative if clockwise.
+    """
+    # points: list of (x, y) tuples
+    return 0.5 * sum((x1 * y2 - x2 * y1)
+                     for (x1, y1), (x2, y2) in zip(points, points[1:] + [points[0]]))
+
+
+def is_inner_loop(points: list[tuple[float, float]]) -> bool:
+    """Determine if the given points form an inner loop(clockwise order).
+    Args:
+        points: A list of(x, y) tuples representing the vertices of the polygon.
+    Returns:
+        True if the points are ordered clockwise(inner loop), else False (outer loop).
+    """
+    return signed_area(points) < 0  # negative = clockwise
