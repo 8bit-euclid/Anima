@@ -9,7 +9,7 @@ def main():
     clear_scene()
     ebpy.set_render_fps(60)
 
-    end_frame = to_frame('00:10')
+    end_frame = to_frame('00:06')
 
     test_text_to_glyphs()
 
