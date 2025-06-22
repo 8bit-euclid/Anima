@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from functools import partial
 from anima.diagnostics.logger import logger
+from anima.globals.general import format_output
 from anima.latex.tex_document import TeXDocument, DEFAULT_FONT_SIZE
 
 TEX_POINT_TO_BL_UNIT = 0.005   # Length (in Blender units) of 1pt (in LaTeX)
@@ -129,14 +130,13 @@ class TeXDocumentProcessor:
         all_paths, all_attrs = svgtools.svg2paths(svg_file)
 
         # Create all unique Glyph objects
-        glyph_paths: GlyphPathsType = dict()
+        glyph_paths = GlyphPathsType()
         for path, attrs in zip(all_paths, all_attrs):
-            # print(attrs)
             gid = attrs['id']
             glyph_paths[gid] = path
 
         # Store the positions of the instances of each glyph.
-        glyph_positions: GlyphPositionsType = []
+        glyph_positions = GlyphPositionsType()
         tree = ET.parse(svg_file)
         root = tree.getroot()
         for use in root.findall('.//svg:use', SVG_NAMESPACE):
@@ -162,7 +162,3 @@ def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.Ca
         output = getattr(result, name, '')
         if output.strip():
             logger.debug(format_output(f"{command} {name}", output))
-
-
-def format_output(title: str, output: str) -> str:
-    return f"\n{title}:\n\n{output}\n"

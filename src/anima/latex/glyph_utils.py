@@ -9,6 +9,7 @@ from anima.primitives.mesh import Mesh
 
 @dataclass
 class GlyphBBox:
+    """Bounding box for a glyph. Units are in SVG points."""
     x_min: float = 0
     x_max: float = 0
     y_min: float = 0
@@ -16,7 +17,7 @@ class GlyphBBox:
 
 
 class Subpath:
-    """A subpath is a continuous and closed path of a glyph, which can consist of multiple curves."""
+    """A subpath is a continuous and closed portion of a glyph's path, which can consist of multiple curves."""
 
     def __init__(self, path: type[svgtools.Path]):
         """Initialize a subpath with a given svgtools Path object.
