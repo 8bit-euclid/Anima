@@ -4,6 +4,7 @@ import svgpathtools as svgtools
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from functools import partial
+from anima.diagnostics.logger import logger
 from anima.latex.tex_document import TeXDocument, DEFAULT_FONT_SIZE
 
 TEX_POINT_TO_BL_UNIT = 0.005   # Length (in Blender units) of 1pt (in LaTeX)
@@ -63,11 +64,11 @@ class TeXDocumentProcessor:
         tex_file = tex_path/f'{self._tex_name}.tex'
 
         # Write LaTeX content
-        if TEX_DEBUG_MODE:
-            print(f"Processing LaTeX content:\n{self._content}\n")
+        logger.debug(format_output("LaTeX document content", self._content))
         tex_file.write_text(self._content, encoding="utf-8")
 
         # Run lualatex to generate DVI
+        logger.info(f"Compiling TeX to DVI...")
         run_proc = partial(subprocess.run, cwd=tex_path,
                            capture_output=True, check=True, text=True)
         cmd = "lualatex"
@@ -86,6 +87,7 @@ class TeXDocumentProcessor:
         tex_path = self._tex_path
         svg_file = tex_path/f'{self._tex_name}.svg'
 
+        logger.info(f"Compiling DVI to SVG...")
         run_proc = partial(subprocess.run, cwd=tex_path,
                            capture_output=True, check=True, text=True)
         cmd = "dvisvgm"
@@ -108,10 +110,9 @@ class TeXDocumentProcessor:
         if not svg_file.exists():
             raise RuntimeError(f"SVG file '{svg_file}' not found. "
                                "Ensure that the DVI to SVG conversion was successful.")
-        if TEX_DEBUG_MODE:
-            # Print contents of the SVG file for debugging
-            with open(svg_file, 'r', encoding='utf-8') as f:
-                print(f"SVG file content:\n\n{f.read()}")
+        # Print contents of the SVG file for debugging
+        with open(svg_file, 'r', encoding='utf-8') as f:
+            logger.debug(format_output(f"SVG file content", f.read()))
         return svg_file
 
     def _extract_glyph_data(self) -> tuple[GlyphPathsType, GlyphPositionsType]:
@@ -123,12 +124,14 @@ class TeXDocumentProcessor:
         Raises:
             RuntimeError: If the SVG file cannot be processed or glyphs are not found.
         """
+        logger.info(f"Extracting glyph data from SVG...")
         svg_file = self._get_svg_file()
         all_paths, all_attrs = svgtools.svg2paths(svg_file)
 
         # Create all unique Glyph objects
         glyph_paths: GlyphPathsType = dict()
         for path, attrs in zip(all_paths, all_attrs):
+            # print(attrs)
             gid = attrs['id']
             glyph_paths[gid] = path
 
@@ -157,5 +160,9 @@ def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.Ca
 
     for name in ('stdout', 'stderr'):
         output = getattr(result, name, '')
-        if output and output.strip():
-            print(f"{command} {name}:\n{output}")
+        if output.strip():
+            logger.debug(format_output(f"{command} {name}", output))
+
+
+def format_output(title: str, output: str) -> str:
+    return f"\n{title}:\n\n{output}\n"
