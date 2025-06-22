@@ -344,6 +344,17 @@ def enable_print():
     sys.stderr = original_stderr
 
 
+def format_output(title: str, output: str) -> str:
+    """Format the output string with a title and the content.
+    Args:
+        title (str): The title of the output.
+        output (str): The content to format.
+    Returns:
+        str: The formatted output string.
+    """
+    return f"\n{title}:\n\n{output}\n"
+
+
 def has_instance_variable(obj, name):
     if not hasattr(obj, name):
         return False
