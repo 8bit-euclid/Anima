@@ -4,7 +4,7 @@ import svgpathtools as svgtools
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from functools import partial
-from anima.diagnostics.logger import logger
+from anima.diagnostics import logger
 from anima.globals.general import format_output
 from anima.latex.tex_document import TeXDocument, DEFAULT_FONT_SIZE
 

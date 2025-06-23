@@ -35,3 +35,7 @@ class Profiler():
         ps = pstats.Stats(self._prof, stream=stream).sort_stats(sortby)
         ps.print_stats()
         print(stream.getvalue())
+
+
+# Single instance for global access
+profiler = Profiler()
