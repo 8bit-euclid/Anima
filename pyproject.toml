@@ -2,10 +2,11 @@
 requires = ["setuptools>=65.0", "setuptools-scm[toml]>=8.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
+## Project configurations
 [project]
 name = "anima"
 dynamic = ["version"]
-requires-python = "==3.11.9" # Ensure this matches Blender's Python version below
+requires-python = "==3.11.9" # Ensure this matches Blender's Python version in the next section
 dependencies = [
    "scipy==1.15.3",
    "bpy==4.4.0",
@@ -17,9 +18,14 @@ dependencies = [
    "plastex==3.1",
 ]
 
+## Blender-specific configurations
 [tool.blender]
-python_path = "/home/niran90/Applications/blender/blender-4.3.2-linux-x64/4.3/python/bin/python3.11"
+root-dir = "/home/niran90/Applications/blender/blender-4.3.2-linux-x64"
 
+[tool.blender.python]
+version = "3.11.9"
+
+## Other tool configurations
 [tool.setuptools.packages.find]
 where = ["src"]
 
