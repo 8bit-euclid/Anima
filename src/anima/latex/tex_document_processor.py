@@ -65,7 +65,7 @@ class TeXDocumentProcessor:
         tex_file = tex_path/f'{self._tex_name}.tex'
 
         # Write LaTeX content
-        logger.debug(format_output("LaTeX document content", self._content))
+        logger.trace(format_output("LaTeX document content", self._content))
         tex_file.write_text(self._content, encoding="utf-8")
 
         # Run lualatex to generate DVI
@@ -113,7 +113,7 @@ class TeXDocumentProcessor:
                                "Ensure that the DVI to SVG conversion was successful.")
         # Print contents of the SVG file for debugging
         with open(svg_file, 'r', encoding='utf-8') as f:
-            logger.debug(format_output(f"SVG file content", f.read()))
+            logger.trace(format_output(f"SVG file content", f.read()))
         return svg_file
 
     def _extract_glyph_data(self) -> tuple[GlyphPathsType, GlyphPositionsType]:
@@ -161,4 +161,4 @@ def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.Ca
     for name in ('stdout', 'stderr'):
         output = getattr(result, name, '')
         if output.strip():
-            logger.debug(format_output(f"{command} {name}", output))
+            logger.trace(format_output(f"{command} {name}", output))
