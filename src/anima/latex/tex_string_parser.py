@@ -1,6 +1,6 @@
 import re
+from anima.diagnostics import logger
 from anima.globals.general import format_output
-from anima.diagnostics.logger import logger
 from anima.latex.tex_object import TeXObject
 from plasTeX.TeX import TeX
 

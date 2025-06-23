@@ -1,6 +1,5 @@
+from anima.diagnostics import profiler
 from anima.animation.updater import Updater
-from anima.diagnostics.profiler import Profiler
-from anima.globals.general import clip
 from anima.primitives.bezier_spline import BezierSpline
 from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.chains import CurveChain
@@ -115,7 +114,7 @@ def test_curve_joints(end_frame: int):
     p = Point()
     # chain.bias = 1
 
-    pf = Profiler()
+    pf = profiler
 
     def update(scene):
         # depsgraph = bpy.context.evaluated_depsgraph_get()
