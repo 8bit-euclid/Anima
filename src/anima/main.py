@@ -1,20 +1,25 @@
 import bpy
-from anima.diagnostics import logger
-from anima.globals.general import *
-from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
-from tests.visual_tests.test_latex import test_text_to_glyphs
+import sys
+from pathlib import Path
 
 
-def main():
+def configure_python_path():
+    """Add the project root and the src directory to the Python path."""
+    root_dir = Path(__file__).parent.parent.parent
+    src_dir = root_dir/'src'
+    sys.path.insert(0, str(root_dir))
+    sys.path.insert(0, str(src_dir))
+
+
+def configure_viewport():
     # Find and activate the 3D viewport
+    from anima.diagnostics import logger
     for window in bpy.context.window_manager.windows:
         for area in window.screen.areas:
             if area.type == 'VIEW_3D':
                 for region in area.regions:
                     if region.type == 'WINDOW':
                         override = {
-                            'window': window,
-                            'screen': window.screen,
                             'area': area,
                             'region': region,
                             'space_data': area.spaces.active if hasattr(area.spaces, "active") else area.spaces[0]
@@ -31,6 +36,17 @@ def main():
         else:
             continue
         break
+
+
+def main():
+    configure_python_path()
+    configure_viewport()
+
+    # Cannot import these at the top because the python path must be set first
+    from anima.diagnostics import logger
+    from anima.globals.general import clear_scene, to_frame, deselect_all, hide_relationship_lines, ebpy
+    from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
+    from tests.visual_tests.test_latex import test_text_to_glyphs
 
     logger.info("Blender is ready, starting visual tests...")
 
@@ -53,19 +69,10 @@ def main():
 
     # Preset viewpoint
     bpy.context.preferences.view.show_splash = False
-    # bpy.ops.view3d.view_axis(type='TOP')
 
     # Reset to first frame and play
     bpy.context.scene.frame_current = 1
     bpy.ops.screen.animation_play()
-
-
-# def main():
-#     """Main entry point for the script."""
-#     # Run the main function with a delay to ensure Blender is fully initialized
-#     bpy.app.timers.register(delayed_main, first_interval=1.0)
-
-#     # handlers.load_post.append(delayed_main)
 
 
 if __name__ == "__main__":
