@@ -1,13 +1,12 @@
 import sys
-import importlib
-# import tomllib
+import tomllib
 # import subprocess
 # import psutil
 # import os
 # import time
-# import functools
+import functools
+import subprocess
 from pathlib import Path
-# from anima.diagnostics import logger
 
 PROJECT_NAME = 'anima'
 TESTS_DIR = 'tests'
@@ -37,20 +36,12 @@ def run():
     #     # Clean up Blender if we started it
     #     cleanup_blender(bl_process)
 
-    configure_python_path()
     configure_reload()
 
     # Load and run the main module
-    proj = importlib.import_module(f'{PROJECT_NAME}.main')
-    proj.main()
-
-
-def configure_python_path():
-    """Add the project root and the src directory to the Python path."""
-    root_dir = Path(__file__).parent
-    src_dir = root_dir/'src'
-    sys.path.insert(0, str(root_dir))
-    sys.path.insert(0, str(src_dir))
+    bl_path: Path = get_blender_path()
+    script = Path('src')/'anima/main.py'
+    subprocess.run([str(bl_path), '--python', str(script)])
 
 
 def configure_reload():
@@ -75,23 +66,25 @@ def configure_reload():
 #     return False
 
 
-# @functools.lru_cache(maxsize=1)
-# def get_blender_path():
-#     """Get Blender executable path from project config."""
-#     try:
-#         with open('pyproject.toml', 'rb') as f:
-#             config = tomllib.load(f)
-#         bl_config = config.get('tool', {}).get('blender', {})
-#         root_dir = Path(bl_config.get('root-dir', ''))
-#         blender_path = root_dir / 'blender'
-#         if blender_path.exists():
-#             return str(blender_path)
-#     except Exception as e:
-#         logger.warning(f"Error reading Blender path from pyproject.toml: {e}")
-
-#     raise FileNotFoundError(
-#         "Blender executable not found. Please set the correct path in pyproject.toml."
-#     )
+@functools.lru_cache(maxsize=1)
+def get_blender_path() -> Path:
+    """Get Blender executable path from project config.
+    Returns:
+        Path: The path to the Blender executable.
+    Raises:
+        FileNotFoundError: If Blender path is not found in pyproject.toml."""
+    try:
+        with open('pyproject.toml', 'rb') as f:
+            config = tomllib.load(f)
+        bl_config = config.get('tool', {}).get('blender', {})
+        root_dir = Path(bl_config.get('root-dir', ''))
+        blender_path = root_dir / 'blender'
+        if blender_path.exists():
+            return blender_path
+    except Exception as e:
+        raise FileNotFoundError(
+            f"Blender executable not found. Error: {e}"
+        )
 
 
 # def start_blender_window(blender_path):
