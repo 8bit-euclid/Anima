@@ -1,52 +1,28 @@
-import bpy
+# fmt: off
+# Add the project root and the src directory to the Python path
 import sys
 from pathlib import Path
+pkg_dir = Path(__file__).parent  # src/anima/
+src_dir = pkg_dir.parent         # src/
+proj_root = src_dir.parent       # project root
 
+paths_to_add = [str(proj_root), str(src_dir)]
+for path in paths_to_add:
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
-def configure_python_path():
-    """Add the project root and the src directory to the Python path."""
-    root_dir = Path(__file__).parent.parent.parent
-    src_dir = root_dir/'src'
-    sys.path.insert(0, str(root_dir))
-    sys.path.insert(0, str(src_dir))
-
-
-def configure_viewport():
-    # Find and activate the 3D viewport
-    from anima.diagnostics import logger
-    for window in bpy.context.window_manager.windows:
-        for area in window.screen.areas:
-            if area.type == 'VIEW_3D':
-                for region in area.regions:
-                    if region.type == 'WINDOW':
-                        override = {
-                            'area': area,
-                            'region': region,
-                            'space_data': area.spaces.active if hasattr(area.spaces, "active") else area.spaces[0]
-                        }
-                        logger.debug(
-                            "Found 3D viewport. Setting context override...")
-                        with bpy.context.temp_override(**override):
-                            if bpy.ops.view3d.view_axis.poll():
-                                bpy.ops.view3d.view_axis(type='TOP')
-                                logger.debug(
-                                    "Successfully set 3D viewport to top view")
-                        break
-                break
-        else:
-            continue
-        break
+# Now import modules as usual
+import bpy
+from anima.diagnostics import logger
+from anima.globals.general import clear_scene, to_frame, deselect_all, hide_relationship_lines, ebpy
+from anima.utils.blender_utils import configure_blender_viewport
+from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
+from tests.visual_tests.test_latex import test_text_to_glyphs
+# fmt: on
 
 
 def main():
-    configure_python_path()
-    configure_viewport()
-
-    # Cannot import these at the top because the python path must be set first
-    from anima.diagnostics import logger
-    from anima.globals.general import clear_scene, to_frame, deselect_all, hide_relationship_lines, ebpy
-    from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
-    from tests.visual_tests.test_latex import test_text_to_glyphs
+    configure_blender_viewport()
 
     logger.info("Blender is ready, starting visual tests...")
 
