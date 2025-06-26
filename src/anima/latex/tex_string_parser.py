@@ -15,7 +15,7 @@ SPACING_COMMANDS = {
 
 
 class TeXStringParser:
-    """Parser wrapped around the plasTeX Latex walker."""
+    """Parser wrapped around the plasTeX Latex node walker."""
 
     def __init__(self, text: str, math_mode: bool = False):
         """Initialize the TeX parser with regex patterns.

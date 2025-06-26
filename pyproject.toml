@@ -20,13 +20,11 @@ dependencies = [
 
 ## Blender-specific configurations
 [tool.blender]
-root-dir = "/home/niran90/Applications/blender/blender-4.3.2-linux-x64"
+root-dir = "~/Applications/blender/blender-4.3.2-linux-x64"
 
 ## Other tool configurations
-[tool.setuptools.packages.find]
-where = ["src"]
-
 [tool.setuptools]
+packages.find.where = ["src"]
 package-dir = { "" = "src" }
 
 [tool.setuptools_scm]
