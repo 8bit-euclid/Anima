@@ -12,17 +12,6 @@ PROJECT_NAME = 'anima'
 TESTS_DIR = 'tests'
 
 
-def configure_reload():
-    """Configure the script to auto-reload modules when changes are made."""
-    # Delete all project-related modules from sys.modules
-    modules_to_delete = [
-        module_name for module_name in sys.modules.keys()
-        if module_name.startswith(PROJECT_NAME) or module_name.startswith(TESTS_DIR)
-    ]
-    for module_name in modules_to_delete:
-        del sys.modules[module_name]
-
-
 @functools.lru_cache(maxsize=1)
 def get_blender_executable_path() -> Path:
     """Get Blender executable path from project config.
@@ -58,16 +47,17 @@ def check_blender_run_status() -> tuple[bool, subprocess.Popen | None]:
     return False, None
 
 
-def get_running_blender_process() -> subprocess.Popen:
+def get_running_blender_process() -> tuple[subprocess.Popen, bool]:
     """Start Blender if not already running and return the running process.
     Returns:
-        subprocess.Popen: The running Blender process.
+        tuple[subprocess.Popen, bool]: The Blender process and a boolean indicating if an already running Blender instance was found (requiring script reload).
     """
-    is_running, proc = check_blender_run_status()
-    if is_running:
-        logger.info(f"Found running Blender instance (pid: {proc.pid})")
-        return proc
-    return start_blender_instance()
+    running, proc = check_blender_run_status()
+    if running:
+        logger.debug(f"Found running Blender instance (pid: {proc.pid})")
+    else:
+        proc = start_blender_instance()
+    return proc, running
 
 
 def start_blender_instance() -> subprocess.Popen:
@@ -96,9 +86,10 @@ def start_blender_instance() -> subprocess.Popen:
                 f"Blender failed to start with error: {stderr}"
             )
 
-        is_running, proc = check_blender_run_status()
+        # Verify that Blender is running, and start output monitoring
+        running, proc = check_blender_run_status()
         assert proc.pid == process.pid, "Started Blender process ID mismatch"
-        if is_running:
+        if running:
             logger.info(f"Blender started (pid: {process.pid})")
             start_output_monitoring(process)
             return process
@@ -114,27 +105,23 @@ def start_blender_instance() -> subprocess.Popen:
 def start_output_monitoring(process):
     """Start threads to monitor Blender output"""
 
-    def read_stream(stream, stream_name):
+    def read_stream(stream):
         try:
             while True:
                 line = stream.readline()
                 if not line:  # Empty string means EOF
                     break
-                print(f"[{stream_name}] {line.rstrip()}")
+                print(f"{line.rstrip()}")
         except Exception as e:
-            logger.error(f"Error reading {stream_name}: {e}")
+            logger.error(f"Error reading line: {e}")
 
     threads = []
-    streams = [
-        (process.stdout, "STDOUT"),
-        (process.stderr, "STDERR")
-    ]
-
-    for stream, name in streams:
+    streams = [process.stdout, process.stderr]
+    for stream in streams:
         if stream:  # Check if stream exists
             t = threading.Thread(
                 target=read_stream,
-                args=(stream, name),
+                args=(stream,),
                 daemon=True
             )
             t.start()
@@ -150,7 +137,7 @@ def cleanup_blender_instance(bl_process: subprocess.Popen):
     """
     if bl_process:
         try:
-            logger.info(f"Stopping Blender process (PID: {bl_process.pid})")
+            logger.info(f"Stopping Blender process (pid: {bl_process.pid})")
             bl_process.terminate()
 
             # Wait for graceful shutdown
@@ -168,6 +155,8 @@ def cleanup_blender_instance(bl_process: subprocess.Popen):
 
 def reload_project_in_blender():
     """Reload main.py in the already running Blender instance using Blender's - -python-expr via command line."""
+    configure_reload()
+
     # Find the running Blender process
     for proc in psutil.process_iter(['pid', 'name']):
         try:
@@ -192,3 +181,14 @@ def reload_project_in_blender():
         logger.info("Reloaded main.py in running Blender instance.")
     except Exception as e:
         logger.error(f"Failed to reload main.py in running Blender: {e}")
+
+
+def configure_reload():
+    """Configure the script to auto-reload modules when changes are made."""
+    # Delete all project-related modules from sys.modules
+    modules_to_delete = [
+        module_name for module_name in sys.modules.keys()
+        if module_name.startswith(PROJECT_NAME) or module_name.startswith(TESTS_DIR)
+    ]
+    for module_name in modules_to_delete:
+        del sys.modules[module_name]

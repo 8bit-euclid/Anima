@@ -17,27 +17,27 @@ from anima.utils.run_utils import (get_running_blender_process,
 
 def run():
     """Run the main module of the project."""
-    configure_reload()
-
-    bl_proc = None  # Blender process handle
+    bl_proc = None
     try:
-        # Ensure Blender is running with GUI before executing the main script
-        bl_proc = get_running_blender_process()
-
-        if not bl_proc:
-            # Blender is already running, so reload main.py in the running instance
+        bl_proc, reload = get_running_blender_process()
+        if reload:
             reload_project_in_blender()
-
-    except KeyboardInterrupt:
-        logger.info("Script interrupted by user")
-
     except Exception as e:
         logger.error(f"Error running script: {e}")
+        if bl_proc:
+            cleanup_blender_instance(bl_proc)
         raise
 
-    # finally:
-    #     # Clean up Blender if we started it
-    #     cleanup_blender_instance(bl_proc)
+    try:
+        logger.info("Monitoring Blender output... Press Ctrl+C to stop")
+        bl_proc.wait()  # blocks until Blender exits
+        logger.info(f"Blender process {bl_proc.pid} has ended")
+
+    except KeyboardInterrupt:
+        pass
+
+    finally:
+        cleanup_blender_instance(bl_proc)
 
 
 if __name__ == '__main__':
