@@ -78,19 +78,6 @@ def start_blender_instance() -> subprocess.Popen:
         FileNotFoundError: If Blender executable is not found.
         subprocess.SubprocessError: If there is an error starting Blender."""
     try:
-
-        root_dir = get_project_root_path()
-        src_dir = root_dir / 'src'
-
-        env = os.environ.copy()
-        pypath = env.get('PYTHONPATH', '')
-        new_paths = [str(root_dir), str(src_dir)]
-
-        if pypath:
-            env['PYTHONPATH'] = os.pathsep.join(new_paths + [pypath])
-        else:
-            env['PYTHONPATH'] = os.pathsep.join(new_paths)
-
         # Start Blender with GUI (no --background flag)
         bl_path = get_blender_executable_path()
         main_path = get_main_file_path()
@@ -100,8 +87,7 @@ def start_blender_instance() -> subprocess.Popen:
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE,
                                    text=True,
-                                   bufsize=1,
-                                   env=env)
+                                   bufsize=1)
 
         # Check if it's already dead (immediate failure)
         if process.poll() is not None and process.returncode != 0:
