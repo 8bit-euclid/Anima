@@ -6,7 +6,7 @@ from anima.diagnostics import logger
 
 
 @functools.lru_cache(maxsize=1)
-def get_project_root(marker: str = '.git') -> Path:
+def get_project_root_path(marker: str = '.git') -> Path:
     """Find the root directory of the project by looking for a 'marker' file.
     Args:
         marker (str): The name of the file that indicates the project root (default is '.git').
@@ -30,7 +30,7 @@ def get_main_file_path() -> Path:
     Raises:
         FileNotFoundError: If main.py does not exist in the expected location.
     """
-    project_root = get_project_root()
+    project_root = get_project_root_path()
     main_path = project_root/'src'/'anima'/'main.py'
     if not main_path.exists():
         raise FileNotFoundError(f"Main file not found: {main_path}")

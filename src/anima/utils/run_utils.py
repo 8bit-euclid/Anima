@@ -5,7 +5,7 @@ import psutil
 import functools
 import subprocess
 from pathlib import Path
-from anima.utils.project_utils import get_main_file_path, get_project_root, get_pyproject_config_value
+from anima.utils.project_utils import get_main_file_path, get_project_root_path, get_pyproject_config_value
 from anima.diagnostics.logger import logger
 
 PROJECT_NAME = 'anima'
@@ -79,7 +79,7 @@ def start_blender_instance() -> subprocess.Popen:
         subprocess.SubprocessError: If there is an error starting Blender."""
     try:
 
-        root_dir = get_project_root()
+        root_dir = get_project_root_path()
         src_dir = root_dir / 'src'
 
         env = os.environ.copy()
