@@ -15,9 +15,9 @@ ANIMA
 ## Prerequisites
 
 - [GNU Make](https://www.gnu.org/software/make/) (for building and testing)
+- [Python 3.10+](https://www.python.org/downloads/)
 - [Blender](https://www.blender.org/download/) (4.0+ recommended)
 - [Visual Studio Code](https://code.visualstudio.com/)
-- [Blender Development Extension](https://marketplace.visualstudio.com/items?itemName=JacquesLucke.blender-development)
 
 ## Installation
 
@@ -28,24 +28,25 @@ git clone https://github.com/8bit-euclid/Anima.git
 cd Anima
 ```
 
-### 2. Install the Blender Development Extension in VSCode
+### 2. Set the Blender Python path
 
-### 3. Set the Blender Python path
-
-Ensure you have the Blender Python executable available. This is located in the Blender installation directory, e.g. `blender/4.x/python/bin/python3.x`. Open the `pyproject.toml` file and set the `python_path` under the `[tool.blender]` section to your Blender Python executable. For example:
+Ensure you have the Blender Python executable available. This is located in the Blender installation directory, e.g. `blender/4.x/python/bin/python3.x`. In the `pyproject.toml` file, set the `root-dir` under the `[tool.blender]` section to your Blender directory:
 
 ```toml
 [tool.blender]
-python_path = "/path/to/blender/python"
+root-dir = "/path/to/blender/directory"
 ```
 
-### 4. Build the Project
+> **Note:** Unless renamed, the Blender directory will be akin to `blender-4.3.2-linux-x64` on Linux.
+
+### 3. Build the Project
 
 ```bash
 make build
 ```
 
-### 5. Install Blender Dependencies
+### 4. Install Blender Dependencies
+
 The same dependencies are used for both the Blender Python environment and the Anima development environment. To install the required dependencies in the former, run:
 
 ```bash
@@ -54,7 +55,7 @@ make install-blender-deps
 
 > **Note:** If you add or change dependencies in `pyproject.toml`, you must run `make install-blender-deps` again.
 
-### 6. Run Tests
+### 5. Run Tests
 
 Verify the installation by running:
 
@@ -65,6 +66,10 @@ make test
 ## Running Anima with Blender
 
 To start Blender using the **Blender Development** extension in Visual Studio Code:
+
+```bash
+make run
+```
 
 1. Open the Anima project folder in VSCode and navigate to the `run.py` file.
 2. Select **Blender: Start** from the command palette (`Ctrl+Shift+P` → "Blender: Start").

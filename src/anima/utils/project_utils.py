@@ -6,6 +6,14 @@ from anima.diagnostics import logger
 
 
 @functools.lru_cache(maxsize=1)
+def get_project_name() -> str:
+    """Get the project name from the pyproject.toml file.
+    Returns:
+        str: The project name."""
+    return get_pyproject_config_value('project.name', default='Unknown')
+
+
+@functools.lru_cache(maxsize=1)
 def get_project_root_path(marker: str = '.git') -> Path:
     """Find the root directory of the project by looking for a 'marker' file.
     Args:
@@ -69,3 +77,14 @@ def get_pyproject_config_value(key_path: str, default=None):
         else:
             return default
     return value
+
+
+def configure_project_reload():
+    """Configure the script to auto-reload modules when changes are made."""
+    # Delete all project-related modules from sys.modules
+    modules_to_delete = [
+        module_name for module_name in sys.modules.keys()
+        if module_name.startswith(get_project_name()) or module_name.startswith('tests')
+    ]
+    for module_name in modules_to_delete:
+        del sys.modules[module_name]
