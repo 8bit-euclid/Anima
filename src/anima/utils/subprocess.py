@@ -21,17 +21,10 @@ class SubprocessManager:
                 [bl_path(), '--window-maximized', '--python', self._script_path],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                # stderr=subprocess.PIPE,  # Merge stderr into stdout
                 stderr=subprocess.STDOUT,  # Merge stderr into stdout
-                universal_newlines=True,
                 text=True,
-                bufsize=1  # Unbuffered for real-time output
+                bufsize=1
             )
-
-            # self._process = subprocess.run(
-            #     [bl_path, '--window-maximized', '--python', self._script_path],
-            #     text=True
-            # )
 
             logger.info(f"Blender started (pid: {self.process.pid})")
             return True

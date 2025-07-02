@@ -69,6 +69,7 @@ class BlenderProcess:
 
         except KeyboardInterrupt:
             logger.info("Stopping monitoring...")
+
         finally:
             self._cleanup()
 
