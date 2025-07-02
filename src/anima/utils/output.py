@@ -18,7 +18,7 @@ class BlenderOutputMonitor:
         self._monitoring = True
         self._thread = threading.Thread(
             target=self._read_stream,
-            args=(process.stdout,),
+            args=(process.stdout,),  # stderr is already merged into stdout
             daemon=True
         )
         self._thread.start()
@@ -36,13 +36,8 @@ class BlenderOutputMonitor:
                 line = stream.readline()
                 if not line:  # EOF
                     break
-
-                # Clean the line of control characters and extra whitespace
-                cleaned_line = self._clean_line(line)
-
-                if cleaned_line:  # Only log non-empty lines
-                    print(f"Blender: {cleaned_line}")
-                    # print(cleaned_line)
+                # Print the raw line for real-time output
+                print(line.rstrip())
 
         except Exception as e:
             if self._monitoring:
@@ -52,17 +47,3 @@ class BlenderOutputMonitor:
                 stream.close()
             except:
                 pass
-
-    def _clean_line(self, line: str) -> str:
-        """Clean a line of control characters and normalize whitespace."""
-        # Remove common control characters
-        cleaned = line.replace('\r', '').replace('\b', '')
-
-        # Strip leading/trailing whitespace
-        cleaned = cleaned.strip()
-
-        # Replace multiple consecutive spaces with single spaces
-        import re
-        cleaned = re.sub(r'\s+', ' ', cleaned)
-
-        return cleaned
