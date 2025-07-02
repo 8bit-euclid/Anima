@@ -8,7 +8,7 @@ from typing import Iterable
 from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
 import anima.globals.easybpy as ebpy
-from anima.utils.project_utils import get_project_root_path
+from anima.utils.project import get_project_root_path
 
 
 UnitZ = Vector((0.0, 0.0, 1.0))

@@ -1,9 +1,10 @@
-from anima.utils.blender_utils import BlenderProcess
+from anima.utils.blender import BlenderProcess
 
 
 def run():
-    BlenderProcess().initialize()\
-                    .monitor()
+    bp = BlenderProcess()
+    bp.start()
+    bp.monitor()
 
 
 if __name__ == '__main__':

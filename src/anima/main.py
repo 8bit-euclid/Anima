@@ -14,8 +14,8 @@ for path in paths_to_add:
 # Now import modules as usual
 import bpy
 from anima.diagnostics import logger
+from anima.utils.blender import configure_blender_viewport
 from anima.globals.general import clear_scene, to_frame, deselect_all, hide_relationship_lines, ebpy
-from anima.utils.blender_utils import configure_blender_viewport
 from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
 from tests.visual_tests.test_latex import test_text_to_glyphs
 # fmt: on
