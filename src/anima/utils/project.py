@@ -61,6 +61,7 @@ def get_pyproject_config() -> dict:
         return {}
 
 
+@functools.lru_cache()
 def get_pyproject_config_value(key_path: str, default=None):
     """Retrieve a value from pyproject.toml using a dotted key path.
     Args:
