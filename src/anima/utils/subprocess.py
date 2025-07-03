@@ -8,7 +8,7 @@ class SubprocessManager:
     """Manages the Blender subprocess lifecycle."""
 
     def __init__(self, script_path: Path = None):
-        self._process: subprocess.Popen | None = None
+        self._subprocess: subprocess.Popen | None = None
         self._script_path: Path = script_path or get_main_file_path()
 
     def start(self) -> bool:
@@ -17,7 +17,7 @@ class SubprocessManager:
             from anima.utils.blender import get_blender_executable_path as bl_path
             logger.info(f"Starting Blender from: {bl_path()}")
 
-            self._process = subprocess.Popen(
+            self._subprocess = subprocess.Popen(
                 [bl_path(), '--window-maximized', '--python', self._script_path],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
@@ -26,38 +26,38 @@ class SubprocessManager:
                 bufsize=1
             )
 
-            logger.info(f"Blender started (pid: {self.process.pid})")
+            logger.info(f"Blender started (pid: {self.subprocess.pid})")
             return True
 
         except Exception as e:
             logger.error(f"Could not start Blender: {e}")
-            self._process = None
+            self._subprocess = None
             return False
 
     def running(self) -> bool:
         """Check if process is running."""
-        return (self.process is not None and self.process.poll() is None)
+        return (self.subprocess is not None and self.subprocess.poll() is None)
 
     def cleanup(self) -> None:
         """Clean up the process."""
-        if self.process:
+        if self.subprocess:
             try:
                 logger.info(
-                    f"Stopping Blender process (pid: {self.process.pid})")
-                self.process.terminate()
+                    f"Terminating subprocess (pid: {self.subprocess.pid})")
+                self.subprocess.terminate()
 
                 try:
-                    self.process.wait(timeout=5)
+                    self.subprocess.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     logger.warning(
-                        "Blender didn't terminate gracefully, forcing kill")
-                    self.process.kill()
+                        "Subprocess didn't terminate gracefully, forcing kill")
+                    self.subprocess.kill()
             except (ProcessLookupError, AttributeError):
                 pass
             finally:
-                self._process = None
+                self._subprocess = None
 
     @property
-    def process(self) -> subprocess.Popen | None:
+    def subprocess(self) -> subprocess.Popen | None:
         """Get the current process."""
-        return self._process
+        return self._subprocess
