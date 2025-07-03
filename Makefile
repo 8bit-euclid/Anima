@@ -1,8 +1,9 @@
-.PHONY: build run test install-blender-deps
+.PHONY: install run test
 
-# Build the project and install dependencies
-build:
+# Install the project and its dependencies
+install:
 	pip install -e .
+	python scripts/install_blender_dependencies.py
 
 # Run the project
 run:
@@ -11,8 +12,5 @@ run:
 # Run tests using pytest
 test:
 	PYTHONPATH=. pytest --verbose --disable-warnings
-
-# Install dependencies in pyproject.toml in Blender's Python environment
-install-blender-deps:
-	python scripts/install_blender_dependencies.py
+	
 
