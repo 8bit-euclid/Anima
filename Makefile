@@ -1,4 +1,4 @@
-.PHONY: install install-ci run test
+.PHONY: install run test
 
 # Install the project and its dependencies
 install:
