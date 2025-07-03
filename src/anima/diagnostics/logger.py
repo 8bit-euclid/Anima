@@ -2,7 +2,7 @@ import os
 import sys
 from loguru import logger
 
-LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "TRACE")
+LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
 
 # Remove default handler
 logger.remove()
