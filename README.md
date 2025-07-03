@@ -39,21 +39,13 @@ root-dir = "/path/to/blender/directory"
 
 > **Note:** Unless renamed, the Blender directory will be akin to `blender-4.3.2-linux-x64` on Linux.
 
-### 3. Build the Project
+### 3. Install the Project
 
 ```bash
-make build
+make install
 ```
 
-### 4. Install Blender Dependencies
-
-The same dependencies are used for both the Blender Python environment and the Anima development environment. To install the required dependencies in the former, run:
-
-```bash
-make install-blender-deps
-```
-
-> **Note:** If you add or change dependencies in `pyproject.toml`, you must run `make install-blender-deps` again.
+> **Note:** If you add or change dependencies in `pyproject.toml`, you must run `make install` again. This ensures that the dependencies are installed in Blender's Python environment as well.
 
 ### 5. Run Tests
 
