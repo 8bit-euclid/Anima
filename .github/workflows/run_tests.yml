@@ -25,6 +25,8 @@ jobs:
 
     - name: Install the anima package
       run: make install
+      env:
+        SKIP_BLENDER_DEPS: 1
 
     - name: Run tests
       run: make test
