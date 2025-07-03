@@ -4,8 +4,7 @@ import svgpathtools as svgtools
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from functools import partial
-from anima.diagnostics import logger
-from anima.globals.general import format_output
+from anima.diagnostics import logger, format_output
 from anima.latex.tex_document import TeXDocument, DEFAULT_FONT_SIZE
 
 TEX_POINT_TO_BL_UNIT = 0.005   # Length (in Blender units) of 1pt (in LaTeX)
@@ -70,8 +69,13 @@ class TeXDocumentProcessor:
 
         # Run lualatex to generate DVI
         logger.info(f"Compiling TeX to DVI...")
-        run_proc = partial(subprocess.run, cwd=tex_path,
-                           capture_output=True, check=True, text=True)
+        run_proc = partial(subprocess.run,
+                           cwd=tex_path,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           #    capture_output=True,
+                           check=True,
+                           text=True)
         cmd = "lualatex"
         try:
             res = run_proc([cmd, "-interaction=nonstopmode",
@@ -89,8 +93,13 @@ class TeXDocumentProcessor:
         svg_file = tex_path/f'{self._tex_name}.svg'
 
         logger.info(f"Compiling DVI to SVG...")
-        run_proc = partial(subprocess.run, cwd=tex_path,
-                           capture_output=True, check=True, text=True)
+        run_proc = partial(subprocess.run,
+                           cwd=tex_path,
+                           stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT,
+                           #    capture_output=True,
+                           check=True,
+                           text=True)
         cmd = "dvisvgm"
         try:
             dvi_file = tex_path/f'{self._tex_name}.dvi'
@@ -158,7 +167,6 @@ def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.Ca
     if isinstance(result, subprocess.CompletedProcess) and not TEX_DEBUG_MODE:
         return
 
-    for name in ('stdout', 'stderr'):
-        output = getattr(result, name, '')
-        if output.strip():
-            logger.trace(format_output(f"{command} {name}", output))
+    output = getattr(result, "stdout", '')
+    if output.rstrip():
+        logger.trace(format_output(f"{command.capitalize()} output", output))
