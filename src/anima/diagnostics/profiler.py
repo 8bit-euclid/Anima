@@ -18,21 +18,21 @@ class Profiler():
 
     def __init__(self):
         """Initialize the Profiler instance and underlying cProfile.Profile object."""
-        self._prof = cProfile.Profile()
+        self._profiler = cProfile.Profile()
 
     def enable(self):
         """Start collecting profiling data."""
-        self._prof.enable()
+        self._profiler.enable()
 
     def disable(self):
         """Stop collecting profiling data."""
-        self._prof.disable()
+        self._profiler.disable()
 
     def print_stats(self):
         """Print the collected profiling statistics, sorted by internal time."""
         stream = io.StringIO()
         sortby = SortKey.TIME
-        ps = pstats.Stats(self._prof, stream=stream).sort_stats(sortby)
+        ps = pstats.Stats(self._profiler, stream=stream).sort_stats(sortby)
         ps.print_stats()
         print(stream.getvalue())
 
