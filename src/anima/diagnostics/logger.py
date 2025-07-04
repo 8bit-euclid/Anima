@@ -2,15 +2,23 @@ import os
 import sys
 from loguru import logger
 
-LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
+LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "TRACE")
 
 # Remove default handler
 logger.remove()
 
+# Configure custom color for log levels
+logger.level("INFO", color="<light-green>")
+logger.level("WARNING", color="<yellow>")
+logger.level("DEBUG", color="<white>")
+logger.level("TRACE", color="<cyan>")
+logger.level("ERROR", color="<bold><red>")
+logger.level("CRITICAL", color="<bold><red>")
+
 timestamp = "<green>{time:HH:mm:ss.SSS}</green>"
 log_level = "<level>{level: <5}</level>"
-file_name = "<cyan>{file.name: <25}</cyan>"
-line_number = "<cyan>{line: <3}</cyan>"
+file_name = "<light-blue>{file.name: <25}</light-blue>"
+line_number = "<light-blue>{line: <3}</light-blue>"
 message = "<level>{message}</level>"
 
 # Add structured handler with good formatting
