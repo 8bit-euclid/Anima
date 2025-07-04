@@ -8,7 +8,7 @@ LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
 logger.remove()
 
 # Configure custom color for log levels
-logger.level("INFO", color="<light-green>")
+logger.level("INFO", color="<light-blue>")
 logger.level("WARNING", color="<bold><yellow>")
 logger.level("DEBUG", color="<white>")
 logger.level("TRACE", color="<cyan>")
@@ -17,8 +17,8 @@ logger.level("CRITICAL", color="<bold><red>")
 
 timestamp = "<green>{time:HH:mm:ss.SSS}</green>"
 log_level = "<level>{level: <7}</level>"
-file_name = "<blue>{file.name: >25}</blue>"
-line_number = "<light-blue>{line: <3}</light-blue>"
+file_name = "<green>{file.name: >25}</green>"
+line_number = "<light-green>{line: <3}</light-green>"
 message = "<level>{message}</level>"
 
 # Add structured handler with good formatting
