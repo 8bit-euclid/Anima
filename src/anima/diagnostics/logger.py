@@ -9,14 +9,14 @@ logger.remove()
 
 # Configure custom color for log levels
 logger.level("INFO", color="<light-green>")
-logger.level("WARNING", color="<yellow>")
+logger.level("WARNING", color="<bold><yellow>")
 logger.level("DEBUG", color="<white>")
 logger.level("TRACE", color="<cyan>")
 logger.level("ERROR", color="<bold><red>")
 logger.level("CRITICAL", color="<bold><red>")
 
 timestamp = "<green>{time:HH:mm:ss.SSS}</green>"
-log_level = "<level>{level: <5}</level>"
+log_level = "<level>{level: <7}</level>"
 file_name = "<blue>{file.name: >25}</blue>"
 line_number = "<light-blue>{line: <3}</light-blue>"
 message = "<level>{message}</level>"
