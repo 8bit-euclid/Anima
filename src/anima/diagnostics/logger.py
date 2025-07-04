@@ -2,7 +2,7 @@ import os
 import sys
 from loguru import logger
 
-LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "TRACE")
+LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
 
 # Remove default handler
 logger.remove()
@@ -24,8 +24,8 @@ message = "<level>{message}</level>"
 # Add structured handler with good formatting
 logger.add(
     sys.stderr,
-    format=timestamp + " | " + log_level + " | " +
-    file_name + " | " + line_number + " | " + message,
+    format=timestamp + " " + log_level + " " +
+    file_name + " " + line_number + " " + message,
     level=LOG_LEVEL,
     colorize=True,
     backtrace=True,
