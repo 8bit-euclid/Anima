@@ -17,7 +17,7 @@ logger.level("CRITICAL", color="<bold><red>")
 
 timestamp = "<green>{time:HH:mm:ss.SSS}</green>"
 log_level = "<level>{level: <5}</level>"
-file_name = "<light-blue>{file.name: <25}</light-blue>"
+file_name = "<blue>{file.name: >25}</blue>"
 line_number = "<light-blue>{line: <3}</light-blue>"
 message = "<level>{message}</level>"
 
@@ -25,7 +25,7 @@ message = "<level>{message}</level>"
 logger.add(
     sys.stderr,
     format=timestamp + " " + log_level + " " +
-    file_name + " " + line_number + " " + message,
+    file_name + ":" + line_number + " " + message,
     level=LOG_LEVEL,
     colorize=True,
     backtrace=True,
