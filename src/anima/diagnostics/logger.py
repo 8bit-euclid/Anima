@@ -19,7 +19,7 @@ logger.level("CRITICAL", color="<bold><red>")
 timestamp = "<green>{time:HH:mm:ss.SSS}</green>"
 level = "<level>{level: <7}</level>"
 proc_id = "<light-blue>{process.id: >5}</light-blue>"
-thread_id = "<light-blue>{thread.id!s:>5.5}</light-blue>"  # Last 5 digits only
+thread_id = "<light-blue>{extra[thread_id_short]: >5}</light-blue>"
 func_name = "<light-blue>{function: >26}</light-blue>" if SHOW_FUNCTION else ""
 file_name = "<green>{file.name: >25}</green>"
 line_number = "<light-green>{line: <3}</light-green>"
@@ -31,6 +31,14 @@ file_line = file_name + ":" + line_number
 format = " ".join([timestamp, level, proc_thread,
                   func_name, file_line, message])
 
+
+def shorten_thread_id(record: dict) -> bool:
+    """Add shortened thread ID to record extras"""
+    thread_id = record["thread"].id
+    record["extra"]["thread_id_short"] = str(thread_id)[-5:].zfill(5)
+    return True
+
+
 # Add structured handler with good formatting
 logger.add(
     sys.stderr,
@@ -38,7 +46,8 @@ logger.add(
     level=LOG_LEVEL,
     colorize=True,
     backtrace=True,
-    diagnose=True
+    diagnose=True,
+    filter=shorten_thread_id
 )
 
 
