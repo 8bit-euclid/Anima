@@ -101,7 +101,7 @@ The logger can be configured using environment variables:
 Import and use the logger in your code:
 
 ```python
-from anima.diagnostics import logger
+from anima.diagnostics import logger, format_output
 
 # Basic logging examples
 logger.trace("This is a trace message")
@@ -111,7 +111,6 @@ logger.warning("Texture not found, using default")
 logger.error("Failed to load mesh")
 
 # Format output with title
-from anima.diagnostics import format_output
 output = format_output("Render Settings", "Resolution: 1920x1080\nSamples: 128")
 logger.info(output)
 ```
