@@ -81,8 +81,59 @@ To streamline step 5, you can assign a custom key binding (e.g., `Ctrl+Shift+B`)
 
 Now, you can quickly hot-reload recent changes in Blender using your chosen shortcut.
 
+## Logging
+
+Anima includes a built-in logging system powered by [loguru](https://loguru.readthedocs.io/) that provides structured, colorized output for debugging and monitoring.
+
+### Configuration
+
+The logger can be configured using environment variables:
+
+- `ANIMA_LOG_LEVEL`: Set the logging level (default: `DEBUG`)
+  - Options: `TRACE`, `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+- `ANIMA_LOG_SHOW_FUNCTION`: Show function names in logs (default: `0`)
+  - Set to `1` to enable
+- `ANIMA_LOG_SHOW_PROCESS_INFO`: Show process and thread IDs (default: `0`)
+  - Set to `1` to enable
+
+### Usage
+
+Import and use the logger in your code:
+
+```python
+from anima.diagnostics import logger
+
+# Basic logging examples
+logger.trace("This is a trace message")
+logger.info("Animation started")
+logger.debug("Processing curve data")
+logger.warning("Texture not found, using default")
+logger.error("Failed to load mesh")
+
+# Format output with title
+from anima.diagnostics import format_output
+output = format_output("Render Settings", "Resolution: 1920x1080\nSamples: 128")
+logger.info(output)
+```
+
+To configure logging behavior, set the environment variables before running Anima.
+
+On **Linux/macOS**:
+
+```bash
+export ANIMA_LOG_LEVEL=INFO
+export ANIMA_LOG_SHOW_FUNCTION=1
+make run
+```
+
+Alternatively, set them immediately before the run command:
+
+```bash
+ANIMA_LOG_LEVEL=INFO ANIMA_LOG_SHOW_FUNCTION=1 make run
+```
+
 ## Status
 
-This project is a work in progress. Usage instructions and examples will be added as development continues.
+This project is a work in progress. Usage instructions and examples will be sporadically added as development progresses.
 
 ---
