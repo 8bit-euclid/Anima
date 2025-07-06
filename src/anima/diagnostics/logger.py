@@ -4,11 +4,10 @@ from loguru import logger
 
 LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
 SHOW_FUNCTION = os.getenv("ANIMA_LOG_SHOW_FUNCTION", "0") == "1"
-
-# Remove default handler
-logger.remove()
+SHOW_PROCESS_INFO = os.getenv("ANIMA_LOG_SHOW_PROCESS_INFO", "1") == "1"
 
 # Configure custom color for log levels
+logger.remove()  # Remove default handler
 logger.level("INFO", color="<light-blue>")
 logger.level("WARNING", color="<bold><yellow>")
 logger.level("DEBUG", color="<white>")
@@ -16,15 +15,21 @@ logger.level("TRACE", color="<cyan>")
 logger.level("ERROR", color="<bold><red>")
 logger.level("CRITICAL", color="<bold><red>")
 
-
+# Columns for log formatting
 timestamp = "<green>{time:HH:mm:ss.SSS}</green>"
-log_level = "<level>{level: <7}</level>"
+level = "<level>{level: <7}</level>"
+proc_id = "<light-blue>{process.id: >5}</light-blue>"
+thread_id = "<light-blue>{thread.id!s:>6.6}</light-blue>"  # Last 6 digits only
 func_name = "<light-blue>{function: >26}</light-blue>" if SHOW_FUNCTION else ""
 file_name = "<green>{file.name: >25}</green>"
 line_number = "<light-green>{line: <3}</light-green>"
-file_line = file_name + ":" + line_number
 message = "<level>{message}</level>"
-format = " ".join([timestamp, log_level, func_name, file_line, message])
+
+# Combine columns into a single format string
+proc_thread = proc_id + ":" + thread_id if SHOW_PROCESS_INFO else ""
+file_line = file_name + ":" + line_number
+format = " ".join([timestamp, level, proc_thread,
+                  func_name, file_line, message])
 
 # Add structured handler with good formatting
 logger.add(
