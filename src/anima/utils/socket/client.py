@@ -1,5 +1,5 @@
 import functools
-import pickle
+import dill
 import socket
 import time
 from anima.diagnostics import logger
@@ -33,7 +33,7 @@ class BlenderSocketClient:
         if args or kwargs:
             func = functools.partial(func, *args, **kwargs)
         logger.debug(f"Requesting execution of callable: {func}")
-        return send_request(pickle.dumps(func), "CALL")
+        return send_request(dill.dumps(func), "CALL")
 
 
 # Standalone functions ------------------------------------------------------------------------------------- #

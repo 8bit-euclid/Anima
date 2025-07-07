@@ -1,7 +1,7 @@
 import bpy
 import socket
 import threading
-import pickle
+import dill
 import queue
 from anima.diagnostics import logger
 
@@ -172,7 +172,7 @@ class BlenderSocketServer:
                 logger.debug(f"Executed code: {code}")
             elif cmd_type == "CALL":
                 # Unpickle and execute the callable
-                func = pickle.loads(python_code)
+                func = dill.loads(python_code)
                 result = func()
                 logger.debug(f"Executed callable: {func}")
                 logger.debug(f"Callable returned: {result}")
