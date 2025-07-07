@@ -17,6 +17,7 @@ dependencies = [
    "loguru==0.7.3",
    "plastex==3.1",
    "keyboard==0.13.5",
+   "dill==0.4.0",
 ]
 
 ## Blender-specific configurations
