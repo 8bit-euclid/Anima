@@ -6,11 +6,12 @@ LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
 SHOW_FUNCTION = os.getenv("ANIMA_LOG_SHOW_FUNCTION", "0") == "1"
 SHOW_PROCESS_INFO = os.getenv("ANIMA_LOG_SHOW_PROCESS_INFO", "0") == "1"
 
+
 # Configure custom color for log levels
 logger.remove()  # Remove default handler
-logger.level("INFO", color="<light-blue>")
+logger.level("INFO", color="<white>")
 logger.level("WARNING", color="<bold><yellow>")
-logger.level("DEBUG", color="<white>")
+logger.level("DEBUG", color="<light-blue>")
 logger.level("TRACE", color="<cyan>")
 logger.level("ERROR", color="<bold><red>")
 logger.level("CRITICAL", color="<bold><red>")
