@@ -1,6 +1,5 @@
 import subprocess
 import tomllib  # Python 3.11+ only
-from pathlib import Path
 from anima.globals.general import get_pyproject_path
 from anima.utils.blender import get_blender_root_path
 
