@@ -2,6 +2,7 @@
 # Add the project root and the src directory to the Python path
 import sys
 from pathlib import Path
+
 pkg_dir = Path(__file__).parent  # src/anima/
 src_dir = pkg_dir.parent         # src/
 proj_root = src_dir.parent       # project root
@@ -16,15 +17,19 @@ import bpy
 from anima.diagnostics import logger
 from anima.utils.blender import configure_blender_viewport
 from anima.globals.general import clear_scene, to_frame, deselect_all, hide_relationship_lines, ebpy
+from anima.utils.socket.server import BlenderSocketServer
 from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
 from tests.visual_tests.test_latex import test_text_to_glyphs
 # fmt: on
 
 
 def main():
-    configure_blender_viewport()
+    logger.info("Running main script in Blender")
 
-    logger.info("Blender is ready, starting visual tests...")
+    bl_server = BlenderSocketServer()
+    bl_server.start()
+
+    configure_blender_viewport()
 
     clear_scene()
     ebpy.set_render_fps(60)
