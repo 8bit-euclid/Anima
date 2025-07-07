@@ -2,6 +2,7 @@ name: Run Test Suite
 
 env:
   PYTHON_VERSION: '3.11.9' # Should match version in pyproject.toml
+  PROJECT_CONFIG: '**/pyproject.toml'
 
 on:
   push:
@@ -20,10 +21,28 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }} 
 
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles(env.PROJECT_CONFIG) }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-
+          ${{ runner.os }}-pip-
+
     - name: Upgrade pip
       run: python -m pip install --upgrade pip
 
+    - name: Check for changes
+      uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          config:
+            - ${{ env.PROJECT_CONFIG }}
+
     - name: Install the anima package
+      if: steps.changes.outputs.config == 'true'
       run: make install
       env:
         SKIP_BLENDER_DEPS: 1
