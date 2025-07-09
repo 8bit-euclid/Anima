@@ -1,10 +1,8 @@
-import time
 import bpy
 import functools
 from pathlib import Path
 from anima.diagnostics import logger
 from anima.utils.project import get_pyproject_config_value
-from anima.utils.socket.client import BlenderSocketClient
 from anima.utils.subprocess import SubprocessManager
 from anima.utils.input import BlenderInputMonitor
 from anima.utils.output import BlenderOutputMonitor
@@ -15,8 +13,7 @@ class BlenderProcess:
 
     def __init__(self, script_path: Path = None):
         self._subproc_manager = SubprocessManager(script_path)
-        self._blender_socket = BlenderSocketClient()
-        self._input_monitor = BlenderInputMonitor(self._blender_socket)
+        self._input_monitor = BlenderInputMonitor()
         self._output_monitor = BlenderOutputMonitor()
 
     def start(self):
@@ -37,13 +34,14 @@ class BlenderProcess:
 
     def monitor(self):
         """Monitor Blender with keyboard shortcuts."""
-        subprocess = self._subproc_manager.subprocess
-        if not subprocess:
+        subproc_mgr = self._subproc_manager
+        if not subproc_mgr.subprocess:
             logger.error("No Blender process to monitor")
             return
 
         # Start output monitoring
-        self._output_monitor.start(subprocess)
+        subproc = subproc_mgr.subprocess
+        self._output_monitor.start(subproc)
 
         # # Define callbacks for keyboard events
         # def on_reload():
@@ -76,7 +74,7 @@ class BlenderProcess:
             logger.info("  q - Quit session")
 
             # Wait for Blender process to end
-            subprocess.wait()
+            subproc.wait()
             logger.info(f"Blender process has ended")
 
         except KeyboardInterrupt:
@@ -87,50 +85,11 @@ class BlenderProcess:
 
     def quit(self):
         """Quit Blender gracefully."""
-        logger.info("Quitting Blender...")
-
-        # bpy.utils.previews.remove(self._preview_collection)
-
-        def func():
-            # Disable auto-save before quitting
-            # bpy.context.preferences.filepaths.save_version = 0
-            # bpy.context.preferences.filepaths.use_auto_save_temporary_files = False
-            # bpy.utils.previews.ImagePreviewCollection.clear()
-            # for name, pcoll in bpy.utils.previews.ImagePreviewCollection.instances.items():
-            #     bpy.utils.previews.remove(pcoll)
-
-            # for key in dir(bpy.utils.previews):
-            #     value = getattr(bpy.utils.previews, key)
-            #     print(f"{key}: {value}")
-
-            # pcolls = [pcoll for pcoll in bpy.utils.previews.__dict__.values(
-            # ) if 'ImagePreviewCollection' in str(pcoll)]
-
-            # pcolls = bpy.utils.previews.new()
-            # print(f"Preview collections found: {pcolls}")
-            # try:
-            #     print("Removing preview collection...")
-            #     bpy.utils.previews.remove(pcolls)
-            # except Exception as e:
-            #     print(f"Failed to remove preview collection: {e}")
-
-            # if not pcolls:
-            #     print("No preview collections found to remove.")
-            # for pcoll in pcolls:
-            #     try:
-            #         print(f"Removing preview collection: {pcoll}")
-            #         bpy.utils.previews.remove(pcoll)
-            #     except Exception as e:
-            #         print(f"Failed to remove preview collection: {e}")
-
-            bpy.context.preferences.view.use_save_prompt = False
-            bpy.ops.screen.animation_cancel()
-            bpy.ops.wm.quit_blender()
-        self._blender_socket.execute(func)
+        self._input_monitor.quit_blender()
 
     def _cleanup(self):
         """Clean up all monitoring and processes."""
-        # self._input_monitor.stop()
+        self._input_monitor.stop_socket_server()
         self._output_monitor.stop()
         self._subproc_manager.cleanup()
 
