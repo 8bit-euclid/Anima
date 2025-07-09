@@ -76,6 +76,12 @@ class BlenderSocketClient:
         """Send a request to the Blender socket server.
         Args:
             data (bytes): The data to send, typically serialized Python code or callable.
+        Returns:
+            bool: True if the command was queued successfully, False otherwise.
+        Raises:
+            socket.timeout: If the connection to the server times out.
+            ConnectionRefusedError: If the server is not running or refuses the connection.
+            Exception: If there is an error sending the request or receiving the response.
         """
         BlenderSocketClient._wait_for_server()
 
@@ -101,7 +107,14 @@ class BlenderSocketClient:
 
     @staticmethod
     def _receive_response(stub: socket.socket) -> str:
-        """Receive and decode a response from the server socket."""
+        """Receive and decode a response from the server socket.
+        Args:
+            stub (socket.socket): The socket to receive data from.
+        Returns:
+            str: The decoded response from the server.
+        Raises:
+            Exception: If there is an error receiving or decoding the response.
+        """
         try:
             data = receive_data(stub)
             res = data.decode()
