@@ -12,7 +12,7 @@ logger.remove()  # Remove default handler
 logger.level("INFO", color="<white>")
 logger.level("WARNING", color="<bold><yellow>")
 logger.level("DEBUG", color="<light-blue>")
-logger.level("TRACE", color="<cyan>")
+logger.level("TRACE", color="<blue>")
 logger.level("ERROR", color="<bold><red>")
 logger.level("CRITICAL", color="<bold><red>")
 
