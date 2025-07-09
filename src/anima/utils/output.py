@@ -11,7 +11,10 @@ class BlenderOutputMonitor:
         self._thread: threading.Thread = None
 
     def start(self, process: subprocess.Popen) -> None:
-        """Start monitoring process output."""
+        """Start monitoring process output.
+        Args:
+            process (subprocess.Popen): The Blender subprocess to monitor.
+        """
         if not process or not process.stdout:
             return
 
@@ -30,7 +33,10 @@ class BlenderOutputMonitor:
             self._thread.join(timeout=1)  # Don't wait forever
 
     def _read_stream(self, stream):
-        """Read from the stream and output with proper formatting."""
+        """Read from the stream and output with proper formatting.
+        Args:
+            stream (io.TextIOWrapper): The stream to read from.
+        """
         try:
             while self._monitoring:
                 line = stream.readline()
