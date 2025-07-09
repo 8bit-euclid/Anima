@@ -4,15 +4,7 @@ import threading
 import dill
 import queue
 from anima.diagnostics import logger
-
-TCP_HOST = '127.0.0.1'  # Localhost for Blender socket communication
-TCP_PORT = 65432        # Default port
-
-PREFIX_DELIMITER = ": "
-QUEUED = "QUEUED"
-QUEUE_FULL = "QUEUE_FULL"
-
-COMMAND_TYPE = tuple[str, bytes]
+from anima.utils.socket.common import TCP_HOST, TCP_PORT, QUEUE_FULL, QUEUED, receive_data
 
 
 class BlenderSocketServer:
@@ -26,17 +18,15 @@ class BlenderSocketServer:
     methods:
         start(): Start the socket server and register the command processing timer.
         stop(): Stop the socket server and cleanup.
-        process_command(command, conn=None): Process a command received from the socket.
-        _queue_command(command, conn=None): Queue a command for main thread execution.
     """
 
     def __init__(self):
         # Single queue for all commands (CALL,CODE) to be executed on main thread
-        self._command_queue: queue.Queue[COMMAND_TYPE] = queue.Queue(
-            maxsize=10)
+        self._command_queue: queue.Queue[bytes] = queue.Queue(maxsize=10)
         self._thread: threading.Thread | None = None
 
     def start(self):
+        """Start the socket server and register the command processing timer."""
         # Register timer to process commands on main thread
         process_cmds = self._execute_queued_commands
         if not bpy.app.timers.is_registered(process_cmds):
@@ -59,49 +49,88 @@ class BlenderSocketServer:
     # Private methods -------------------------------------------------------------------------------------- #
 
     def _listen(self):
+        """Main socket server loop."""
         logger.debug("Starting socket server thread...")
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                # Set socket options to allow reuse of the address
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-                # Bind the socket to the specified host and port
-                logger.debug(
-                    f"Starting socket server on {TCP_HOST}:{TCP_PORT}")
-                sock.bind((TCP_HOST, TCP_PORT))
-                sock.listen(1)
-
-                while True:
-                    try:
-                        sock.settimeout(1.0)
-                        client_stub, addr = sock.accept()
-
-                        # Receive data from the client
-                        client_stub.settimeout(1.0)
-                        with client_stub:
-                            raw_data = client_stub.recv(1024)
-                            if not raw_data:
-                                logger.trace(
-                                    "Received empty command, skipping")
-                                continue
-
-                            logger.debug(
-                                f"Connection from {addr[0]}:{addr[1]}")
-                            if raw_data == b"STOP":
-                                logger.info("Shutting down socket server")
-                                break
-                            elif self._queue_command(raw_data, client_stub):
-                                logger.info("Command queued successfully")
-                    except socket.timeout:
-                        continue
-                    except socket.error as e:
-                        logger.error(f"Socket server error: {e}")
-                    except Exception as e:
-                        logger.error(f"Unexpected error in socket server: {e}")
+            with self.__class__._create_server_socket() as sock:
+                self._run_server_loop(sock)
         except OSError as e:
             logger.error(f"Port {TCP_PORT} already in use: {e}")
         except Exception as e:
             logger.error(f"Socket server error: {e}")
+
+    @staticmethod
+    def _create_server_socket() -> socket.socket:
+        """Create and configure the server socket.
+        Returns:
+            socket.socket: Configured server socket ready to accept connections.
+        """
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        logger.debug(f"Starting socket server on {TCP_HOST}:{TCP_PORT}")
+        sock.bind((TCP_HOST, TCP_PORT))
+        sock.listen(1)
+        return sock
+
+    def _run_server_loop(self, sock: socket.socket):
+        """Run the main server loop accepting client connections.
+        Args:
+            sock: Configured server socket to accept connections
+        """
+        while True:
+            try:
+                sock.settimeout(1.0)
+                stub, addr = sock.accept()
+                if not self._handle_connection(stub, addr):
+                    break  # Stop signal received
+            except socket.timeout:
+                continue
+            except socket.error as e:
+                logger.error(f"Socket server error: {e}")
+            except Exception as e:
+                logger.error(f"Unexpected error in socket server: {e}")
+
+    def _handle_connection(self, stub: socket.socket, addr: tuple) -> bool:
+        """Handle a single client connection.
+        Args:
+            stub: Client socket connection
+            addr: Client address tuple (host, port)
+        Returns:
+            bool: False if stop signal received, True otherwise
+        """
+        addr_str = f"{addr[0]}:{addr[1]}"
+        stub.settimeout(1.0)
+
+        try:
+            with stub:
+                data = receive_data(stub)
+                return self._handle_request(data, stub, addr_str)
+        except Exception as e:
+            logger.error(f"Error handling client {addr_str}: {e}")
+            return True
+
+    def _handle_request(self, data: bytes, stub: socket.socket, addr_str: str) -> bool:
+        """Handle a request received from the client.
+        Args:
+            data: Raw data received from client
+            stub: Client socket stub for sending response
+            addr_str: Client address string for logging
+        Returns:
+            bool: False if stop signal received, True otherwise
+        """
+        if not data:
+            logger.trace("Skipping empty command")
+            return True
+
+        logger.debug(f"Connection from {addr_str}")
+
+        if data == b"STOP":
+            logger.info("Shutting down socket server")
+            return False
+        elif self._queue_command(data, stub):
+            logger.info("Command queued successfully")
+
+        return True
 
     def _queue_command(self, command: bytes, client_stub: socket.socket) -> bool:
         """Queue a command for main thread execution.
@@ -112,23 +141,9 @@ class BlenderSocketServer:
             bool: True if the command was queued successfully, False otherwise.
         """
         try:
-            delimiter_bytes = PREFIX_DELIMITER.encode()
-            if delimiter_bytes not in command:
-                logger.error("Invalid command format, missing delimiter")
-                return False
-
-            # Split the command into bytes parts
-            cmd_type_bytes, python_code_bytes = command.split(
-                delimiter_bytes, 1)
-
-            # Decode only the command type, keep data as bytes
-            cmd_type = cmd_type_bytes.decode()
-            cmd_tuple = (cmd_type, python_code_bytes)
-
             # Queue the command for execution on the main thread and send response to client
-            self._command_queue.put(cmd_tuple, timeout=0.2)  # 200ms timeout
+            self._command_queue.put(command, timeout=0.2)  # 200ms timeout
             client_stub.sendall(QUEUED.encode())
-
             return True
         except queue.Full:
             logger.error("Server command queue is full")
@@ -146,7 +161,7 @@ class BlenderSocketServer:
             while not exec_queue.empty():
                 try:
                     cmd = exec_queue.get_nowait()
-                    self._execute_command(cmd)
+                    self.__class__._execute_command(cmd)
                 except queue.Empty:
                     break
                 except Exception as e:
@@ -157,26 +172,21 @@ class BlenderSocketServer:
         # Return 0.1 to keep the timer running every 100ms
         return 0.1
 
-    def _execute_command(self, command: tuple[str, bytes]):
-        """Execute a command on the main thread."""
+    @staticmethod
+    def _execute_command(command: bytes):
+        """Execute a command on the main thread.
+        Args:
+            command (bytes): The command to execute, expected as raw bytes.
+        """
         try:
-            if not isinstance(command, tuple):
+            if not isinstance(command, bytes):
                 logger.error(f"Invalid command format: {command}")
                 return
 
-            cmd_type, python_code = command
-            if cmd_type == "CODE":
-                # Execute the Python code directly
-                code = python_code.decode()
-                exec(code, globals())
-                logger.debug(f"Executed code: {code}")
-            elif cmd_type == "CALL":
-                # Unpickle and execute the callable
-                func = dill.loads(python_code)
-                result = func()
-                logger.debug(f"Executed callable: {func}")
-                logger.debug(f"Callable returned: {result}")
-            else:
-                logger.error(f"Unknown command type: {cmd_type}")
+            # Unpickle and execute the callable
+            func = dill.loads(command)
+            logger.debug(f"Executing callable: {func}")
+            result = func()
+            logger.debug(f"Callable returned: {result}")
         except Exception as e:
             logger.error(f"Command execution failed: {e}")
