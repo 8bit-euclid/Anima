@@ -4,7 +4,7 @@ from pathlib import Path
 from anima.diagnostics import logger
 from anima.utils.project import get_pyproject_config_value
 from anima.utils.subprocess import SubprocessManager
-from anima.utils.input import BlenderInputMonitor
+from anima.utils.input import BlenderInputManager
 from anima.utils.output import BlenderOutputMonitor
 
 
@@ -13,7 +13,7 @@ class BlenderProcess:
 
     def __init__(self, script_path: Path = None):
         self._subproc_manager = SubprocessManager(script_path)
-        self._input_monitor = BlenderInputMonitor()
+        self._input_manager = BlenderInputManager()
         self._output_monitor = BlenderOutputMonitor()
 
     def start(self):
@@ -26,6 +26,7 @@ class BlenderProcess:
             else:
                 if not self._subproc_manager.start():
                     raise RuntimeError("Failed to start Blender subprocess")
+                self._input_manager.configure_blender()
 
         except Exception as e:
             logger.error(f"Error running script: {e}")
@@ -57,16 +58,8 @@ class BlenderProcess:
         # # Start keyboard monitoring
         # self._keyboard_monitor.start(on_reload, on_quit)
 
-        # cmd = "bpy.ops.screen.animation_cancel()"
-        # cmd = "print('Hello from Blender!')"
-        # cmd = "bpy.ops.wm.quit_blender()"
-        # self._input_monitor.execute_code(cmd)
-
-        # call = bpy.ops.wm.quit_blender
-        # self._input_monitor.execute_callable(
-        #     print, "Hello from run.py!", end='')
-
-        self.quit()
+        # self.reload()
+        # self.quit()
 
         try:
             logger.info("Blender is running. Keyboard shortcuts:")
@@ -83,13 +76,17 @@ class BlenderProcess:
         finally:
             self._cleanup()
 
+    def reload(self):
+        """Reload the main script in Blender."""
+        self._input_manager.reload_main()
+
     def quit(self):
         """Quit Blender gracefully."""
-        self._input_monitor.quit_blender()
+        self._input_manager.quit_blender()
 
     def _cleanup(self):
         """Clean up all monitoring and processes."""
-        self._input_monitor.stop_socket_server()
+        self._input_manager.stop_socket_server()
         self._output_monitor.stop()
         self._subproc_manager.cleanup()
 
