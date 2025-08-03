@@ -30,7 +30,7 @@ class TeXStringParser:
         if not self._text:
             return []
 
-        logger.info(f"Parsing TeX string...")
+        logger.info("Parsing TeX string...")
         logger.debug(format_output("TeX string content", self._text))
 
         tex = TeX()

@@ -68,7 +68,7 @@ class TeXDocumentProcessor:
         tex_file.write_text(self._content, encoding="utf-8")
 
         # Run lualatex to generate DVI
-        logger.info(f"Compiling TeX to DVI...")
+        logger.info("Compiling TeX to DVI...")
         run_proc = partial(subprocess.run,
                            cwd=tex_path,
                            stdout=subprocess.PIPE,
@@ -92,7 +92,7 @@ class TeXDocumentProcessor:
         tex_path = self._tex_path
         svg_file = tex_path/f'{self._tex_name}.svg'
 
-        logger.info(f"Compiling DVI to SVG...")
+        logger.info("Compiling DVI to SVG...")
         run_proc = partial(subprocess.run,
                            cwd=tex_path,
                            stdout=subprocess.PIPE,
@@ -134,7 +134,7 @@ class TeXDocumentProcessor:
         Raises:
             RuntimeError: If the SVG file cannot be processed or glyphs are not found.
         """
-        logger.info(f"Extracting glyph data from SVG...")
+        logger.info("Extracting glyph data from SVG...")
         svg_file = self._get_svg_file()
         all_paths, all_attrs = svgtools.svg2paths(svg_file)
 
