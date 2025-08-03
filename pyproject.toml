@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "anima"
 dynamic = ["version"]
-requires-python = ">=3.11.4,<=3.11.9" # Ensure the range contains Blender's Python version
+requires-python = ">=3.11.4,<=3.11.13" # Ensure the range contains Blender's Python version
 dependencies = [
    "scipy==1.15.3",
    "bpy==4.4.0",
