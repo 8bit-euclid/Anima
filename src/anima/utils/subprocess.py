@@ -21,7 +21,8 @@ class SubprocessManager:
             logger.info(f"Starting Blender from: {bl_path()}")
 
             self._subprocess = subprocess.Popen(
-                [bl_path(), '--window-maximized', '--python', self._script_path],
+                [bl_path(), '--window-maximized', '--factory-startup',
+                 '--python', self._script_path],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # Merge stderr into stdout
