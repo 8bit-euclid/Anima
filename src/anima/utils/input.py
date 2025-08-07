@@ -10,15 +10,15 @@ class BlenderInputManager:
         self._socket = BlenderSocketClient()
         # self.setup_hotkeys()
 
-    # def setup_hotkeys(self):
-    #     # Set up global hotkeys
-    #     keyboard.add_hotkey('ctrl+r', self.reload_script)
-    #     keyboard.add_hotkey('ctrl+shift+q', self.stop_blender)
-    #     keyboard.add_hotkey('ctrl+shift+s', self.get_status)
-    #     logger.info("Hotkeys registered:")
-    #     logger.info("  Ctrl+R: Reload script")
-    #     logger.info("  Ctrl+Shift+Q: Stop Blender")
-    #     logger.info("  Ctrl+Shift+S: Get status")
+    def setup_hotkeys(self):
+        # Set up global hotkeys
+        keyboard.add_hotkey('ctrl+r', self.reload_main)
+        keyboard.add_hotkey('ctrl+shift+q', self.stop_blender)
+        keyboard.add_hotkey('ctrl+shift+s', self.get_status)
+        logger.info("Hotkeys registered:")
+        logger.info("  Ctrl+R: Reload script")
+        logger.info("  Ctrl+Shift+Q: Stop Blender")
+        logger.info("  Ctrl+Shift+S: Get status")
 
     def execute(self, func: callable, *args: tuple, **kwargs: dict):
         """Run a callable object in the Blender Python environment."""
@@ -36,9 +36,14 @@ class BlenderInputManager:
 
     def reload_main(self):
         def call():
-            # bpy.ops.script.reload()
-            bpy.ops.script.python_file_run("INVOKE_DEFAULT", main_path())
-            # print("main.py" in bpy.data.texts)
+            try:
+                script_path = main_path()
+                logger.info("Reloading main script: {}", script_path)
+                with open(script_path, 'r') as f:
+                    exec(f.read())
+                logger.info("Script reloaded successfully!")
+            except Exception as e:
+                logger.error("Error reloading script: {}", e)
         self._socket.execute(call)
 
     def stop_socket_server(self):
