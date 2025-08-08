@@ -4,7 +4,7 @@ from loguru import logger
 
 LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
 SHOW_FUNCTION = os.getenv("ANIMA_LOG_SHOW_FUNCTION", "0") == "1"
-SHOW_PROCESS_INFO = os.getenv("ANIMA_LOG_SHOW_PROCESS_INFO", "0") == "1"
+SHOW_PROCESS_INFO = os.getenv("ANIMA_LOG_SHOW_PROCESS", "0") == "1"
 
 
 # Configure custom color for log levels

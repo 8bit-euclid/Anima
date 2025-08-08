@@ -93,7 +93,7 @@ The logger can be configured using environment variables:
   - Options: `TRACE`, `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
 - `ANIMA_LOG_SHOW_FUNCTION`: Show function names in logs (default: `0`)
   - Set to `1` to enable
-- `ANIMA_LOG_SHOW_PROCESS_INFO`: Show process and thread IDs (default: `0`)
+- `ANIMA_LOG_SHOW_PROCESS`: Show process and thread IDs (default: `0`)
   - Set to `1` to enable
 
 ### Usage

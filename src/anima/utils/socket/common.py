@@ -2,7 +2,7 @@ import socket
 
 TCP_HOST = '127.0.0.1'  # Localhost for Blender socket communication
 TCP_PORT = 65432        # Default port
-PACKET_SIZE = 4096      # Size of each packet to read from the socket
+PACKET_SIZE = 4096      # Size (bytes) of each packet to read from the socket
 
 QUEUED = "QUEUED"
 QUEUE_FULL = "QUEUE_FULL"
