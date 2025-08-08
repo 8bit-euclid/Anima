@@ -20,13 +20,25 @@ class BlenderSocketServer:
         stop(): Stop the socket server and cleanup.
     """
 
+    _instance = None
+    _server_thread = None
+    _is_running = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self):
         # Single queue for all commands (CALL,CODE) to be executed on main thread
         self._command_queue: queue.Queue[bytes] = queue.Queue(maxsize=10)
-        self._thread: threading.Thread | None = None
 
     def start(self):
         """Start the socket server and register the command processing timer."""
+        if self._is_running:
+            logger.info("Socket server already running, skipping start")
+            return
+
         # Register timer to process commands on main thread
         process_cmds = self._execute_queued_commands
         if not bpy.app.timers.is_registered(process_cmds):
@@ -34,17 +46,22 @@ class BlenderSocketServer:
 
         # Start socket server in background thread
         logger.debug("Creating socket server thread...")
-        self._thread = threading.Thread(target=self._listen, daemon=True)
-        self._thread.start()
+        self._server_thread = threading.Thread(
+            target=self._listen, daemon=True)
+        self._server_thread.start()
+        self._is_running = True
 
         logger.info(f"Blender socket server started on {TCP_HOST}:{TCP_PORT}")
 
     def stop(self):
         """Stop the socket server and cleanup."""
-        process_cmds = self._execute_queued_commands
-        if bpy.app.timers.is_registered(process_cmds):
-            bpy.app.timers.unregister(process_cmds)
-        self._thread.join(timeout=1.0)  # Wait for thread to finish
+        if self._is_running:
+            process_cmds = self._execute_queued_commands
+            if bpy.app.timers.is_registered(process_cmds):
+                bpy.app.timers.unregister(process_cmds)
+            self._server_thread.join(timeout=1.0)  # Wait for thread to finish
+            self._is_running = False
+            logger.info("Socket server stopped")
 
     # Private methods -------------------------------------------------------------------------------------- #
 
@@ -69,7 +86,8 @@ class BlenderSocketServer:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         logger.debug(f"Starting socket server on {TCP_HOST}:{TCP_PORT}")
         sock.bind((TCP_HOST, TCP_PORT))
-        sock.listen(1)
+        sock.listen(1)  # Listen for incoming connections
+        logger.debug("Socket server is listening for connections")
         return sock
 
     def _run_server_loop(self, sock: socket.socket):
@@ -122,7 +140,7 @@ class BlenderSocketServer:
             logger.trace("Skipping empty command")
             return True
 
-        logger.debug(f"Connection from {addr_str}")
+        logger.info(f"Connection from {addr_str}")
 
         if data == b"STOP":
             logger.info("Shutting down socket server")
