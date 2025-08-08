@@ -26,7 +26,7 @@ class BlenderSocketClient:
             return False
         if args or kwargs:
             func = functools.partial(func, *args, **kwargs)
-        logger.debug(f"Requesting execution of callable: {func}")
+        logger.debug(f"Requesting execution of: {func}")
         return BlenderSocketClient._send_request(dill.dumps(func))
 
     @staticmethod

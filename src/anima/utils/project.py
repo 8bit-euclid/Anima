@@ -25,6 +25,7 @@ def get_project_root_path(marker: str = '.git') -> Path:
     current = Path(__file__).resolve()
     for parent in current.parents:
         if (parent/marker).exists():
+            logger.trace(f"Project root found: {parent}")
             return parent
     raise FileNotFoundError(
         f"Project root not found. Ensure it contains {marker}.")
@@ -42,6 +43,7 @@ def get_main_file_path() -> Path:
     main_path = project_root/'src'/'anima'/'main.py'
     if not main_path.exists():
         raise FileNotFoundError(f"Main file not found: {main_path}")
+    logger.trace(f"Main file path: {main_path}")
     return main_path
 
 
