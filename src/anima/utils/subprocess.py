@@ -27,7 +27,8 @@ class SubprocessManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # Merge stderr into stdout
                 text=True,
-                bufsize=1
+                bufsize=1,
+                start_new_session=True  # isolate Blender from parent
             )
 
             logger.info(f"Blender started (pid: {self.subprocess.pid})")

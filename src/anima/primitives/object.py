@@ -43,18 +43,23 @@ class Object(ABC):
         object._set_parent(self)
         self.children.append(object)
 
-    def add_keyframe(self, bl_data_path, index=-1, frame=None):
-        """Add a keframe for the specified object propety at the given frame.
+    def add_keyframe(self, bl_data_path: str, index: int = -1, frame: int = None, is_custom: bool = False):
+        """Add a keyframe for the specified object property at the given frame.
         Args:
             bl_data_path (str): The Blender data path to the property to keyframe.
             index (int, optional): The index of the property to keyframe. Defaults to -1.
-            frame (int, optional): The frame at which to insert the keyframe. Defaults to the current frame"""
+            frame (int, optional): The frame at which to insert the keyframe. Defaults to the current frame.
+            is_custom (bool, optional): Whether the keyframe is for a custom property. Defaults to False.
+        Raises:
+            AssertionError: If the frame is not specified or if the data path is invalid."""
+        path = bl_data_path
+        if is_custom:
+            path = f'["{path}"]'
         if frame is None:
             frame = bpy.context.scene.frame_current
         assert isinstance(frame, int), "Frame must be an integer."
-        assert hasattr(self.object, bl_data_path), \
-            f"Invalid data path: {bl_data_path}"
-        self.object.keyframe_insert(bl_data_path, index=index, frame=frame)
+        assert hasattr(self.object, path), f"Invalid data path: {path}"
+        self.object.keyframe_insert(path, index=index, frame=frame)
 
     def add_handler(self, handler):
         """Add a handler for the specified object property.
@@ -496,9 +501,3 @@ class Object(ABC):
         print(f'Object {self.name} logs:')
         if self._write_logs:
             visitor(self)
-
-
-class CustomObject(Object):
-    def __init__(self, bl_object, name='Custom', **kwargs):
-        assert bl_object is not None, 'Must specify underlying blender object.'
-        super().__init__(bl_object=bl_object, name=name, **kwargs)

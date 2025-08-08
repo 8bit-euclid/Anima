@@ -26,8 +26,7 @@ from tests.visual_tests.test_latex import test_text_to_glyphs
 def main():
     logger.info("Running main script in Blender")
 
-    bl_server = BlenderSocketServer()
-    bl_server.start()
+    BlenderSocketServer().start()
 
     configure_blender_viewport()
 
@@ -36,8 +35,9 @@ def main():
 
     end_frame = to_frame('00:06')
 
-    test_text_to_glyphs()
-
+    # Run visual tests
+    logger.info("Running visual tests...")
+    # test_text_to_glyphs()
     test_bezier_splines(end_frame)
     test_curve_joints(end_frame)
     test_dashed_curves(end_frame)
@@ -51,7 +51,10 @@ def main():
     # Preset viewpoint
     bpy.context.preferences.view.show_splash = False
 
-    # Reset to first frame and play
+    # Stop any running animations first (when reloading)
+    bpy.ops.screen.animation_cancel(restore_frame=False)
+
+    # Reset to frame one and play
     bpy.context.scene.frame_current = 1
     bpy.ops.screen.animation_play()
 

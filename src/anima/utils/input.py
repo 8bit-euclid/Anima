@@ -36,35 +36,36 @@ class BlenderInputManager:
 
     def reload_main(self):
         def call():
-            try:
-                script_path = main_path()
-                logger.info("Reloading main script: {}", script_path)
-                with open(script_path, 'r') as f:
-                    exec(f.read())
-                logger.info("Script reloaded successfully!")
-            except Exception as e:
-                logger.error("Error reloading script: {}", e)
-        self._socket.execute(call)
+            script_path = main_path()
+            logger.info("Resetting and reloading: {}", script_path)
 
-    def stop_socket_server(self):
-        """Stop the Blender socket server."""
-        if not self._socket.stop_server():
-            logger.error("Failed to stop Blender socket server")
+            # Clear existing handlers to avoid duplicates
+            bpy.app.handlers.frame_change_pre.clear()
+            bpy.app.handlers.frame_change_post.clear()
+
+            # Execute the script as __main__ so entrypoints run and __file__ is set
+            try:
+                import runpy
+                runpy.run_path(script_path, run_name="__main__")
+                logger.info("Script reloaded successfully!")
+            except ImportError as e:
+                logger.error("Import error during script reload: {}", e)
+            except Exception as e:
+                logger.error("Unexpected error reloading script: {}", e)
+
+        self._socket.execute(call)
 
     def quit_blender(self):
         """Quit Blender gracefully."""
         def call():
-            # pcolls = bpy.utils.previews.new()
-            # print(f"Preview collections found: {pcolls}")
-            # try:
-            #     print("Removing preview collection...")
-            #     bpy.utils.previews.remove(pcolls)
-            # except Exception as e:
-            #     print(f"Failed to remove preview collection: {e}")
-
             bpy.context.preferences.view.use_save_prompt = False
             bpy.ops.screen.animation_cancel()
             bpy.ops.wm.quit_blender()
 
         logger.info("Quitting Blender...")
         self._socket.execute(call)
+
+    def _stop_socket_server(self):
+        """Stop the Blender socket server."""
+        if not self._socket.stop_server():
+            logger.error("Failed to stop Blender socket server")
