@@ -28,10 +28,10 @@ def test_bezier_splines(end_frame: int):
     e = Empty()
     # e.t = 0.0
     e['t'] = 0.0
-    e.add_keyframe('["t"]', frame=30)
+    e.add_keyframe('t', frame=30, is_custom=True)
     # e.t = 1.0
     e['t'] = 1.0
-    e.add_keyframe('["t"]', frame=end_frame)
+    e.add_keyframe('t', frame=end_frame, is_custom=True)
 
     # bcurve.attachment_0 = ArrowEndcap()
     bcurve.attachment_0 = PointEndcap()
@@ -100,9 +100,9 @@ def test_curve_joints(end_frame: int):
 
     e = Empty()
     e['t'] = 0.0
-    e.add_keyframe('["t"]', frame=30)
+    e.add_keyframe('t', frame=30, is_custom=True)
     e['t'] = 1.0
-    e.add_keyframe('["t"]', frame=end_frame)
+    e.add_keyframe('t', frame=end_frame, is_custom=True)
 
     # b = 1
     # j1.bias = b
@@ -186,9 +186,9 @@ def test_dashed_curves(end_frame: int):
     radi = 1.0
     e = Empty()
     e['t'] = 0.0
-    e.add_keyframe('["t"]', frame=30)
+    e.add_keyframe('t', frame=30, is_custom=True)
     e['t'] = radi
-    e.add_keyframe('["t"]', frame=end_frame)
+    e.add_keyframe('t', frame=end_frame, is_custom=True)
 
     def updater(scene):
         t1 = e['t']

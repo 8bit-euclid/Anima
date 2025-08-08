@@ -1,6 +1,7 @@
 import bpy
 import functools
 from pathlib import Path
+from time import sleep
 from anima.diagnostics import logger
 from anima.utils.project import get_pyproject_config_value
 from anima.utils.subprocess import SubprocessManager
@@ -35,13 +36,12 @@ class BlenderProcess:
 
     def monitor(self):
         """Monitor Blender with keyboard shortcuts."""
-        subproc_mgr = self._subproc_manager
-        if not subproc_mgr.subprocess:
+        subproc = self._subproc_manager.subprocess
+        if not subproc:
             logger.error("No Blender process to monitor")
             return
 
         # Start output monitoring
-        subproc = subproc_mgr.subprocess
         self._output_monitor.start(subproc)
 
         # # Define callbacks for keyboard events
@@ -58,7 +58,8 @@ class BlenderProcess:
         # # Start keyboard monitoring
         # self._keyboard_monitor.start(on_reload, on_quit)
 
-        # self.reload()
+        sleep(3)
+        self.reload()
         # self.quit()
 
         try:
@@ -71,10 +72,11 @@ class BlenderProcess:
             logger.info(f"Blender process has ended")
 
         except KeyboardInterrupt:
-            logger.info("Stopping monitoring...")
+            print()  # Ensure a new line after the interrupt
+            logger.info("KeyboardInterrupt: Terminating Blender...")
 
         finally:
-            self._cleanup()
+            self._subproc_manager.cleanup()
 
     def reload(self):
         """Reload the main script in Blender."""
@@ -83,12 +85,6 @@ class BlenderProcess:
     def quit(self):
         """Quit Blender gracefully."""
         self._input_manager.quit_blender()
-
-    def _cleanup(self):
-        """Clean up all monitoring and processes."""
-        self._input_manager.stop_socket_server()
-        self._output_monitor.stop()
-        self._subproc_manager.cleanup()
 
 
 @functools.lru_cache(maxsize=1)
