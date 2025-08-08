@@ -28,6 +28,7 @@ class BlenderOutputMonitor:
 
     def stop(self) -> None:
         """Stop monitoring output."""
+        logger.debug("Stopping Blender output monitoring.")
         self._monitoring = False
         if self._thread:
             self._thread.join(timeout=1)  # Don't wait forever
