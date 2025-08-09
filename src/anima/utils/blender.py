@@ -5,7 +5,7 @@ from time import sleep
 from anima.diagnostics import logger
 from anima.utils.project import get_pyproject_config_value
 from anima.utils.subprocess import SubprocessManager
-from anima.utils.input import BlenderInputManager
+from anima.utils.input import BlenderInputMonitor
 from anima.utils.output import BlenderOutputMonitor
 
 
@@ -14,7 +14,7 @@ class BlenderProcess:
 
     def __init__(self, script_path: Path = None):
         self._subproc_manager = SubprocessManager(script_path)
-        self._input_manager = BlenderInputManager()
+        self._input_monitor = BlenderInputMonitor()
         self._output_monitor = BlenderOutputMonitor()
 
     def start(self):
@@ -27,7 +27,7 @@ class BlenderProcess:
             else:
                 if not self._subproc_manager.start():
                     raise RuntimeError("Failed to start Blender subprocess")
-                self._input_manager.configure_blender()
+                self._input_monitor._configure_blender()
 
         except Exception as e:
             logger.error(f"Error running script: {e}")
@@ -41,7 +41,8 @@ class BlenderProcess:
             logger.error("No Blender process to monitor")
             return
 
-        # Start output monitoring
+        # Start input/output monitoring
+        self._input_monitor.start()
         self._output_monitor.start(subproc)
 
         # # Define callbacks for keyboard events
@@ -58,33 +59,31 @@ class BlenderProcess:
         # # Start keyboard monitoring
         # self._keyboard_monitor.start(on_reload, on_quit)
 
-        sleep(3)
-        self.reload()
+        # sleep(3)
+        # self.reload()
         # self.quit()
 
         try:
-            logger.info("Blender is running. Keyboard shortcuts:")
-            logger.info("  r - Reload project")
-            logger.info("  q - Quit session")
-
             # Wait for Blender process to end
+            logger.info("Blender is running")
             subproc.wait()
             logger.info(f"Blender process has ended")
 
         except KeyboardInterrupt:
-            print()  # Ensure a new line after the interrupt
             logger.info("KeyboardInterrupt: Terminating Blender...")
 
         finally:
+            self._input_monitor.stop()
+            self._output_monitor.stop()
             self._subproc_manager.cleanup()
 
     def reload(self):
         """Reload the main script in Blender."""
-        self._input_manager.reload_main()
+        self._input_monitor.reload_main()
 
     def quit(self):
         """Quit Blender gracefully."""
-        self._input_manager.quit_blender()
+        self._input_monitor.quit_blender()
 
 
 @functools.lru_cache(maxsize=1)

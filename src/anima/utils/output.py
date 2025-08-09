@@ -28,16 +28,19 @@ class BlenderOutputMonitor:
 
     def stop(self) -> None:
         """Stop monitoring output."""
-        logger.debug("Stopping Blender output monitoring.")
+        logger.debug("Stopping Blender output monitoring thread...")
         self._monitoring = False
         if self._thread:
-            self._thread.join(timeout=1)  # Don't wait forever
+            self._thread.join(timeout=0.5)
+
+    # Private methods -------------------------------------------------------------------------------------- #
 
     def _read_stream(self, stream):
         """Read from the stream and output with proper formatting.
         Args:
             stream (io.TextIOWrapper): The stream to read from.
         """
+        logger.info("Blender output monitor thread started")
         try:
             while self._monitoring:
                 line = stream.readline()

@@ -45,7 +45,6 @@ class BlenderSocketServer:
             bpy.app.timers.register(process_cmds, first_interval=0.1)
 
         # Start socket server in background thread
-        logger.debug("Creating socket server thread...")
         self._server_thread = threading.Thread(
             target=self._listen, daemon=True)
         self._server_thread.start()
@@ -67,7 +66,7 @@ class BlenderSocketServer:
 
     def _listen(self):
         """Main socket server loop."""
-        logger.debug("Starting socket server thread...")
+        logger.debug("Socket server thread started")
         try:
             with self.__class__._create_server_socket() as sock:
                 self._run_server_loop(sock)
