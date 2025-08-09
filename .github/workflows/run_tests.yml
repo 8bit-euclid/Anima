@@ -52,3 +52,5 @@ jobs:
 
     - name: Run tests
       run: make test
+      env:
+        PYTHONPATH: ${{ env.pythonLocation }}/lib/python${{ env.PYTHON_VERSION }}/site-packages:$PYTHONPATH
