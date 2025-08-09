@@ -1,52 +1,64 @@
-name: DevContainer CI
+name: Test DevContainer
 
 on:
-  push:
-    paths:
-      - '.devcontainer/**'
-      - '.github/workflows/*devcontainer.yml'
+  workflow_run:
+    workflows: ["Build DevContainer"]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
-  test-devcontainer:
+  test:
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       packages: read
-    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Install DevContainers CLI
-      run: npm install -g @devcontainers/cli
+      - uses: actions/checkout@v4
 
-    - name: Login to GitHub Container Registry
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Install DevContainers CLI
+        run: |
+          npm install -g @devcontainers/cli
+          # jq is pre-installed on ubuntu-latest runners
 
-    - name: Build and test devcontainer
-      run: |
-        # Start the devcontainer
-        devcontainer up --workspace-folder .
-        
-        # Run tests inside the devcontainer
-        devcontainer exec --workspace-folder . bash -c "
-          # Run the devcontainer test script
-          bash .devcontainer/test_workspace.sh
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Pull pre-built devcontainer image
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}/devcontainer:${{ github.ref_name }}"
+          docker pull "$IMAGE"
+
+      - name: Configure devcontainer to use pre-built image
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}/devcontainer:${{ github.ref_name }}"
+          jq --arg image "$IMAGE" \
+            '.image = $image | del(.build)' \
+            .devcontainer/devcontainer.json > temp.json
+          mv temp.json .devcontainer/devcontainer.json
+
+      - name: Run devcontainer tests
+        run: |
+          devcontainer up --workspace-folder .
           
-          # Additional validation: run a quick test to ensure anima works
-          python3 -c '
-          try:
-              import anima
-              print(\"✅ Anima import successful\")
-          except ImportError as e:
-              print(f\"❌ Anima import failed: {e}\")
-              exit(1)
-          '
-          
-          # Test that make commands work
-          make --version
-          make --dry-run test
-          
-          echo '🎉 DevContainer validation completed successfully!'
-        "
+          # Run tests inside the devcontainer
+          devcontainer exec --workspace-folder . bash -c "
+            # Run the devcontainer test script
+            bash .devcontainer/test_workspace.sh
+            
+            # Additional validation: run a quick test to ensure anima works
+            python3 -c '
+            try:
+                import anima
+                print(\"✅ Anima import successful\")
+            except ImportError as e:
+                print(f\"❌ Anima import failed: {e}\")
+                exit(1)
+            '
+            
+            # Test that make commands work
+            make --version
+            make --dry-run test
+            
+            echo '🎉 DevContainer validation completed successfully!'
+          "
