@@ -1,4 +1,4 @@
-name: Run Test Suite
+name: Run Anima Test Suite
 
 env:
   PYTHON_VERSION: '3.11.9' # Should match version in pyproject.toml
