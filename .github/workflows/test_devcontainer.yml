@@ -9,34 +9,37 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    # Only run if the triggering workflow succeeded, or if manually triggered
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     permissions:
       contents: read
       packages: read
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # For workflow_run triggers, checkout the triggering commit
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set lowercase repository name
         run: echo "REPO_NAME_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Install DevContainers CLI
-        run: |
-          npm install -g @devcontainers/cli
-          # jq is pre-installed on ubuntu-latest runners
+        run: npm install -g @devcontainers/cli
 
       - name: Login to GitHub Container Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Pull pre-built devcontainer image
         run: |
-          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${{ github.ref_name }}"
+          # Use the branch from the triggering workflow
+          BRANCH_NAME="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${BRANCH_NAME}"
           docker pull "$IMAGE"
 
       - name: Configure devcontainer to use pre-built image
         run: |
-          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${{ github.ref_name }}"
+          BRANCH_NAME="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${BRANCH_NAME}"
           jq --arg image "$IMAGE" \
             '.image = $image | del(.build)' \
             .devcontainer/devcontainer.json > temp.json
