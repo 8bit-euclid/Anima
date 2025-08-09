@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows: ["Build DevContainer"]
     types: [completed]
+    branches: [*]  # Trigger on all branches
   workflow_dispatch:
 
 jobs:
