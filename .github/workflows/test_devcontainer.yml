@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set lowercase repository name
+        run: echo "REPO_NAME_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Install DevContainers CLI
         run: |
           npm install -g @devcontainers/cli
@@ -26,12 +29,12 @@ jobs:
 
       - name: Pull pre-built devcontainer image
         run: |
-          IMAGE="ghcr.io/${{ github.repository }}/devcontainer:${{ github.ref_name }}"
+          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${{ github.ref_name }}"
           docker pull "$IMAGE"
 
       - name: Configure devcontainer to use pre-built image
         run: |
-          IMAGE="ghcr.io/${{ github.repository }}/devcontainer:${{ github.ref_name }}"
+          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${{ github.ref_name }}"
           jq --arg image "$IMAGE" \
             '.image = $image | del(.build)' \
             .devcontainer/devcontainer.json > temp.json
