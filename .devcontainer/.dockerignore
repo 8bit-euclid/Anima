@@ -1,0 +1,19 @@
+# Ignore files that aren't needed for the build
+.git
+.github
+*.md
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache
+.coverage
+.mypy_cache
+.vscode/settings.json
+tests/
+.devcontainer/test_workspace.sh
+
+# Keep only essential files for the build
+!src/
+!pyproject.toml
+!scripts/install_blender_dependencies.py
