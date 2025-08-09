@@ -1,51 +1,63 @@
 import bpy
-import keyboard
+import sys
+import threading
+import termios
+import tty
+import select
 from anima.diagnostics import logger
 from anima.utils.project import get_main_file_path as main_path
 from anima.utils.socket.client import BlenderSocketClient
 
 
-class BlenderInputManager:
+class BlenderInputMonitor:
     def __init__(self):
         self._socket = BlenderSocketClient()
-        # self.setup_hotkeys()
+        self._listener_thread = None
+        self._stop_listener = threading.Event()
 
-    def setup_hotkeys(self):
-        # Set up global hotkeys
-        keyboard.add_hotkey('ctrl+r', self.reload_main)
-        keyboard.add_hotkey('ctrl+shift+q', self.stop_blender)
-        keyboard.add_hotkey('ctrl+shift+s', self.get_status)
-        logger.info("Hotkeys registered:")
-        logger.info("  Ctrl+R: Reload script")
-        logger.info("  Ctrl+Shift+Q: Stop Blender")
-        logger.info("  Ctrl+Shift+S: Get status")
+    def start(self):
+        """Start the hotkey listener thread."""
+        if not sys.stdin.isatty():
+            logger.warning("stdin not a TTY; hotkey listener disabled")
+            return
+        self._listener_thread = threading.Thread(
+            target=self._listen_for_hotkeys, daemon=True)
+        self._listener_thread.start()
+
+    def stop(self):
+        """Stop the hotkey listener thread."""
+        if self._listener_thread and self._listener_thread.is_alive():
+            logger.debug("Stopping hotkey listener thread...")
+            self._stop_listener.set()
+            self._listener_thread.join(timeout=0.5)
+            if self._listener_thread.is_alive():
+                logger.warning("Listener thread did not stop gracefully")
 
     def execute(self, func: callable, *args: tuple, **kwargs: dict):
-        """Run a callable object in the Blender Python environment."""
+        """Run a callable object in the Blender Python environment.
+        Args:
+            func (callable): The function to execute.
+            *args (tuple): Positional arguments for the function.
+            **kwargs (dict): Keyword arguments for the function.
+        """
         return self._socket.execute(func, *args, **kwargs)
 
-    def configure_blender(self):
-        def call():
-            prefs = bpy.context.preferences
-            prefs.view.ui_scale = 1.25
-            prefs.view.show_splash = False  # Hide the splash screen
-            prefs.view.show_developer_ui = True  # Show developer extras
-            prefs.view.show_tooltips_python = True  # Show tooltips for Python
-
-        self._socket.execute(call)
-
     def reload_main(self):
+        """Reload the main Anima script."""
+        logger.info("Reloading main script...")
+
         def call():
             script_path = main_path()
-            logger.info("Resetting and reloading: {}", script_path)
 
             # Clear existing handlers to avoid duplicates
+            logger.info("Clearing existing handlers...")
             bpy.app.handlers.frame_change_pre.clear()
             bpy.app.handlers.frame_change_post.clear()
 
             # Execute the script as __main__ so entrypoints run and __file__ is set
             try:
                 import runpy
+                logger.info("Reloading script: {}", script_path)
                 runpy.run_path(script_path, run_name="__main__")
                 logger.info("Script reloaded successfully!")
             except ImportError as e:
@@ -63,7 +75,42 @@ class BlenderInputManager:
             bpy.ops.wm.quit_blender()
 
         logger.info("Quitting Blender...")
+        self.stop()  # Clean up before quitting
         self._socket.execute(call)
+
+    # Private methods -------------------------------------------------------------------------------------- #
+
+    def _configure_blender(self):
+        """Configure Blender settings for Anima."""
+        def call():
+            prefs = bpy.context.preferences
+            prefs.view.ui_scale = 1.25
+            prefs.view.show_splash = False  # Hide the splash screen
+            prefs.view.show_developer_ui = True  # Show developer extras
+            prefs.view.show_tooltips_python = True  # Show tooltips for Python
+
+        self._socket.execute(call)
+
+    def _listen_for_hotkeys(self):
+        """Listen for hotkeys in the terminal."""
+        logger.info("Hotkey listener thread started. Keyboard shortcuts:")
+        logger.info("   Ctrl+R: Reload Anima")
+        logger.info("   Ctrl+C: Quit session")
+        fd = sys.stdin.fileno()
+        old_attrs = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            while not self._stop_listener.is_set():
+                if select.select([sys.stdin], [], [], 0.25)[0]:
+                    ch = sys.stdin.read(1)
+                    if ch == '\x12':  # Ctrl+R
+                        self.reload_main()
+                    elif ch == '':  # EOF
+                        break
+        except Exception as e:
+            logger.error("Hotkey listener error: {}", e)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_attrs)
 
     def _stop_socket_server(self):
         """Stop the Blender socket server."""
