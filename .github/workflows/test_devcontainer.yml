@@ -9,16 +9,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Only run if the triggering workflow succeeded, or if manually triggered
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       packages: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          # For workflow_run triggers, checkout the triggering commit
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set lowercase repository name
         run: echo "REPO_NAME_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
@@ -31,15 +27,12 @@ jobs:
 
       - name: Pull pre-built devcontainer image
         run: |
-          # Use the branch from the triggering workflow
-          BRANCH_NAME="${{ github.event.workflow_run.head_branch || github.ref_name }}"
-          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${BRANCH_NAME}"
+          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${{ github.ref_name }}"
           docker pull "$IMAGE"
 
       - name: Configure devcontainer to use pre-built image
         run: |
-          BRANCH_NAME="${{ github.event.workflow_run.head_branch || github.ref_name }}"
-          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${BRANCH_NAME}"
+          IMAGE="ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${{ github.ref_name }}"
           jq --arg image "$IMAGE" \
             '.image = $image | del(.build)' \
             .devcontainer/devcontainer.json > temp.json
