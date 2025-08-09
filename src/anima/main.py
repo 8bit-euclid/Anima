@@ -26,7 +26,6 @@ from tests.visual_tests.test_latex import test_text_to_glyphs
 def main():
     logger.info("Running main script in Blender")
 
-    # Ensure the socket server is running
     BlenderSocketServer().start()
 
     configure_blender_viewport()
