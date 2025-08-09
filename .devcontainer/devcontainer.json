@@ -12,7 +12,6 @@
                 "ms-python.pylint",
                 "ms-python.black-formatter",
                 "ms-python.isort",
-                "ms-toolsai.jupyter",
                 "ms-vscode.makefile-tools"
             ],
             "settings": {
@@ -35,7 +34,7 @@
         "SKIP_BLENDER_DEPS": "1"
     },
 
-    "postCreateCommand": "pip install --user -e . --no-deps --force-reinstall && bash .devcontainer/test_workspace.sh",
+    "postCreateCommand": "pip install --user -e . --no-deps --force-reinstall",
     
     "remoteUser": "vscode"
 }
