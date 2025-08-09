@@ -28,7 +28,8 @@ jobs:
       - name: Build and push to registry
         uses: docker/build-push-action@v5
         with:
-          context: .devcontainer
+          context: .
+          file: .devcontainer/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ env.REPO_NAME_LOWER }}/devcontainer:${{ github.ref_name }}
