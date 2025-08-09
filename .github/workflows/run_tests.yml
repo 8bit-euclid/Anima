@@ -21,14 +21,17 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }} 
 
-    - name: Cache pip dependencies
+    - name: Cache pip and installed packages
       uses: actions/cache@v4
+      id: pip-cache
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles(env.PROJECT_CONFIG) }}
+        path: |
+          ~/.cache/pip
+          ${{ env.pythonLocation }}/lib/python*/site-packages
+        key: ${{ runner.os }}-python-${{ env.PYTHON_VERSION }}-${{ hashFiles(env.PROJECT_CONFIG) }}
         restore-keys: |
-          ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-python-${{ env.PYTHON_VERSION }}-
+          ${{ runner.os }}-python-
 
     - name: Upgrade pip
       run: python -m pip install --upgrade pip
@@ -41,20 +44,8 @@ jobs:
           config:
             - ${{ env.PROJECT_CONFIG }}
 
-    - name: Cache installed packages
-      uses: actions/cache@v4
-      id: package-cache
-      with:
-        path: |
-          ~/.cache/pip
-          ${{ env.pythonLocation }}/lib/python*/site-packages
-        key: ${{ runner.os }}-packages-${{ env.PYTHON_VERSION }}-${{ hashFiles(env.PROJECT_CONFIG) }}
-        restore-keys: |
-          ${{ runner.os }}-packages-${{ env.PYTHON_VERSION }}-
-          ${{ runner.os }}-packages-
-
     - name: Install the anima package
-      if: steps.changes.outputs.config == 'true' || steps.package-cache.outputs.cache-hit != 'true'
+      if: steps.changes.outputs.config == 'true' || steps.pip-cache.outputs.cache-hit != 'true'
       run: make install
       env:
         SKIP_BLENDER_DEPS: 1
