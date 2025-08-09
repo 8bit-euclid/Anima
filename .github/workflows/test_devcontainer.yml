@@ -1,0 +1,40 @@
+name: DevContainer CI
+
+on:
+  push:
+    paths:
+      - '.devcontainer/**'
+      - '.github/workflows/*devcontainer.yml'
+  workflow_dispatch:
+
+jobs:
+  test-devcontainer:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Build and test devcontainer
+      uses: devcontainers/ci@v0.3
+      with:
+        imageName: anima-devcontainer
+        runCmd: |
+          # Run the devcontainer test script
+          bash .devcontainer/test_workspace.sh
+          
+          # Additional validation: run a quick test to ensure anima works
+          python3 -c "
+          try:
+              import anima
+              print('✅ Anima import successful')
+          except ImportError as e:
+              print(f'❌ Anima import failed: {e}')
+              exit(1)
+          "
+          
+          # Test that make commands work
+          make --version
+          make --dry-run test
+          
+          echo "🎉 DevContainer validation completed successfully!"
