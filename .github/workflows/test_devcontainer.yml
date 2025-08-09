@@ -2,7 +2,7 @@ name: Test DevContainer
 
 on:
   workflow_run:
-    workflows: ["Build DevContainer"]
+    workflows: [Build DevContainer]
     branches: ["**"]
     types: [completed]
   workflow_dispatch:
