@@ -41,8 +41,20 @@ jobs:
           config:
             - ${{ env.PROJECT_CONFIG }}
 
+    - name: Cache installed packages
+      uses: actions/cache@v4
+      id: package-cache
+      with:
+        path: |
+          ~/.cache/pip
+          ${{ env.pythonLocation }}/lib/python*/site-packages
+        key: ${{ runner.os }}-packages-${{ env.PYTHON_VERSION }}-${{ hashFiles(env.PROJECT_CONFIG) }}
+        restore-keys: |
+          ${{ runner.os }}-packages-${{ env.PYTHON_VERSION }}-
+          ${{ runner.os }}-packages-
+
     - name: Install the anima package
-      if: steps.changes.outputs.config == 'true'
+      if: steps.changes.outputs.config == 'true' || steps.package-cache.outputs.cache-hit != 'true'
       run: make install
       env:
         SKIP_BLENDER_DEPS: 1
