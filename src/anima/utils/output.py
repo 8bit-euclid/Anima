@@ -1,27 +1,30 @@
 import subprocess
 import threading
 from anima.diagnostics import logger
+from anima.utils.subprocess import SubprocessManager
 
 
 class BlenderOutputMonitor:
     """Monitors Blender process output."""
 
-    def __init__(self):
+    def __init__(self, subproc_manager: SubprocessManager):
         self._monitoring: bool = False
         self._thread: threading.Thread = None
+        self._subproc_manager = subproc_manager
 
-    def start(self, process: subprocess.Popen) -> None:
+    def start(self) -> None:
         """Start monitoring process output.
         Args:
             process (subprocess.Popen): The Blender subprocess to monitor.
         """
+        process = self._subproc_manager.subprocess
         if not process or not process.stdout:
             return
 
         self._monitoring = True
         self._thread = threading.Thread(
             target=self._read_stream,
-            args=(process.stdout,),  # stderr is already merged into stdout
+            args=(process.stdout,),  # stderr already merged into stdout
             daemon=True
         )
         self._thread.start()
