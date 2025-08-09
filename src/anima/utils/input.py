@@ -4,16 +4,19 @@ import threading
 import termios
 import tty
 import select
+import subprocess
 from anima.diagnostics import logger
 from anima.utils.project import get_main_file_path as main_path
 from anima.utils.socket.client import BlenderSocketClient
+from anima.utils.subprocess import SubprocessManager
 
 
 class BlenderInputMonitor:
-    def __init__(self):
+    def __init__(self, subproc_manager: SubprocessManager):
         self._socket = BlenderSocketClient()
         self._listener_thread = None
         self._stop_listener = threading.Event()
+        self._subproc_manager = subproc_manager
 
     def start(self):
         """Start the hotkey listener thread."""
@@ -42,9 +45,11 @@ class BlenderInputMonitor:
         """
         return self._socket.execute(func, *args, **kwargs)
 
-    def reload_main(self):
+    def _reload_main(self):
         """Reload the main Anima script."""
         logger.info("Reloading main script...")
+
+        self._blender_to_front()
 
         def call():
             script_path = main_path()
@@ -104,13 +109,35 @@ class BlenderInputMonitor:
                 if select.select([sys.stdin], [], [], 0.25)[0]:
                     ch = sys.stdin.read(1)
                     if ch == '\x12':  # Ctrl+R
-                        self.reload_main()
+                        self._reload_main()
                     elif ch == '':  # EOF
                         break
         except Exception as e:
             logger.error("Hotkey listener error: {}", e)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_attrs)
+
+    def _blender_to_front(self):
+        """Bring the Blender window to the front (Linux only)."""
+        if not sys.platform.startswith("linux"):
+            raise RuntimeError("Only supported on Linux.")
+
+        process = self._subproc_manager.subprocess
+        try:
+            # List all windows with their PIDs using wmctrl
+            out = subprocess.check_output(["wmctrl", "-lp"]).decode()
+        except FileNotFoundError:
+            raise RuntimeError("wmctrl not found")
+
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 4 and parts[2] == str(process.pid) and "Blender" in line:
+                wid = parts[0]
+                # Bring the Blender window to the front
+                subprocess.run(["wmctrl", "-ia", wid])
+                return
+
+        raise RuntimeError(f"No Blender window found for PID {process.pid}")
 
     def _stop_socket_server(self):
         """Stop the Blender socket server."""

@@ -14,24 +14,25 @@ class BlenderProcess:
 
     def __init__(self, script_path: Path = None):
         self._subproc_manager = SubprocessManager(script_path)
-        self._input_monitor = BlenderInputMonitor()
-        self._output_monitor = BlenderOutputMonitor()
+        self._input_monitor = BlenderInputMonitor(self._subproc_manager)
+        self._output_monitor = BlenderOutputMonitor(self._subproc_manager)
 
     def start(self):
         """Start Blender and run the main.py script."""
+        subproc_mgr = self._subproc_manager
+        pid = subproc_mgr.subprocess.pid if subproc_mgr.subprocess else None
         try:
-            if self._subproc_manager.running():
-                logger.info(
-                    f"Found running Blender instance (pid: {self._subproc_manager.subprocess.pid})")
-                # TODO
+            if subproc_mgr.running():
+                logger.info(f"Found running Blender instance (pid: {pid})")
             else:
-                if not self._subproc_manager.start():
+                logger.info("Starting Blender subprocess...")
+                if not subproc_mgr.start():
                     raise RuntimeError("Failed to start Blender subprocess")
                 self._input_monitor._configure_blender()
 
         except Exception as e:
             logger.error(f"Error running script: {e}")
-            self._subproc_manager.cleanup()
+            subproc_mgr.cleanup()
             raise
 
     def monitor(self):
@@ -43,35 +44,15 @@ class BlenderProcess:
 
         # Start input/output monitoring
         self._input_monitor.start()
-        self._output_monitor.start(subproc)
-
-        # # Define callbacks for keyboard events
-        # def on_reload():
-        #     logger.info("Reloading script...")
-        #     if self._script_reloader.reload():
-        #         logger.info("✓ Script reloaded successfully")
-        #     else:
-        #         logger.error("✗ Failed to reload script")
-
-        # def on_quit():
-        #     self._cleanup()
-
-        # # Start keyboard monitoring
-        # self._keyboard_monitor.start(on_reload, on_quit)
-
-        # sleep(3)
-        # self.reload()
-        # self.quit()
+        self._output_monitor.start()
 
         try:
             # Wait for Blender process to end
-            logger.info("Blender is running")
+            logger.info("Blender is running...")
             subproc.wait()
             logger.info(f"Blender process has ended")
-
         except KeyboardInterrupt:
             logger.info("KeyboardInterrupt: Terminating Blender...")
-
         finally:
             self._input_monitor.stop()
             self._output_monitor.stop()
@@ -79,7 +60,7 @@ class BlenderProcess:
 
     def reload(self):
         """Reload the main script in Blender."""
-        self._input_monitor.reload_main()
+        self._input_monitor._reload_main()
 
     def quit(self):
         """Quit Blender gracefully."""
