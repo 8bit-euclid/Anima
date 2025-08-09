@@ -8,16 +8,14 @@ name = "anima"
 dynamic = ["version"]
 requires-python = ">=3.11.4,<=3.11.13" # Ensure the range contains Blender's Python version
 dependencies = [
-   "scipy==1.15.3",
    "bpy==4.4.0",
-   "pytest==8.4.0",
-   "numpy==1.26.4",
    "mathutils==3.3.0",
-   "pylatexenc==2.10",
-   "loguru==0.7.3",
+   "numpy==1.26.4",
+   "scipy==1.15.3",
+   "pytest==8.4.0",
    "plastex==3.1",
-   "keyboard==0.13.5",
    "dill==0.4.0",
+   "loguru==0.7.3",
 ]
 
 ## Blender-specific configurations
