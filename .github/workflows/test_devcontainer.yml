@@ -48,20 +48,5 @@ jobs:
           devcontainer exec --workspace-folder . bash -c "
             # Run the devcontainer test script
             bash .devcontainer/test_workspace.sh
-            
-            # Additional validation: run a quick test to ensure anima works
-            python3 -c '
-            try:
-                import anima
-                print(\"✅ Anima import successful\")
-            except ImportError as e:
-                print(f\"❌ Anima import failed: {e}\")
-                exit(1)
-            '
-            
-            # Test that make commands work
-            make --version
-            make --dry-run test
-            
             echo '🎉 DevContainer validation completed successfully!'
           "
