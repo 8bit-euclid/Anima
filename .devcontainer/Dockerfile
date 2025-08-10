@@ -13,15 +13,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create workspace directory
-RUN mkdir -p /workspaces/anima
+RUN mkdir -p /workspace
 
 # Set ownership and permissions of workspace
-RUN chown -R vscode:vscode /workspaces/anima \
-    && chmod -R 755 /workspaces/anima
+RUN chown -R vscode:vscode /workspace \
+    && chmod -R 755 /workspace
 
 # Switch to vscode user
 USER vscode
-WORKDIR /workspaces/anima
+WORKDIR /workspace
 
 # Pre-install common Python packages that are likely to be used
 # The actual project dependencies will be installed when the container starts

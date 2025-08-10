@@ -1,12 +1,10 @@
 #!/bin/bash
-# filepath: /workspaces/Anima/scripts/enter_devcontainer.sh
 
-# Find container by project label
-CONTAINER_ID=$(docker ps --filter "label=project=anima" --filter "status=running" --format "{{.ID}}" | head -n1)
+# Extract the container name from the --name runtime argument in devcontainer.json
+CONTAINER_NAME=$(jq -r '.runArgs | (index("--name") + 1) as $i | .[$i]' "$(dirname "$0")/../.devcontainer/devcontainer.json")
 
-if [ -n "$CONTAINER_ID" ]; then
-    docker exec -it "$CONTAINER_ID" bash
+if [ -n "$CONTAINER_NAME" ]; then
+  docker exec -it "$CONTAINER_NAME" bash
 else
-    echo "No running devcontainer found for project 'anima'."
-    exit 1
+  echo "No devcontainer found."
 fi
