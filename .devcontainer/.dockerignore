@@ -1,18 +1,20 @@
-# Ignore files that aren't needed for the build
-.git
-.github
-*.md
-**/__pycache__
+# Ignore version control and development environment files
+.git/
+.github/
+.vscode/
+.devcontainer/
+
+# Ignore Python cache files and build artifacts
+**/__pycache__/
 **/*.pyc
 **/*.pyo
 **/*.pyd
-.pytest_cache
-.mypy_cache
-.vscode/settings.json
-tests/
-.devcontainer/test_workspace.sh
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
 
-# Keep only essential files for the build
-!src/
-!pyproject.toml
-!scripts/install_blender_dependencies.py
+# Ignore temporary and log files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
