@@ -2,6 +2,10 @@
 requires = ["setuptools>=65.0", "setuptools-scm[toml]>=8.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
+## Blender-specific configurations
+[tool.blender]
+root-dir = "~/Applications/blender/blender-4.3.2-linux-x64"
+
 ## Project configurations
 [project]
 name = "anima"
@@ -17,10 +21,6 @@ dependencies = [
    "dill==0.4.0",
    "loguru==0.7.3",
 ]
-
-## Blender-specific configurations
-[tool.blender]
-root-dir = "~/Applications/blender/blender-4.3.2-linux-x64"
 
 ## Other tool configurations
 [tool.setuptools]

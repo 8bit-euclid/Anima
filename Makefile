@@ -2,7 +2,7 @@
 
 # Install the project and its dependencies
 install:
-	pip install -e .
+	pip install --user -e .
 
 # Install Blender dependencies
 install-blender-deps:
