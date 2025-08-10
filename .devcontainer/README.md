@@ -20,12 +20,28 @@ This devcontainer provides a Python 3.11 development environment specifically co
 
 ## Project Structure
 
-The container automatically runs `make install` which:
-1. Installs the project in editable mode (`pip install -e .`)
-2. Installs Blender dependencies via the custom script
-3. Sets up the development environment
+The container automatically installs the project during build:
+1. Installs the project in editable mode (`pip install -e .`) with all dependencies
+2. Sets up the development environment with Python 3.11
 
 This means your changes to the source code are immediately available for testing.
+
+## Manual Installation Commands
+
+If you need to reinstall or work with Blender integration:
+
+```bash
+# Install the project in editable mode (already done automatically)
+make install
+
+# Install dependencies into your local Blender installation
+make install-blender-deps
+```
+
+**Note**: `make install-blender-deps` requires:
+- A local Blender installation (configured in `pyproject.toml` under `[tool.blender]`)
+- The Blender Python executable to be accessible
+- This installs the project dependencies (bpy, numpy, scipy, etc.) into Blender's Python environment
 
 ## Testing
 
@@ -36,6 +52,12 @@ pytest
 # or use make
 make test
 ```
+
+### Available Make Targets
+- `make install`: Install the project in editable mode
+- `make install-blender-deps`: Install dependencies into Blender's Python environment
+- `make run`: Run the main application (`python run.py`)
+- `make test`: Run tests with pytest
 
 ### DevContainer Validation
 To test that the devcontainer is working correctly:
