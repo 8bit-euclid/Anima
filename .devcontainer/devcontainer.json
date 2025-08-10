@@ -10,9 +10,10 @@
     ],
     "workspaceFolder": "/workspace",
     "mounts": [
-        "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+        "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+        "source=anima-local,target=/home/vscode/.local,type=volume"
     ],
-    "postCreateCommand": "pip install --user -e . --no-deps --force-reinstall",
+    "postCreateCommand": "make install",
     "remoteUser": "vscode",
     
     "customizations": {
