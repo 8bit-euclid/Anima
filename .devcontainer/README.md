@@ -41,7 +41,7 @@ make install-blender-deps
 **Note**: `make install-blender-deps` requires:
 - A local Blender installation (configured in `pyproject.toml` under `[tool.blender]`)
 - The Blender Python executable to be accessible
-- This installs the project dependencies (bpy, numpy, scipy, etc.) into Blender's Python environment
+- This installs anima's dependencies (bpy, numpy, scipy, etc.) into Blender's Python environment
 
 ## Testing
 
