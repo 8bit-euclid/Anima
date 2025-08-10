@@ -1,12 +1,20 @@
 {
-    "name": "Anima Development Environment",
+    "name": "Anima DevContainer",
     "build": {
         "dockerfile": "Dockerfile",
         "context": ".."
     },
-
-    "workspaceFolder": "/workspaces/anima",
-
+    "runArgs": [
+        "--name", "vsc-anima",
+        "--privileged"
+    ],
+    "workspaceFolder": "/workspace",
+    "mounts": [
+        "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+    ],
+    "postCreateCommand": "pip install --user -e . --no-deps --force-reinstall",
+    "remoteUser": "vscode",
+    
     "customizations": {
         "vscode": {
             "extensions": [
@@ -30,13 +38,5 @@
                 "python.testing.pytestArgs": ["tests"]
             }
         }
-    },
-
-    "postCreateCommand": "pip install --user -e . --no-deps --force-reinstall",
-    
-    "remoteUser": "vscode",
-
-    "runArgs": [
-        "--label", "project=anima"
-    ]
+    }
 }
