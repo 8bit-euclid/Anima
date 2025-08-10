@@ -1,11 +1,12 @@
-.PHONY: install run test
+.PHONY: install install-blender-deps run test
 
 # Install the project and its dependencies
 install:
 	pip install -e .
-ifndef SKIP_BLENDER_DEPS
+
+# Install Blender dependencies
+install-blender-deps:
 	python scripts/install_blender_dependencies.py
-endif
 
 # Run the project
 run:
