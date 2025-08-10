@@ -2,6 +2,7 @@ name: Run Anima Test Suite
 
 env:
   PYTHON_VERSION: '3.11.9' # Should match version in pyproject.toml
+  PROJECT_CONFIG: 'pyproject.toml'
 
 on:
   push:
@@ -30,7 +31,7 @@ jobs:
         path: |
           ~/.cache/pip
           ${{ env.pythonLocation }}
-        key: ${{ runner.os }}-python-${{ env.PYTHON_VERSION }}-${{ hashFiles('pyproject.toml') }}
+        key: ${{ runner.os }}-python-${{ env.PYTHON_VERSION }}-${{ hashFiles(env.PROJECT_CONFIG) }}
         restore-keys: |
           ${{ runner.os }}-python-${{ env.PYTHON_VERSION }}-
 
