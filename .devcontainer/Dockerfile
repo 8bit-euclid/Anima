@@ -15,9 +15,6 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Set environment variable for software rendering (headless)
-ENV LIBGL_ALWAYS_SOFTWARE=1
-
 # Switch to vscode user early to avoid permission issues with pip cache
 USER vscode
 
