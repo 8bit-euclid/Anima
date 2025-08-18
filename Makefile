@@ -1,32 +1,34 @@
 SHELL := /bin/bash
-.PHONY: all help clean run test check lint fmt install update release debug ci bench install-blender-deps enter-devcontainer
+.PHONY: help all install install-dev install-debug install-release update ci install-blender-deps run run-release test test-verbose test-ignored bench check lint lint-fix format format-check enter-devcontainer clean clean-all
 
 # Default target
 help: ## Show this help message
 	@echo "Available targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "   \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "   \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # Project targets
-all: clean fmt lint test install ## Run clean, format, lint, test, and install
+all: clean format lint test install ## Run clean, format, lint, test, and install
 
-install: ## Install the project in development mode
-	@echo "Installing in development mode..."
-	@pip install -e .
+install: install-dev ## Default install target (dev mode)
+
+install-dev: ## Install the project with development dependencies
+	@echo "Installing with development dependencies..."
+	@pip install -e .[dev]
+
+install-debug: ## Install the project in debug mode with dev dependencies
+	@echo "Installing in debug mode..."
+	@pip install -e .[dev] --verbose
 
 install-release: ## Install the project in production mode
 	@echo "Installing in production mode..."
 	@pip install .
-
-install-debug: ## Install the project in debug mode
-	@echo "Installing in debug mode..."
-	@pip install -e . --verbose
 
 update: ## Update dependencies
 	@echo "Updating dependencies..."
 	@pip install --upgrade pip
 	@pip install --upgrade -e .
 
-ci: fmt-check lint test ## Run CI checks (format check, lint, test)
+ci: format-check lint test ## Run CI checks (format check, lint, test) - requires dev dependencies
 
 # Blender targets
 install-blender-deps: ## Install Blender dependencies
@@ -76,12 +78,12 @@ lint-fix: ## Automatically fix linting issues where possible
 	@autopep8 --in-place --recursive .
 	@isort .
 
-fmt: ## Format the code using black and isort
+format: ## Format the code using black and isort
 	@echo "Formatting the code..."
 	@black .
 	@isort .
 
-fmt-check: ## Check if code is formatted correctly
+format-check: ## Check if code is formatted correctly
 	@echo "Checking code formatting..."
 	@black --check .
 	@isort --check-only .
