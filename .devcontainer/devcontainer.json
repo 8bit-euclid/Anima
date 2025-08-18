@@ -6,12 +6,16 @@
     },
     "runArgs": [
         "--name", "vsc-anima",
-        "--privileged"
+        "--privileged",
+        "--network=host",
+        "--env", "DISPLAY=${localEnv:DISPLAY}",
+        "--mount", "type=bind,source=/tmp/.X11-unix,target=/tmp/.X11-unix,bind-propagation=rshared"
     ],
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
     "workspaceFolder": "/workspace",
     "mounts": [
-        "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-        "source=anima-local,target=/home/vscode/.local,type=volume"
+        "source=anima-local,target=/home/vscode/.local,type=volume",
+        "source=${localEnv:HOME}/Applications/blender,target=/home/vscode/Applications/blender,type=bind,consistency=cached"
     ],
     "postCreateCommand": "make install",
     "remoteUser": "vscode",
@@ -23,7 +27,8 @@
                 "ms-python.pylint",
                 "ms-python.black-formatter",
                 "ms-python.isort",
-                "ms-vscode.makefile-tools"
+                "ms-vscode.makefile-tools",
+                "Augment.vscode-augment"
             ],
             "settings": {
                 "python.defaultInterpreterPath": "/home/vscode/.local/bin/python",

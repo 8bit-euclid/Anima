@@ -3,6 +3,7 @@ FROM mcr.microsoft.com/devcontainers/python:3.11
 
 # Install minimal dependencies to fix libXxf86vm.so.1 and libXi.so.6 errors and basic bpy functionality
 RUN apt-get update && apt-get install -y \
+    build-essential \
     libxxf86vm1 \
     libgl1-mesa-glx \
     libx11-6 \
@@ -14,7 +15,6 @@ RUN apt-get update && apt-get install -y \
 
 # Create workspace directory
 RUN mkdir -p /workspace
-
 # Set ownership and permissions of workspace
 RUN chown -R vscode:vscode /workspace \
     && chmod -R 755 /workspace
