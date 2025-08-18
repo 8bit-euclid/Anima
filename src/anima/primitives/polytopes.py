@@ -8,11 +8,14 @@ class Polygon(Object):
 
 class Triangle(Polygon):
     def __init__(self, vertices):
-        assert len(vertices) == 3, 'Expected 3 vertices for a triangle'
+        assert len(vertices) == 3, "Expected 3 vertices for a triangle"
         super().__init__(vertices)
 
 
 class Rectangle(Polygon):
-    def __init__(self, origin, ):
-        assert len(vertices) == 4, 'Expected 4 vertices for a triangle'
+    def __init__(
+        self,
+        origin,
+    ):
+        assert len(vertices) == 4, "Expected 4 vertices for a triangle"
         self.vertices = vertices

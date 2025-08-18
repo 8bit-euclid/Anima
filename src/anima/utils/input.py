@@ -1,10 +1,12 @@
-import bpy
-import sys
-import threading
-import termios
-import tty
 import select
 import subprocess
+import sys
+import termios
+import threading
+import tty
+
+import bpy
+
 from anima.diagnostics import logger
 from anima.utils.project import get_main_file_path as main_path
 from anima.utils.socket.client import BlenderSocketClient
@@ -24,7 +26,8 @@ class BlenderInputMonitor:
             logger.warning("stdin not a TTY; hotkey listener disabled")
             return
         self._listener_thread = threading.Thread(
-            target=self._listen_for_hotkeys, daemon=True)
+            target=self._listen_for_hotkeys, daemon=True
+        )
         self._listener_thread.start()
 
     def stop(self):
@@ -62,6 +65,7 @@ class BlenderInputMonitor:
             # Execute the script as __main__ so entrypoints run and __file__ is set
             try:
                 import runpy
+
                 logger.info("Reloading script: {}", script_path)
                 runpy.run_path(script_path, run_name="__main__")
                 logger.info("Script reloaded successfully!")
@@ -74,6 +78,7 @@ class BlenderInputMonitor:
 
     def quit_blender(self):
         """Quit Blender gracefully."""
+
         def call():
             bpy.context.preferences.view.use_save_prompt = False
             bpy.ops.screen.animation_cancel()
@@ -87,6 +92,7 @@ class BlenderInputMonitor:
 
     def _configure_blender(self):
         """Configure Blender settings for Anima."""
+
         def call():
             prefs = bpy.context.preferences
             prefs.view.ui_scale = 1.25
@@ -108,9 +114,9 @@ class BlenderInputMonitor:
             while not self._stop_listener.is_set():
                 if select.select([sys.stdin], [], [], 0.25)[0]:
                     ch = sys.stdin.read(1)
-                    if ch == '\x12':  # Ctrl+R
+                    if ch == "\x12":  # Ctrl+R
                         self._reload_main()
-                    elif ch == '':  # EOF
+                    elif ch == "":  # EOF
                         break
         except Exception as e:
             logger.error("Hotkey listener error: {}", e)

@@ -1,7 +1,10 @@
-import bpy
-from .object import Object
-from anima.globals.general import Vector, Euler
 from abc import abstractmethod
+
+import bpy
+
+from anima.globals.general import Euler, Vector
+
+from .object import Object
 
 
 class Effect(Object):

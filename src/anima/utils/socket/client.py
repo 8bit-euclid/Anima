@@ -1,10 +1,18 @@
-import dill
 import functools
 import socket
 import time
 from typing import Callable
+
+import dill
+
 from anima.diagnostics import logger
-from anima.utils.socket.common import TCP_HOST, TCP_PORT, QUEUE_FULL, QUEUED, receive_data
+from anima.utils.socket.common import (
+    QUEUE_FULL,
+    QUEUED,
+    TCP_HOST,
+    TCP_PORT,
+    receive_data,
+)
 
 
 class BlenderSocketClient:

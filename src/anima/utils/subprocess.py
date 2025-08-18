@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+
 from anima.diagnostics import logger
 from anima.utils.project import get_main_file_path
 
@@ -18,17 +19,23 @@ class SubprocessManager:
         """
         try:
             from anima.utils.blender import get_blender_executable_path as bl_path
+
             logger.info(f"Starting Blender from: {bl_path()}")
 
             self._subprocess = subprocess.Popen(
-                [bl_path(), '--window-maximized', '--factory-startup',
-                 '--python', self._script_path],
+                [
+                    bl_path(),
+                    "--window-maximized",
+                    "--factory-startup",
+                    "--python",
+                    self._script_path,
+                ],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # Merge stderr into stdout
                 text=True,
                 bufsize=1,
-                start_new_session=True  # isolate Blender from parent
+                start_new_session=True,  # isolate Blender from parent
             )
 
             logger.info(f"Blender started (pid: {self.subprocess.pid})")
@@ -44,22 +51,21 @@ class SubprocessManager:
         Returns:
             bool: True if the subprocess is running, False otherwise.
         """
-        return (self.subprocess is not None and self.subprocess.poll() is None)
+        return self.subprocess is not None and self.subprocess.poll() is None
 
     def cleanup(self) -> None:
-        """Clean up the process. If the subprocess is running, it will be terminated gracefully. If it does not terminate within 5 seconds, it will be forcefully killed.
-        """
+        """Clean up the process. If the subprocess is running, it will be terminated gracefully. If it does not terminate within 5 seconds, it will be forcefully killed."""
         if self.subprocess:
             try:
-                logger.info(
-                    f"Terminating subprocess (pid: {self.subprocess.pid})")
+                logger.info(f"Terminating subprocess (pid: {self.subprocess.pid})")
                 self.subprocess.terminate()
 
                 try:
                     self.subprocess.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     logger.warning(
-                        "Subprocess didn't terminate gracefully, forcing kill")
+                        "Subprocess didn't terminate gracefully, forcing kill"
+                    )
                     self.subprocess.kill()
             except (ProcessLookupError, AttributeError):
                 pass

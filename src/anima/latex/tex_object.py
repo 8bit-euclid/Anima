@@ -4,7 +4,7 @@ from anima.primitives.object import Object
 class TeXObject(Object):
     """Base class for all TeX objects, which can be either a command or a text object."""
 
-    def __init__(self, name: str = None, parent: 'TeXObject' = None):
+    def __init__(self, name: str = None, parent: "TeXObject" = None):
         super().__init__(name=name, parent=parent)
         self.text: str = ""
         self.rendered: bool = True

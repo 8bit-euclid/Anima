@@ -1,12 +1,13 @@
-import bpy
 import functools
 from pathlib import Path
-from time import sleep
+
+import bpy
+
 from anima.diagnostics import logger
-from anima.utils.project import get_pyproject_config_value
-from anima.utils.subprocess import SubprocessManager
 from anima.utils.input import BlenderInputMonitor
 from anima.utils.output import BlenderOutputMonitor
+from anima.utils.project import get_pyproject_config_value
+from anima.utils.subprocess import SubprocessManager
 
 
 class BlenderProcess:
@@ -75,8 +76,8 @@ def get_blender_root_path() -> Path:
     Raises:
         FileNotFoundError: If Blender path does not exist.
     """
-    bl_config = get_pyproject_config_value('tool.blender')
-    root_dir = Path(bl_config.get('root-dir', '')).expanduser()
+    bl_config = get_pyproject_config_value("tool.blender")
+    root_dir = Path(bl_config.get("root-dir", "")).expanduser()
     if not root_dir.exists():
         raise FileNotFoundError(f"Blender path does not exist: {root_dir}")
     return root_dir
@@ -91,7 +92,7 @@ def get_blender_executable_path() -> Path:
         FileNotFoundError: If Blender path does not exist.
     """
     # Get the Blender executable path
-    bl_path = get_blender_root_path() / 'blender'
+    bl_path = get_blender_root_path() / "blender"
     if not bl_path.exists():
         raise FileNotFoundError(f"Blender path does not exist: {bl_path}")
     return bl_path
@@ -102,18 +103,22 @@ def configure_blender_viewport():
     # Find and activate the 3D viewport
     for window in bpy.context.window_manager.windows:
         for area in window.screen.areas:
-            if area.type == 'VIEW_3D':
+            if area.type == "VIEW_3D":
                 for region in area.regions:
-                    if region.type == 'WINDOW':
+                    if region.type == "WINDOW":
                         logger.debug("Found 3D viewport: overriding context")
                         override = {
-                            'area': area,
-                            'region': region,
-                            'space_data': area.spaces.active if hasattr(area.spaces, "active") else area.spaces[0]
+                            "area": area,
+                            "region": region,
+                            "space_data": (
+                                area.spaces.active
+                                if hasattr(area.spaces, "active")
+                                else area.spaces[0]
+                            ),
                         }
                         with bpy.context.temp_override(**override):
                             if bpy.ops.view3d.view_axis.poll():
-                                bpy.ops.view3d.view_axis(type='TOP')
+                                bpy.ops.view3d.view_axis(type="TOP")
                                 logger.debug("Set 3D viewport to top view")
                         break
                 break

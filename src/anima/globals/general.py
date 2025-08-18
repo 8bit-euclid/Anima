@@ -1,15 +1,16 @@
 import inspect
-import bpy
-import sys
 import math
-from pathlib import Path
+import sys
 from copy import deepcopy
-from typing import Iterable
-from mathutils import Vector, Matrix, Euler
 from datetime import timedelta
+from pathlib import Path
+from typing import Iterable
+
+import bpy
+from mathutils import Euler, Matrix, Vector
+
 import anima.globals.easybpy as ebpy
 from anima.utils.project import get_project_root_path
-
 
 UnitZ = Vector((0.0, 0.0, 1.0))
 SMALL_OFFSET = 0.00005
@@ -18,7 +19,9 @@ DEFAULT_RELATIVE_SMALL = 1e-8
 
 
 def clip(val: int | float, min_val: int | float, max_val: int | float):
-    assert min_val <= max_val, f"Minimum value must be less than or equal to maximum value. {val} [{min_val}, {max_val}]"
+    assert (
+        min_val <= max_val
+    ), f"Minimum value must be less than or equal to maximum value. {val} [{min_val}, {max_val}]"
     return min(max(val, min_val), max_val)
 
 
@@ -53,15 +56,21 @@ def rotate_90(vector: Vector, clockwise=False):
 def outer_product(a: Vector | tuple, b: Vector | tuple) -> Matrix:
     A = Vector(a).resized(3)
     B = Vector(b).resized(3)
-    return Matrix([
-        [A.x * B.x, A.x * B.y, A.x * B.z],
-        [A.y * B.x, A.y * B.y, A.y * B.z],
-        [A.z * B.x, A.z * B.y, A.z * B.z]
-    ]).to_3x3()
+    return Matrix(
+        [
+            [A.x * B.x, A.x * B.y, A.x * B.z],
+            [A.y * B.x, A.y * B.y, A.y * B.z],
+            [A.z * B.x, A.z * B.y, A.z * B.z],
+        ]
+    ).to_3x3()
 
 
-def are_vectors_close(v_1: Vector | Iterable, v_2: Vector | Iterable, rel_tol: float = DEFAULT_RELATIVE_SMALL,
-                      abs_tol: float = DEFAULT_ABSOLUTE_SMALL):
+def are_vectors_close(
+    v_1: Vector | Iterable,
+    v_2: Vector | Iterable,
+    rel_tol: float = DEFAULT_RELATIVE_SMALL,
+    abs_tol: float = DEFAULT_ABSOLUTE_SMALL,
+):
     for a_1, a_2 in zip(v_1, v_2):
         if not math.isclose(a_1, a_2, rel_tol=rel_tol, abs_tol=abs_tol):
             return False
@@ -87,10 +96,10 @@ def create_mesh(name: str, verts, faces=None, edges=None):
 
 
 def link_object(obj):
-    bpy.data.collections['Collection'].objects.link(obj)
+    bpy.data.collections["Collection"].objects.link(obj)
 
 
-def add_object(name: str = 'Object', data=None, parent=None):
+def add_object(name: str = "Object", data=None, parent=None):
     if data is None:
         data = bpy.data.meshes.new(name=name)  # Create empty mesh
     obj = bpy.data.objects.new(name, data)
@@ -110,8 +119,8 @@ def deepcopy_object(obj, name=None):
     return new_obj
 
 
-def add_empty(name='Empty', location=(0, 0, 0), parent=None):
-    bpy.ops.object.empty_add(location=location, type='PLAIN_AXES')
+def add_empty(name="Empty", location=(0, 0, 0), parent=None):
+    bpy.ops.object.empty_add(location=location, type="PLAIN_AXES")
     obj = bpy.context.object
     obj.name = name
     obj.parent = parent
@@ -129,13 +138,13 @@ def active_object():
 
 
 def deselect_all():
-    bpy.ops.object.select_all(action='DESELECT')
+    bpy.ops.object.select_all(action="DESELECT")
     bpy.context.view_layer.objects.active = None
 
 
 def hide_relationship_lines():
     for area in bpy.context.screen.areas:
-        if area.type == 'VIEW_3D':
+        if area.type == "VIEW_3D":
             space = area.spaces.active
             space.overlay.show_relationship_lines = False
             break
@@ -153,12 +162,12 @@ def add_empty_hook(name, parent, vertex_index):
 
 def add_line_segment(name: str, point_0, point_1):
     # Create a new curve object
-    curve_data = bpy.data.curves.new(name=name, type='CURVE')
-    curve_data.dimensions = '3D'
+    curve_data = bpy.data.curves.new(name=name, type="CURVE")
+    curve_data.dimensions = "3D"
     curve_data.resolution_u = 1
 
     # Create a Bezier spline and add it to the curve
-    spline = curve_data.splines.new(type='BEZIER')
+    spline = curve_data.splines.new(type="BEZIER")
     spline.bezier_points.add(count=1)
     for i, pt in enumerate([point_0, point_1]):
         spline.bezier_points[i].co = make_3d_vector(pt)
@@ -168,7 +177,8 @@ def add_line_segment(name: str, point_0, point_1):
 
 def add_circle(radius: float = 1, centre=(0, 0, 0)):
     bpy.ops.curve.primitive_nurbs_circle_add(
-        radius=radius, location=centre, scale=(1, 1, 1))
+        radius=radius, location=centre, scale=(1, 1, 1)
+    )
     return active_object()
 
 
@@ -197,12 +207,12 @@ def set_mode(mode: str):
 
 def set_edit_mode():
     """Sets the current mode to EDIT mode."""
-    set_mode('EDIT')
+    set_mode("EDIT")
 
 
 def set_object_mode():
     """Sets the current mode to OBJECT mode."""
-    set_mode('OBJECT')
+    set_mode("OBJECT")
 
 
 def flip_normals_active_obj():
@@ -217,8 +227,7 @@ def extrude_active_obj(displacement: Vector):
     Args:
         displacement (Vector): The vector by which to extrude the object."""
     set_edit_mode()
-    bpy.ops.mesh.extrude_region_move(
-        TRANSFORM_OT_translate={"value": displacement})
+    bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value": displacement})
     set_object_mode()
 
 
@@ -231,9 +240,8 @@ def time(time_str: str) -> timedelta:
     Raises:
         AssertionError: If the time string is not in the correct format.
     """
-    units = time_str.split(':')
-    assert len(units) in [2, 3], \
-        "Accepted time formats are mm:ss and mm:ss:mmm"
+    units = time_str.split(":")
+    assert len(units) in [2, 3], "Accepted time formats are mm:ss and mm:ss:mmm"
     assert len(units[0]) == 2
     assert len(units[1]) == 2
 
@@ -256,8 +264,7 @@ def to_frame(delta):
     if isinstance(delta, str):
         delta = time(delta)
 
-    assert delta < timedelta(
-        hours=1), "Can only convert up to 1hr to a frame index."
+    assert delta < timedelta(hours=1), "Can only convert up to 1hr to a frame index."
     return round(ebpy.get_scene().render.fps * delta.total_seconds()) + 1
 
 
@@ -274,12 +281,14 @@ def get_pyproject_path() -> Path:
     Returns:
         Path: The path to the pyproject.toml file.
     Raises:
-        FileNotFoundError: If the pyproject.toml file is not found in the project root."""
+        FileNotFoundError: If the pyproject.toml file is not found in the project root.
+    """
     root = get_project_root_path()
     pyproject = root / "pyproject.toml"
     if not pyproject.exists():
         raise FileNotFoundError(
-            f"pyproject.toml not found in {root}. Ensure it exists.")
+            f"pyproject.toml not found in {root}. Ensure it exists."
+        )
     return pyproject
 
 
@@ -295,6 +304,7 @@ def is_blender_object(obj):
 def is_animable(object):
     """Check if the object is animable, i.e. it is a subclass of BaseObject."""
     from ..primitives.object import Object
+
     return issubclass(type(object), Object)
 
 
@@ -308,7 +318,7 @@ def get_blender_object(object):
     elif is_animable(object):
         return object.object
     else:
-        raise Exception(f'Unrecognised object of type {type(object)}')
+        raise Exception(f"Unrecognised object of type {type(object)}")
 
 
 # Store the original stdout so we can restore it later

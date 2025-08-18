@@ -1,5 +1,7 @@
-import bpy
 from enum import Enum
+
+import bpy
+
 from anima.primitives.points import Empty
 
 
@@ -14,18 +16,22 @@ class Updater:
     def __init__(self, type=Type.PRE_FRAME_CHANGE):
         self.handlers = None
         self.obj = Empty()
-        self.obj['out'] = 0.0
+        self.obj["out"] = 0.0
 
         if type == Updater.Type.PRE_FRAME_CHANGE:
-            assert not Updater._pre_frame_set, "The pre-frame-change handler is already set."
+            assert (
+                not Updater._pre_frame_set
+            ), "The pre-frame-change handler is already set."
             self.handlers = bpy.app.handlers.frame_change_pre
             Updater._pre_frame_set = True
         elif type == Updater.Type.POST_FRAME_CHANGE:
-            assert not Updater._post_frame_set, "The post-frame-change handler is already set."
+            assert (
+                not Updater._post_frame_set
+            ), "The post-frame-change handler is already set."
             self.handlers = bpy.app.handlers.frame_change_post
             Updater._post_frame_set = True
         else:
-            raise Exception('Unrecognised updater type.')
+            raise Exception("Unrecognised updater type.")
 
         self.handlers.clear()
 

@@ -1,18 +1,22 @@
 import os
 from pathlib import Path
 
-
-DEFAULT_FONT = 'TeX Gyre Termes'
+DEFAULT_FONT = "TeX Gyre Termes"
 DEFAULT_FONT_SIZE = 10  # Font size in points (LaTeX default is 10pt)
 
 
 class TeXDocument:
     """A class representing a LaTeX document with a preamble and body.
     It allows setting document class, adding packages, defining new commands,
-    and adding content to the document body. The document can be converted to a 
+    and adding content to the document body. The document can be converted to a
     string representation suitable for LaTeX processing."""
 
-    def __init__(self, body: str | None = None, font: str | None = None, font_size: int | float | None = None):
+    def __init__(
+        self,
+        body: str | None = None,
+        font: str | None = None,
+        font_size: int | float | None = None,
+    ):
         self._document_class: str = None
         self._other_commands: list[str] = []
         self._packages: dict[str, str] = {}
@@ -25,10 +29,9 @@ class TeXDocument:
 
     def set_defaults(self):
         """Set default document class and font."""
-        self.set_document_class('standalone', ['preview'])\
-            .set_main_font(DEFAULT_FONT, DEFAULT_FONT_SIZE)\
-            .add_package('amsmath')\
-            .add_package('amssymb')
+        self.set_document_class("standalone", ["preview"]).set_main_font(
+            DEFAULT_FONT, DEFAULT_FONT_SIZE
+        ).add_package("amsmath").add_package("amssymb")
         return self
 
     def set_document_class(self, name: str, options: str | list[str] | None = None):
@@ -39,9 +42,9 @@ class TeXDocument:
         """
         if options:
             options_str = get_options_str(options)
-            self._document_class = rf'\documentclass[{options_str}]{{{name}}}'
+            self._document_class = rf"\documentclass[{options_str}]{{{name}}}"
         else:
-            self._document_class = rf'\documentclass{{{name}}}'
+            self._document_class = rf"\documentclass{{{name}}}"
         return self
 
     def set_main_font(self, name: str, font_size: int | float = DEFAULT_FONT_SIZE):
@@ -51,12 +54,13 @@ class TeXDocument:
             name: Name of the font package (e.g. 'Times New Roman', 'TeX Gyre Termes', etc.)
             font_size: Optional font size in points (e.g., 12)
         """
-        if 'fontspec' not in self._packages:
-            self.add_package('fontspec')
-        disable_ligatures = 'Ligatures=NoCommon'
-        self.add_to_preamble(fr'\setmainfont{{{name}}}[{disable_ligatures}]')
+        if "fontspec" not in self._packages:
+            self.add_package("fontspec")
+        disable_ligatures = "Ligatures=NoCommon"
+        self.add_to_preamble(rf"\setmainfont{{{name}}}[{disable_ligatures}]")
         self.add_to_preamble(
-            rf'\fontsize{{{font_size}}}{{{1.2*float(font_size)}}}\selectfont')
+            rf"\fontsize{{{font_size}}}{{{1.2*float(font_size)}}}\selectfont"
+        )
         return self
 
     def add_package(self, name: str, options: str | list[str] | None = None):
@@ -70,9 +74,9 @@ class TeXDocument:
 
         if options:
             options_str = get_options_str(options)
-            packages[name] = rf'\usepackage[{options_str}]{{{name}}}'
+            packages[name] = rf"\usepackage[{options_str}]{{{name}}}"
         else:
-            packages[name] = rf'\usepackage{{{name}}}'
+            packages[name] = rf"\usepackage{{{name}}}"
         return self
 
     def add_new_command(self, name: str, definition: str):
@@ -81,19 +85,20 @@ class TeXDocument:
             name: Command name (with or without leading backslash)
             definition: Command definition
         """
-        if not name.startswith('\\'):
-            name = '\\' + name
+        if not name.startswith("\\"):
+            name = "\\" + name
 
         # Find all argument placeholders (#1, #2, etc.) if any exist
         import re
-        args = re.findall(r'#(\d+)', definition)
+
+        args = re.findall(r"#(\d+)", definition)
 
         if not args:
-            cmd = rf'\newcommand{{{name}}}{{{definition}}}'
+            cmd = rf"\newcommand{{{name}}}{{{definition}}}"
         else:
             # Get the highest argument number
             num_args = max(int(arg) for arg in args)
-            cmd = rf'\newcommand{{{name}}}[{num_args}]{{{definition}}}'
+            cmd = rf"\newcommand{{{name}}}[{num_args}]{{{definition}}}"
 
         self._new_commands[name] = cmd
         return self
@@ -106,7 +111,9 @@ class TeXDocument:
         self._other_commands.append(entry)
         return self
 
-    def add_to_body(self, text: str, font: str | None = None, font_size: int | float | None = None):
+    def add_to_body(
+        self, text: str, font: str | None = None, font_size: int | float | None = None
+    ):
         """Add text to the document body.
         Args:
             text: Text to add to the body. If it contains LaTeX commands, they will be processed as such.
@@ -115,10 +122,9 @@ class TeXDocument:
         """
         parts = []
         if font:
-            parts.append(rf'\fontspec{{{font}}}')
+            parts.append(rf"\fontspec{{{font}}}")
         if font_size:
-            parts.append(
-                rf'\fontsize{{{font_size}}}{{{1.2*font_size}}}\selectfont')
+            parts.append(rf"\fontsize{{{font_size}}}{{{1.2*font_size}}}\selectfont")
         if parts:
             text = f"{{{' '.join(parts)} {text}}}"
         self._body.append(text)
@@ -141,7 +147,9 @@ class TeXDocument:
             parts.extend(self._body)
         else:
             # Document class
-            assert self._document_class is not None, "The document class has not been set."
+            assert (
+                self._document_class is not None
+            ), "The document class has not been set."
             parts.append(self._document_class)
 
             # Document preamble
@@ -153,11 +161,11 @@ class TeXDocument:
                 parts.extend(list(self._new_commands.values()))
 
             # Document body
-            parts.append(r'\begin{document}')
+            parts.append(r"\begin{document}")
             parts.extend(self._body)
-            parts.append(r'\end{document}')
+            parts.append(r"\end{document}")
 
-        return '\n'.join(parts)
+        return "\n".join(parts)
 
     def clear(self):
         """Clear all packages and commands."""
@@ -185,4 +193,4 @@ def get_options_str(options: str | list[str]) -> str:
         AssertionError: If options are not specified.
     """
     assert options is not None, "Options have not been specified."
-    return ', '.join(options) if isinstance(options, list) else str(options)
+    return ", ".join(options) if isinstance(options, list) else str(options)
