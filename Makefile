@@ -1,17 +1,103 @@
-.PHONY: install install-blender-deps run test
+SHELL := /bin/bash
+.PHONY: all help clean run test check lint fmt install update release debug ci bench install-blender-deps enter-devcontainer
 
-# Install the project and its dependencies
-install:
-	pip install --user -e .
+# Default target
+help: ## Show this help message
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "   \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-# Install Blender dependencies
-install-blender-deps:
-	python scripts/install_blender_dependencies.py
+# Project targets
+all: clean fmt lint test install ## Run clean, format, lint, test, and install
 
-# Run the project
-run:
-	@python run.py	
+install: ## Install the project in development mode
+	@echo "Installing in development mode..."
+	@pip install -e .
 
-# Run tests using pytest
-test:
-	PYTHONPATH=. pytest --verbose --disable-warnings
+install-release: ## Install the project in production mode
+	@echo "Installing in production mode..."
+	@pip install .
+
+install-debug: ## Install the project in debug mode
+	@echo "Installing in debug mode..."
+	@pip install -e . --verbose
+
+update: ## Update dependencies
+	@echo "Updating dependencies..."
+	@pip install --upgrade pip
+	@pip install --upgrade -e .
+
+ci: fmt-check lint test ## Run CI checks (format check, lint, test)
+
+# Blender targets
+install-blender-deps: ## Install Blender dependencies
+	@echo "Installing Blender dependencies..."
+	@python scripts/install_blender_dependencies.py
+	@echo "Blender dependencies successfully installed."
+
+# Run targets
+run: ## Run the project
+	@echo "Running the project..."
+	@python run.py
+
+run-release: ## Run the project (same as run for Python)
+	@echo "Running the project..."
+	@python run.py
+
+# Testing targets
+test: ## Run all tests
+	@echo "Running tests..."
+	@PYTHONPATH=. pytest --verbose --disable-warnings
+
+test-verbose: ## Run tests with verbose output
+	@echo "Running tests with verbose output..."
+	@PYTHONPATH=. pytest -v -s
+
+test-ignored: ## Run tests marked as slow or ignored
+	@echo "Running ignored/slow tests..."
+	@PYTHONPATH=. pytest -m "slow or ignore" --verbose
+
+bench: ## Run benchmarks (if any)
+	@echo "Running benchmarks..."
+	@PYTHONPATH=. pytest --benchmark-only
+
+# Code quality targets
+check: ## Check the project for errors without installing
+	@echo "Checking the project for errors..."
+	@python -m py_compile run.py
+	@python -c "import ast; [ast.parse(open(f).read()) for f in __import__('glob').glob('**/*.py', recursive=True)]"
+
+lint: ## Lint the project using flake8 and pylint
+	@echo "Linting the project..."
+	@flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+	@pylint --errors-only .
+
+lint-fix: ## Automatically fix linting issues where possible
+	@echo "Fixing linting issues..."
+	@autopep8 --in-place --recursive .
+	@isort .
+
+fmt: ## Format the code using black and isort
+	@echo "Formatting the code..."
+	@black .
+	@isort .
+
+fmt-check: ## Check if code is formatted correctly
+	@echo "Checking code formatting..."
+	@black --check .
+	@isort --check-only .
+
+# DevContainer targets
+enter-devcontainer: ## Build and run the DevContainer
+	@bash scripts/enter_devcontainer.sh
+
+# Maintenance targets
+clean: ## Clean build artifacts
+	@echo "Cleaning build artifacts..."
+	@find . -type f -name "*.pyc" -delete
+	@find . -type d -name "__pycache__" -delete
+	@find . -type d -name "*.egg-info" -exec rm -rf {} +
+	@rm -rf .pytest_cache/
+
+clean-all: clean ## Clean everything including pip cache
+	@echo "Cleaning pip cache..."
+	@pip cache purge
