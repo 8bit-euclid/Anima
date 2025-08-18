@@ -28,7 +28,6 @@ dev = [
    "isort>=5.12.0",
    "flake8>=6.0.0",
    "pylint>=2.17.0",
-   "autopep8>=2.0.0",
 ]
 
 ## Other tool configurations

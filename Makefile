@@ -73,11 +73,6 @@ lint: ## Lint the project using flake8 and pylint
 	@flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 	@pylint --errors-only .
 
-lint-fix: ## Automatically fix linting issues where possible
-	@echo "Fixing linting issues..."
-	@autopep8 --in-place --recursive .
-	@isort .
-
 format: ## Format the code using black and isort
 	@echo "Formatting the code..."
 	@black .
