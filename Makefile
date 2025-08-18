@@ -68,9 +68,8 @@ check: ## Check the project for errors without installing
 	@python -m py_compile run.py
 	@python -c "import ast; [ast.parse(open(f).read()) for f in __import__('glob').glob('**/*.py', recursive=True)]"
 
-lint: ## Lint the project using flake8 and pylint
+lint: ## Lint the project using pylint
 	@echo "Linting the project..."
-	@flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 	@pylint --errors-only .
 
 format: ## Format the code using black and isort
