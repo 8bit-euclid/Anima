@@ -334,7 +334,6 @@ def disable_print():
 
 def enable_print():
     """Enable printing by restoring sys.stdout to its original state."""
-    global original_stdout, original_stderr
     sys.stdout = original_stdout
     sys.stderr = original_stderr
 
