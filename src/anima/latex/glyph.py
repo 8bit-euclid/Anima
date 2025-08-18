@@ -1,5 +1,6 @@
 import svgpathtools as svgtools
-from anima.latex.glyph_utils import GlyphBody, GlyphBorder, GlyphBBox
+
+from anima.latex.glyph_utils import GlyphBBox, GlyphBody, GlyphBorder
 
 
 class Glyph:
@@ -11,8 +12,9 @@ class Glyph:
         Args:
             path (svgtools.Path): The SVG path object representing the glyph.
         """
-        assert isinstance(path, svgtools.Path), \
-            "Path must be an instance of svgpathtools.Path"
+        assert isinstance(
+            path, svgtools.Path
+        ), "Path must be an instance of svgpathtools.Path"
         # Invert bbox y-coordinates
         bbox = GlyphBBox(*path.bbox())
         bbox.y_min *= -1

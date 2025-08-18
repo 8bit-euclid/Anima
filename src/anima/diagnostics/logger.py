@@ -1,5 +1,6 @@
 import os
 import sys
+
 from loguru import logger
 
 LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
@@ -29,8 +30,7 @@ message = "<level>{message}</level>"
 # Combine columns into a single format string
 proc_thread = proc_id + ":" + thread_id if SHOW_PROCESS_INFO else ""
 file_line = file_name + ":" + line_number
-format = " ".join([timestamp, level, proc_thread,
-                  func_name, file_line, message])
+format = " ".join([timestamp, level, proc_thread, func_name, file_line, message])
 
 
 def shorten_thread_id(record: dict) -> bool:
@@ -48,7 +48,7 @@ logger.add(
     colorize=True,
     backtrace=True,
     diagnose=True,
-    filter=shorten_thread_id
+    filter=shorten_thread_id,
 )
 
 

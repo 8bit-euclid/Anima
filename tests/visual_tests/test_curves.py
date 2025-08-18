@@ -1,7 +1,7 @@
-from anima.diagnostics import profiler
 from anima.animation.updater import Updater
-from anima.primitives.bezier_spline import BezierSpline
+from anima.diagnostics import profiler
 from anima.primitives.bezier_curve import BezierCurve
+from anima.primitives.bezier_spline import BezierSpline
 from anima.primitives.chains import CurveChain
 from anima.primitives.curves import DEFAULT_LINE_WIDTH
 from anima.primitives.dashed_curves import DashedCurve
@@ -27,11 +27,11 @@ def test_bezier_splines(end_frame: int):
 
     e = Empty()
     # e.t = 0.0
-    e['t'] = 0.0
-    e.add_keyframe('t', frame=30, is_custom=True)
+    e["t"] = 0.0
+    e.add_keyframe("t", frame=30, is_custom=True)
     # e.t = 1.0
-    e['t'] = 1.0
-    e.add_keyframe('t', frame=end_frame, is_custom=True)
+    e["t"] = 1.0
+    e.add_keyframe("t", frame=end_frame, is_custom=True)
 
     # bcurve.attachment_0 = ArrowEndcap()
     bcurve.attachment_0 = PointEndcap()
@@ -45,8 +45,8 @@ def test_bezier_splines(end_frame: int):
     seg_t = Segment((0, 0), (0, 0))
     seg_n = Segment((0, 0), (0, 0))
 
-    p1 = Point(name='Point1')
-    p2 = Point(name='Point2')
+    p1 = Point(name="Point1")
+    p2 = Point(name="Point2")
     # p1['u'] = 0.0
     # dr = p1.create_driver('["u"]')
     # dr.add_input_variable('x', e, '["t"]')
@@ -55,7 +55,7 @@ def test_bezier_splines(end_frame: int):
     bspline.bias = -1
 
     def update(scene):
-        t1 = e['t']
+        t1 = e["t"]
         t0 = max(0.0, t1 - 0.3)
 
         bcurve.param_0 = t0
@@ -99,10 +99,10 @@ def test_curve_joints(end_frame: int):
     chain.width = DEFAULT_LINE_WIDTH * 30
 
     e = Empty()
-    e['t'] = 0.0
-    e.add_keyframe('t', frame=30, is_custom=True)
-    e['t'] = 1.0
-    e.add_keyframe('t', frame=end_frame, is_custom=True)
+    e["t"] = 0.0
+    e.add_keyframe("t", frame=30, is_custom=True)
+    e["t"] = 1.0
+    e.add_keyframe("t", frame=end_frame, is_custom=True)
 
     # b = 1
     # j1.bias = b
@@ -120,7 +120,7 @@ def test_curve_joints(end_frame: int):
         # depsgraph = bpy.context.evaluated_depsgraph_get()
         # e_eval = e.object.evaluated_get(depsgraph)
         # t = e_eval['t']
-        t1 = e['t']
+        t1 = e["t"]
 
         # b = -1 + 2 * t
         # j1.bias = b
@@ -164,7 +164,7 @@ def test_curve_joints(end_frame: int):
 
 
 def test_dashed_curves(end_frame: int):
-    width = 1.5*DEFAULT_LINE_WIDTH
+    width = 1.5 * DEFAULT_LINE_WIDTH
 
     # c1 = Segment((0, -1), (0, 0))
     # c2 = Segment((0, 0), (0.5, 0))
@@ -185,13 +185,13 @@ def test_dashed_curves(end_frame: int):
 
     radi = 1.0
     e = Empty()
-    e['t'] = 0.0
-    e.add_keyframe('t', frame=30, is_custom=True)
-    e['t'] = radi
-    e.add_keyframe('t', frame=end_frame, is_custom=True)
+    e["t"] = 0.0
+    e.add_keyframe("t", frame=30, is_custom=True)
+    e["t"] = radi
+    e.add_keyframe("t", frame=end_frame, is_custom=True)
 
     def updater(scene):
-        t1 = e['t']
+        t1 = e["t"]
         t0 = max(0, t1 - 0.57)
 
         # dashed1.offset = t1

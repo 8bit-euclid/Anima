@@ -1,20 +1,20 @@
 # region INFO
-'''
-    == EasyBPY 0.2.0 ==
-    Managed by Curtis Holt
-    https://curtisholt.online/links
-    ---
-    This purpose of this module is to simplify the use of the Blender API
-    (bpy) by creating an extra layer of abstraction that is more human-
-    readable, memorizable and reduces the user's exposure to complex code 
-    paths.
-    EasyBPY can be added to Blender by installing it into the:
-                ../scripts/modules
-    folder in the user preferences. The file can also be re-packaged with
-    any other addon, so long as the developer respects the limitations of
-    the GPL license, outlined below.
-'''
-'''
+"""
+== EasyBPY 0.2.0 ==
+Managed by Curtis Holt
+https://curtisholt.online/links
+---
+This purpose of this module is to simplify the use of the Blender API
+(bpy) by creating an extra layer of abstraction that is more human-
+readable, memorizable and reduces the user's exposure to complex code
+paths.
+EasyBPY can be added to Blender by installing it into the:
+            ../scripts/modules
+folder in the user preferences. The file can also be re-packaged with
+any other addon, so long as the developer respects the limitations of
+the GPL license, outlined below.
+"""
+"""
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -27,22 +27,23 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
+"""
 # endregion
 # region IMPORTS
 # endregion
 # region RENDER SETTINGS
 
 
-
+import math
+import random
 
 import bpy
 import bpy.types
-from mathutils import Vector, Matrix, Euler
-import math
-import random
+from mathutils import Euler, Matrix, Vector
+
+
 def set_render_engine_to_cycles():
-    get_scene().render.engine = 'CYCLES'
+    get_scene().render.engine = "CYCLES"
 
 
 def set_render_engine_cycles():
@@ -50,7 +51,7 @@ def set_render_engine_cycles():
 
 
 def set_render_engine_to_eevee():
-    get_scene().render.engine = 'BLENDER_EEVEE'
+    get_scene().render.engine = "BLENDER_EEVEE"
 
 
 def set_render_engine_eevee():
@@ -59,7 +60,7 @@ def set_render_engine_eevee():
 
 def render_image(use_view=False):
     bpy.ops.render.render(use_viewport=use_view)
-    return bpy.data.images['Render Result']
+    return bpy.data.images["Render Result"]
 
 
 def render_animation(use_view=False):
@@ -184,12 +185,14 @@ def set_frame_step(val):
 def set_render_fps(val, base=1.0):
     get_scene().render.fps = val
     get_scene().render.fps_base = base
+
+
 # endregion
 # region APPENDING / LINKING
 
 
 def append(file, category, object):
-    if '\\' in file:
+    if "\\" in file:
         # fpath = file.replace('\\', '/') => Not viable for numeric folders.
         print("Please use forward slashes in path string.")
     else:
@@ -199,8 +202,7 @@ def append(file, category, object):
             filepath = file + "\\" + category + "\\" + o
             directory = file + "\\" + category + "\\"
             filename = o
-            bpy.ops.wm.append(filepath=filepath,
-                              directory=directory, filename=filename)
+            bpy.ops.wm.append(filepath=filepath, directory=directory, filename=filename)
 
 
 def append_brush(file, name):
@@ -256,7 +258,7 @@ def append_world(file, name):
 
 
 def link(file, category, object):
-    if '\\' in file:
+    if "\\" in file:
         # fpath = file.replace('\\', '/') => Not viable for numeric folders.
         print("Please use forward slashes in path string.")
     else:
@@ -266,8 +268,7 @@ def link(file, category, object):
             filepath = file + "\\" + category + "\\" + o
             directory = file + "\\" + category + "\\"
             filename = o
-            bpy.ops.wm.link(filepath=filepath,
-                            directory=directory, filename=filename)
+            bpy.ops.wm.link(filepath=filepath, directory=directory, filename=filename)
 
 
 def link_brush(file, name):
@@ -320,6 +321,7 @@ def link_workspace(file, name):
 
 def link_world(file, name):
     link(file, "World", name)
+
 
 # endregion
 # region OBJECTS
@@ -605,6 +607,8 @@ def get_bounding_box(ref=None):
 
 def get_bounding_box_corners(ref=None):
     return [ref.matrix_world @ Vector(corner) for corner in get_bounding_box(ref)]
+
+
 # endregion
 # region OBJECTS - CONVERSION
 
@@ -613,91 +617,93 @@ def convert_to_mesh(ref):
     objref = get_object(ref)
     deselect_all_objects()
     select_object(objref)
-    bpy.ops.object.convert(target='MESH')
+    bpy.ops.object.convert(target="MESH")
 
 
 def convert_to_grease_pencil(ref):
     objref = get_object(ref)
     deselect_all_objects()
     select_object(objref)
-    bpy.ops.object.convert(target='GPENCIL')
+    bpy.ops.object.convert(target="GPENCIL")
 
 
 def convert_to_curve(ref):
     objref = get_object(ref)
     deselect_all_objects()
     select_object(objref)
-    bpy.ops.object.convert(target='CURVE')
+    bpy.ops.object.convert(target="CURVE")
+
+
 # endregion
 # region OBJECTS - SELECTION
 
 
 def select_all_meshes():
-    bpy.ops.object.select_by_type(type='MESH')
+    bpy.ops.object.select_by_type(type="MESH")
 
 
 def select_all_curves():
-    bpy.ops.object.select_by_type(type='CURVE')
+    bpy.ops.object.select_by_type(type="CURVE")
 
 
 def select_all_surfaces():
-    bpy.ops.object.select_by_type(type='SURFACE')
+    bpy.ops.object.select_by_type(type="SURFACE")
 
 
 def select_all_metas():
-    bpy.ops.object.select_by_type(type='META')
+    bpy.ops.object.select_by_type(type="META")
 
 
 def select_all_text():
-    bpy.ops.object.select_by_type(type='FONT')
+    bpy.ops.object.select_by_type(type="FONT")
 
 
 def select_all_hair():
-    bpy.ops.object.select_by_type(type='HAIR')
+    bpy.ops.object.select_by_type(type="HAIR")
 
 
 def select_all_point_clouds():
-    bpy.ops.object.select_by_type(type='POINTCLOUD')
+    bpy.ops.object.select_by_type(type="POINTCLOUD")
 
 
 def select_all_volumes():
-    bpy.ops.object.select_by_type(type='VOLUME')
+    bpy.ops.object.select_by_type(type="VOLUME")
 
 
 def select_all_armatures():
-    bpy.ops.object.select_by_type(type='ARMATURE')
+    bpy.ops.object.select_by_type(type="ARMATURE")
 
 
 def select_all_lattices():
-    bpy.ops.object.select_by_type(type='LATTICE')
+    bpy.ops.object.select_by_type(type="LATTICE")
 
 
 def select_all_empties():
-    bpy.ops.object.select_by_type(type='EMPTY')
+    bpy.ops.object.select_by_type(type="EMPTY")
 
 
 def select_all_grease_pencils():
-    bpy.ops.object.select_by_type(type='GPENCIL')
+    bpy.ops.object.select_by_type(type="GPENCIL")
 
 
 def select_all_cameras():
-    bpy.ops.object.select_by_type(type='CAMERA')
+    bpy.ops.object.select_by_type(type="CAMERA")
 
 
 def select_all_lights():
-    bpy.ops.object.select_by_type(type='LIGHT')
+    bpy.ops.object.select_by_type(type="LIGHT")
 
 
 def select_all_speakers():
-    bpy.ops.object.select_by_type(type='SPEAKER')
+    bpy.ops.object.select_by_type(type="SPEAKER")
 
 
 def select_all_light_probes():
-    bpy.ops.object.select_by_type(type='LIGHT_PROBE')
+    bpy.ops.object.select_by_type(type="LIGHT_PROBE")
 
 
 def invert_selection():
-    bpy.ops.object.select_all(action='INVERT')
+    bpy.ops.object.select_all(action="INVERT")
 
 
 def get_objects_with_modifiers():
@@ -714,6 +720,7 @@ def select_objects_with_modifiers():
         if len(obj.modifiers) > 0:
             select_object(obj)
 
+
 # Custom Selection
 
 
@@ -724,7 +731,11 @@ def get_objects_including(include, case_sensitive=True):
             if include in o.name:
                 objlist.append(o)
         else:
-            if (include.lower() in o.name) or (include.upper() in o.name) or (include in o.name):
+            if (
+                (include.lower() in o.name)
+                or (include.upper() in o.name)
+                or (include in o.name)
+            ):
                 objlist.append(o)
     return objlist
 
@@ -735,7 +746,11 @@ def select_objects_including(include, case_sensitive=True):
             if include in o.name:
                 o.select_set(True)
         else:
-            if (include.lower() in o.name) or (include.upper() in o.name) or (include in o.name):
+            if (
+                (include.lower() in o.name)
+                or (include.upper() in o.name)
+                or (include in o.name)
+            ):
                 o.select_set(True)
 
 
@@ -761,6 +776,7 @@ def select_objects_by_vertex(count=0, mode="EQUAL"):
     objs = get_objects_by_vertex(count, mode)
     for o in objs:
         o.select_set(True)
+
 
 # endregion
 # region OBJECTS - PRIMITIVES
@@ -824,6 +840,7 @@ def create_suzanne():
 def create_monkey():
     return create_suzanne()
 
+
 # Curve
 
 
@@ -858,6 +875,7 @@ def create_nurbs_path():
 
 def create_path():
     return create_nurbs_path()
+
 
 # Surface
 
@@ -911,32 +929,34 @@ def create_nurbs_torus_surface():
 def create_torus_surface():
     return create_nurbs_torus_surface()
 
+
 # Metaball
 
 
 def create_metaball():
-    bpy.ops.object.metaball_add(type='BALL')
+    bpy.ops.object.metaball_add(type="BALL")
     active_object()
 
 
 def create_metaball_capsule():
-    bpy.ops.object.metaball_add(type='CAPSULE')
+    bpy.ops.object.metaball_add(type="CAPSULE")
     active_object()
 
 
 def create_metaball_plane():
-    bpy.ops.object.metaball_add(type='PLANE')
+    bpy.ops.object.metaball_add(type="PLANE")
     active_object()
 
 
 def create_metaball_ellipsoid():
-    bpy.ops.object.metaball_add(type='ELLIPSOID')
+    bpy.ops.object.metaball_add(type="ELLIPSOID")
     active_object()
 
 
 def create_metaball_cube():
-    bpy.ops.object.metaball_add(type='CUBE')
+    bpy.ops.object.metaball_add(type="CUBE")
     active_object()
+
 
 # Text
 
@@ -949,6 +969,7 @@ def create_text_object():
 def create_text():
     return create_text_object()
 
+
 # endregion
 # region OBJECTS - CONSTRAINTS
 
@@ -959,7 +980,7 @@ def add_constraint(type, ref=None, name=""):
     if name:
         new_con.name = name
     for area in bpy.context.screen.areas:
-        if area.type == 'PROPERTIES':
+        if area.type == "PROPERTIES":
             area.tag_redraw()
     return new_con
 
@@ -993,121 +1014,126 @@ def remove_constraint(name=None, ref=None):
         remove_constraint(objref.constraints[0])
 
     for area in bpy.context.screen.areas:
-        if area.type == 'PROPERTIES':
+        if area.type == "PROPERTIES":
             area.tag_redraw()
 
 
 def add_camera_solver_constraint(ref=None, name=""):
-    return add_constraint('CAMERA_SOLVER', ref, name)
+    return add_constraint("CAMERA_SOLVER", ref, name)
 
 
 def add_follow_track_constraint(ref=None, name=""):
-    return add_constraint('FOLLOW_TRACK', ref, name)
+    return add_constraint("FOLLOW_TRACK", ref, name)
 
 
 def add_object_solver_constraint(ref=None, name=""):
-    return add_constraint('OBJECT_SOLVER', ref, name)
+    return add_constraint("OBJECT_SOLVER", ref, name)
 
 
 def add_copy_location_constraint(ref=None, name=""):
-    return add_constraint('COPY_LOCATION', ref, name)
+    return add_constraint("COPY_LOCATION", ref, name)
 
 
 def add_copy_rotation_constraint(ref=None, name=""):
-    return add_constraint('COPY_ROTATION', ref, name)
+    return add_constraint("COPY_ROTATION", ref, name)
 
 
 def add_copy_scale_constraint(ref=None, name=""):
-    return add_constraint('COPY_SCALE', ref, name)
+    return add_constraint("COPY_SCALE", ref, name)
 
 
 def add_copy_transforms_constraint(ref=None, name=""):
-    return add_constraint('COPY_TRANSFORMS', ref, name)
+    return add_constraint("COPY_TRANSFORMS", ref, name)
 
 
 def add_limit_distance_constraint(ref=None, name=""):
-    return add_constraint('LIMIT_DISTANCE', ref, name)
+    return add_constraint("LIMIT_DISTANCE", ref, name)
 
 
 def add_limit_location_constraint(ref=None, name=""):
-    return add_constraint('LIMIT_LOCATION', ref, name)
+    return add_constraint("LIMIT_LOCATION", ref, name)
 
 
 def add_limit_rotation_constraint(ref=None, name=""):
-    return add_constraint('LIMIT_ROTATION', ref, name)
+    return add_constraint("LIMIT_ROTATION", ref, name)
 
 
 def add_limit_scale_constraint(ref=None, name=""):
-    return add_constraint('LIMIT_SCALE', ref, name)
+    return add_constraint("LIMIT_SCALE", ref, name)
 
 
 def add_maintain_volume_constraint(ref=None, name=""):
-    return add_constraint('MAINTAIN_VOLUME', ref, name)
+    return add_constraint("MAINTAIN_VOLUME", ref, name)
 
 
 def add_transform_constraint(ref=None, name=""):
-    return add_constraint('TRANSFORM', ref, name)
+    return add_constraint("TRANSFORM", ref, name)
 
 
 def add_transformation_constraint(ref=None, name=""):
-    return add_constraint('TRANSFORM', ref, name)
+    return add_constraint("TRANSFORM", ref, name)
 
 
 def add_transform_cache_constraint(ref=None, name=""):
-    return add_constraint('TRANSFORM_CACHE', ref, name)
+    return add_constraint("TRANSFORM_CACHE", ref, name)
 
 
 def add_clamp_to_constraint(ref=None, name=""):
-    return add_constraint('CLAMP_TO', ref, name)
+    return add_constraint("CLAMP_TO", ref, name)
 
 
 def add_damped_track_constraint(ref=None, name=""):
-    return add_constraint('DAMPED_TRACK', ref, name)
+    return add_constraint("DAMPED_TRACK", ref, name)
 
 
 def add_locked_track_constraint(ref=None, name=""):
-    return add_constraint('LOCKED_TRACK', ref, name)
+    return add_constraint("LOCKED_TRACK", ref, name)
 
 
 def add_stretch_to_constraint(ref=None, name=""):
-    return add_constraint('STRETCH_TO', ref, name)
+    return add_constraint("STRETCH_TO", ref, name)
 
 
 def add_track_to_constraint(ref=None, name=""):
-    return add_constraint('TRACK_TO', ref, name)
+    return add_constraint("TRACK_TO", ref, name)
 
 
 def add_action_constraint(ref=None, name=""):
-    return add_constraint('ACTION', ref, name)
+    return add_constraint("ACTION", ref, name)
 
 
 def add_armature_constraint(ref=None, name=""):
-    return add_constraint('ARMATURE', ref, name)
+    return add_constraint("ARMATURE", ref, name)
 
 
 def add_child_of_constraint(ref=None, name=""):
-    return add_constraint('CHILD_OF', ref, name)
+    return add_constraint("CHILD_OF", ref, name)
 
 
 def add_floor_constraint(ref=None, name=""):
-    return add_constraint('FLOOR', ref, name)
+    return add_constraint("FLOOR", ref, name)
 
 
 def add_follow_path_constraint(ref=None, name=""):
-    return add_constraint('FOLLOW_PATH', ref, name)
+    return add_constraint("FOLLOW_PATH", ref, name)
 
 
 def add_pivot_constraint(ref=None, name=""):
-    return add_constraint('PIVOT', ref, name)
+    return add_constraint("PIVOT", ref, name)
 
 
 def add_shrinkwrap_constraint(ref=None, name=""):
-    return add_constraint('SHRINKWRAP', ref, name)
+    return add_constraint("SHRINKWRAP", ref, name)
+
+
 # endregion
 # region MODES
 
 
-def set_mode(ref=None, newmode=None,):
+def set_mode(
+    ref=None,
+    newmode=None,
+):
     if newmode is not None:
         objref = get_object(ref)
         bpy.context.view_layer.objects.active = objref
@@ -1119,7 +1145,7 @@ def get_mode():
 
 
 def set_object_mode(ref=None):
-    set_mode(ref, 'OBJECT')
+    set_mode(ref, "OBJECT")
 
 
 def object_mode(ref=None):
@@ -1127,7 +1153,7 @@ def object_mode(ref=None):
 
 
 def set_edit_mode(ref=None):
-    set_mode(ref, 'EDIT')
+    set_mode(ref, "EDIT")
 
 
 def edit_mode(ref=None):
@@ -1135,7 +1161,7 @@ def edit_mode(ref=None):
 
 
 def set_sculpt_mode(ref=None):
-    set_mode(ref, 'SCULPT')
+    set_mode(ref, "SCULPT")
 
 
 def sculpt_mode(ref=None):
@@ -1143,7 +1169,7 @@ def sculpt_mode(ref=None):
 
 
 def set_vertex_paint_mode(ref=None):
-    set_mode(ref, 'VERTEX_PAINT')
+    set_mode(ref, "VERTEX_PAINT")
 
 
 def vertex_paint_mode(ref=None):
@@ -1151,7 +1177,7 @@ def vertex_paint_mode(ref=None):
 
 
 def set_weight_paint_mode(ref=None):
-    set_mode(ref, 'WEIGHT_PAINT')
+    set_mode(ref, "WEIGHT_PAINT")
 
 
 def weight_paint_mode(ref=None):
@@ -1159,7 +1185,7 @@ def weight_paint_mode(ref=None):
 
 
 def set_texture_paint_mode(ref=None):
-    set_mode(ref, 'TEXTURE_PAINT')
+    set_mode(ref, "TEXTURE_PAINT")
 
 
 def texture_paint_mode(ref=None):
@@ -1167,11 +1193,12 @@ def texture_paint_mode(ref=None):
 
 
 def set_pose_mode(ref=None):
-    set_mode(ref, 'POSE')
+    set_mode(ref, "POSE")
 
 
 def pose_mode(ref=None):
     set_pose_mode(ref)
+
 
 # endregion
 # region SCENES
@@ -1179,6 +1206,8 @@ def pose_mode(ref=None):
 
 def get_scene():
     return bpy.context.scene
+
+
 # endregion
 # region VISIBILITY
 
@@ -1246,25 +1275,27 @@ def unhide_in_render(ref):
 def display_as_bounds(ref):
     objs = get_objects(ref)
     for obj in objs:
-        obj.display_type = 'BOUNDS'
+        obj.display_type = "BOUNDS"
 
 
 def display_as_textured(ref):
     objs = get_objects(ref)
     for obj in objs:
-        obj.display_type = 'TEXTURED'
+        obj.display_type = "TEXTURED"
 
 
 def display_as_solid(ref):
     objs = get_objects(ref)
     for obj in objs:
-        obj.display_type = 'SOLID'
+        obj.display_type = "SOLID"
 
 
 def display_as_wire(ref):
     objs = get_objects(ref)
     for obj in objs:
-        obj.display_type = 'WIRE'
+        obj.display_type = "WIRE"
+
+
 # endregion
 # region TRANSFORMATIONS
 
@@ -1299,6 +1330,7 @@ def dimensions(ref=None, dim=None):
         objref.dimensions = Vector((dim[0], dim[1], dim[2]))
     else:
         return objref.dimensions
+
 
 # Applying Transformations:
 
@@ -1337,6 +1369,7 @@ def apply_rotation_and_scale(ref=None):
         select_object(ref)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
 
+
 # Translations:
 
 
@@ -1352,9 +1385,9 @@ def translate_along_axis(val, axis, ref=None):
     objs = make_obj_list(ref)
     axis.normalize()
     for obj in objs:
-        obj.location[0] += (val * axis[0])
-        obj.location[1] += (val * axis[1])
-        obj.location[2] += (val * axis[2])
+        obj.location[0] += val * axis[0]
+        obj.location[1] += val * axis[1]
+        obj.location[2] += val * axis[2]
 
 
 def move_along_axis(val, axis, ref=None):
@@ -1439,9 +1472,9 @@ def translate_along_local_axis(val, axis, ref=None):
     for obj in objs:
         tempaxis = axis.copy()
         tempaxis.rotate(obj.rotation_euler)
-        obj.location[0] += (val * tempaxis[0])
-        obj.location[1] += (val * tempaxis[1])
-        obj.location[2] += (val * tempaxis[2])
+        obj.location[0] += val * tempaxis[0]
+        obj.location[1] += val * tempaxis[1]
+        obj.location[2] += val * tempaxis[2]
 
 
 def translate_along_local_x(val, ref=None):
@@ -1467,6 +1500,7 @@ def translate_along_local_z(val, ref=None):
 def move_along_local_z(val, ref=None):
     translate_along_local_z(val, ref)
 
+
 # Rotations:
 
 
@@ -1482,9 +1516,9 @@ def rotate_around_axis(deg, axis=Vector(), ref=None, point=None):
     objs = make_obj_list(ref)
     pointref = None
     if point is None:
-        if get_scene().tool_settings.transform_pivot_point == 'MEDIAN_POINT':
+        if get_scene().tool_settings.transform_pivot_point == "MEDIAN_POINT":
             pointref = get_median_point_of_objects(objs)
-        elif get_scene().tool_settings.transform_pivot_point == 'CURSOR':
+        elif get_scene().tool_settings.transform_pivot_point == "CURSOR":
             pointref = get_cursor_location()
         else:
             pointref = get_median_point_of_objects(objs)
@@ -1492,8 +1526,11 @@ def rotate_around_axis(deg, axis=Vector(), ref=None, point=None):
         pointref = point
     axis.normalize()
     for obj in objs:
-        mat = (Matrix.Translation(pointref) @ Matrix.Rotation(math.radians(deg),
-               4, axis) @ Matrix.Translation(-pointref))
+        mat = (
+            Matrix.Translation(pointref)
+            @ Matrix.Rotation(math.radians(deg), 4, axis)
+            @ Matrix.Translation(-pointref)
+        )
         obj.matrix_world = mat @ obj.matrix_world
 
 
@@ -1537,9 +1574,9 @@ def rotate_around_local_axis(deg, axis=Vector(), ref=None, point=None):
     objs = make_obj_list(ref)
     pointref = None
     if point is None:
-        if get_scene().tool_settings.transform_pivot_point == 'MEDIAN_POINT':
+        if get_scene().tool_settings.transform_pivot_point == "MEDIAN_POINT":
             pointref = get_median_point_of_objects(objs)
-        elif get_scene().tool_settings.transform_pivot_point == 'CURSOR':
+        elif get_scene().tool_settings.transform_pivot_point == "CURSOR":
             pointref = get_cursor_location()
         else:
             pointref = get_median_point_of_objects(objs)
@@ -1550,8 +1587,11 @@ def rotate_around_local_axis(deg, axis=Vector(), ref=None, point=None):
     for obj in objs:
         tempaxis = axis.copy()
         tempaxis.rotate(obj.rotation_euler)
-        mat = (Matrix.Translation(pointref) @ Matrix.Rotation(math.radians(deg),
-               4, tempaxis) @ Matrix.Translation(-pointref))
+        mat = (
+            Matrix.Translation(pointref)
+            @ Matrix.Rotation(math.radians(deg), 4, tempaxis)
+            @ Matrix.Translation(-pointref)
+        )
         obj.matrix_world = mat @ obj.matrix_world
 
 
@@ -1565,6 +1605,7 @@ def rotate_around_local_y(deg, ref=None, point=None):
 
 def rotate_around_local_z(deg, ref=None, point=None):
     rotate_around_local_axis(deg, Vector((0.0, 0.0, 1.0)), ref, point)
+
 
 # Scaling:
 
@@ -1586,9 +1627,9 @@ def scale_along_axis(val, axis, ref=None, point=None):
     objs = make_obj_list(ref)
     pointref = None
     if point is None:
-        if get_scene().tool_settings.transform_pivot_point == 'MEDIAN_POINT':
+        if get_scene().tool_settings.transform_pivot_point == "MEDIAN_POINT":
             pointref = get_median_point_of_objects(objs)
-        elif get_scene().tool_settings.transform_pivot_point == 'CURSOR':
+        elif get_scene().tool_settings.transform_pivot_point == "CURSOR":
             pointref = get_cursor_location()
         else:
             pointref = get_median_point_of_objects(objs)
@@ -1597,9 +1638,9 @@ def scale_along_axis(val, axis, ref=None, point=None):
 
     axis.normalize()
     temp = Vector()
-    temp[0] = 1 + ((val - 1)/(1 - 0)) * (axis[0] - 0)
-    temp[1] = 1 + ((val - 1)/(1 - 0)) * (axis[1] - 0)
-    temp[2] = 1 + ((val - 1)/(1 - 0)) * (axis[2] - 0)
+    temp[0] = 1 + ((val - 1) / (1 - 0)) * (axis[0] - 0)
+    temp[1] = 1 + ((val - 1) / (1 - 0)) * (axis[1] - 0)
+    temp[2] = 1 + ((val - 1) / (1 - 0)) * (axis[2] - 0)
     for obj in objs:
         obj.scale[0] *= temp[0]
         obj.scale[1] *= temp[1]
@@ -1607,7 +1648,7 @@ def scale_along_axis(val, axis, ref=None, point=None):
 
         tempaxis = axis.copy()
         tempaxis.rotate(obj.rotation_euler)
-        fac = (obj.location - pointref).dot(tempaxis) * (val-1)
+        fac = (obj.location - pointref).dot(tempaxis) * (val - 1)
         translate_along_axis(fac, tempaxis, obj)
 
 
@@ -1651,9 +1692,9 @@ def scale_along_global_axis(val, axis, ref=None, point=None):
     objs = make_obj_list(ref)
     pointref = None
     if point is None:
-        if get_scene().tool_settings.transform_pivot_point == 'MEDIAN_POINT':
+        if get_scene().tool_settings.transform_pivot_point == "MEDIAN_POINT":
             point = get_median_point_of_objects(objs)
-        elif get_scene().tool_settings.transform_pivot_point == 'CURSOR':
+        elif get_scene().tool_settings.transform_pivot_point == "CURSOR":
             point = get_cursor_location()
         else:
             point = get_median_point_of_objects(objs)
@@ -1670,7 +1711,7 @@ def scale_along_global_axis(val, axis, ref=None, point=None):
         obj.matrix_world = Matrix.Scale(val, 4, axis) @ obj.matrix_world
         obj.matrix_world = loc_mat @ obj.matrix_world
         obj.rotation_euler = orig_rot
-        fac = (obj.location - point).dot(axis) * (val-1)
+        fac = (obj.location - point).dot(axis) * (val - 1)
         translate_along_axis(fac, axis, obj)
 
 
@@ -1685,6 +1726,7 @@ def scale_along_global_y(val, ref=None, point=None):
 def scale_along_global_z(val, ref=None, point=None):
     scale_along_global_axis(val, Vector((0.0, 0.0, 1.0)), ref, point)
 
+
 # Need to be revised, not working as expected
 
 
@@ -1692,9 +1734,9 @@ def scale_perpendicular_to_x(val, ref=None, point=None):
     objs = make_obj_list(ref)
     pointref = None
     if point is None:
-        if get_scene().tool_settings.transform_pivot_point == 'MEDIAN_POINT':
+        if get_scene().tool_settings.transform_pivot_point == "MEDIAN_POINT":
             pointref = get_median_point_of_objects(objs)
-        elif get_scene().tool_settings.transform_pivot_point == 'CURSOR':
+        elif get_scene().tool_settings.transform_pivot_point == "CURSOR":
             pointref = get_cursor_location()
         else:
             pointref = get_median_point_of_objects(objs)
@@ -1704,7 +1746,7 @@ def scale_perpendicular_to_x(val, ref=None, point=None):
     for obj in objs:
         scale_vector(Vector((1.0, val, val)), obj)
         axis = (obj.location - pointref) * Vector((0.0, 1.0, 1.0))
-        fac = axis.magnitude * (val-1)
+        fac = axis.magnitude * (val - 1)
         translate_along_axis(fac, axis, obj)
 
 
@@ -1712,9 +1754,9 @@ def scale_perpendicular_to_y(val, ref=None, point=None):
     objs = make_obj_list(ref)
     pointref = None
     if point is None:
-        if get_scene().tool_settings.transform_pivot_point == 'MEDIAN_POINT':
+        if get_scene().tool_settings.transform_pivot_point == "MEDIAN_POINT":
             pointref = get_median_point_of_objects(objs)
-        elif get_scene().tool_settings.transform_pivot_point == 'CURSOR':
+        elif get_scene().tool_settings.transform_pivot_point == "CURSOR":
             pointref = get_cursor_location()
         else:
             pointref = get_median_point_of_objects(objs)
@@ -1724,7 +1766,7 @@ def scale_perpendicular_to_y(val, ref=None, point=None):
     for obj in objs:
         scale_vector(Vector((val, 1.0, val)), obj)
         axis = (obj.location - pointref) * Vector((1.0, 0.0, 1.0))
-        fac = axis.magnitude * (val-1)
+        fac = axis.magnitude * (val - 1)
         translate_along_axis(fac, axis, obj)
 
 
@@ -1732,9 +1774,9 @@ def scale_perpendicular_to_z(val, ref=None, point=None):
     objs = make_obj_list(ref)
     pointref = None
     if point is None:
-        if get_scene().tool_settings.transform_pivot_point == 'MEDIAN_POINT':
+        if get_scene().tool_settings.transform_pivot_point == "MEDIAN_POINT":
             pointref = get_median_point_of_objects(objs)
-        elif get_scene().tool_settings.transform_pivot_point == 'CURSOR':
+        elif get_scene().tool_settings.transform_pivot_point == "CURSOR":
             pointref = get_cursor_location()
         else:
             pointref = get_median_point_of_objects(objs)
@@ -1744,8 +1786,9 @@ def scale_perpendicular_to_z(val, ref=None, point=None):
     for obj in objs:
         scale_vector(Vector((val, val, 1.0)), obj)
         axis = (obj.location - pointref) * Vector((1.0, 1.0, 0.0))
-        fac = axis.magnitude * (val-1)
+        fac = axis.magnitude * (val - 1)
         translate_along_axis(fac, axis, obj)
+
 
 # endregion
 # region ANIMATION / KEYFRAMES
@@ -1792,6 +1835,8 @@ def delete_animation_data(ref=None):
     objs = get_objects(ref)
     for obj in objs:
         obj.animation_data_clear()
+
+
 # endregion
 # region DRIVERS
 
@@ -1809,6 +1854,7 @@ def remove_driver(driver):
     for fcurve in driver.id_data.animation_data.drivers:
         if fcurve.driver == driver:
             driver.id_data.animation_data.drivers.remove(fcurve)
+
 
 # endregion
 # region 3D CURSOR
@@ -1861,28 +1907,31 @@ def get_cursor_rotation():
 def get_cursor_rotation_mode():
     return bpy.context.scene.cursor.rotation_mode
 
+
 # endregion
 # region PIVOT POINT
 
 
 def set_pivot_point_to_cursor():
-    get_scene().tool_settings.transform_pivot_point = 'CURSOR'
+    get_scene().tool_settings.transform_pivot_point = "CURSOR"
 
 
 def set_pivot_point_to_median():
-    get_scene().tool_settings.transform_pivot_point = 'MEDIAN_POINT'
+    get_scene().tool_settings.transform_pivot_point = "MEDIAN_POINT"
 
 
 def set_pivot_point_to_individual_origins():
-    get_scene().tool_settings.transform_pivot_point = 'INDIVIDUAL_ORIGINS'
+    get_scene().tool_settings.transform_pivot_point = "INDIVIDUAL_ORIGINS"
 
 
 def set_pivot_point_to_active_element():
-    get_scene().tool_settings.transform_pivot_point = 'ACTIVE_ELEMENT'
+    get_scene().tool_settings.transform_pivot_point = "ACTIVE_ELEMENT"
 
 
 def set_pivot_point_to_bounding_box_center():
-    get_scene().tool_settings.transform_pivot_point = 'BOUNDING_BOX_CENTER'
+    get_scene().tool_settings.transform_pivot_point = "BOUNDING_BOX_CENTER"
+
+
 # endregion
 # region ORIGINS
 
@@ -1891,7 +1940,7 @@ def set_geometry_to_origin(ref=None):
     objref = get_object(ref)
     if objref is not None:
         select_object(objref)
-    bpy.ops.object.origin_set(type='GEOMETRY_ORIGIN')
+    bpy.ops.object.origin_set(type="GEOMETRY_ORIGIN")
 
 
 def geometry_to_origin(ref=None):
@@ -1902,7 +1951,7 @@ def set_origin_to_geometry(ref=None):
     objref = get_object(ref)
     if objref is not None:
         select_object(objref)
-    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')
+    bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY")
 
 
 def origin_to_geometry(ref=None):
@@ -1913,7 +1962,7 @@ def set_origin_to_cursor(ref=None):
     objref = get_object(ref)
     if objref is not None:
         select_object(objref)
-    bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
 
 
 def origin_to_cursor(ref=None):
@@ -1924,7 +1973,7 @@ def set_origin_to_centermass_surface(ref=None):
     objref = get_object(ref)
     if objref is not None:
         select_object(objref)
-    bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_MASS')
+    bpy.ops.object.origin_set(type="ORIGIN_CENTER_OF_MASS")
 
 
 def origin_to_centermass_surface(ref=None):
@@ -1935,11 +1984,13 @@ def set_origin_to_centermass_volume(ref=None):
     objref = get_object(ref)
     if objref is not None:
         select_object(objref)
-    bpy.ops.object.origin_set(type='ORIGIN_CENTER_OF_VOLUME')
+    bpy.ops.object.origin_set(type="ORIGIN_CENTER_OF_VOLUME")
 
 
 def origin_to_centermass_volume(ref=None):
     set_origin_to_centermass_volume(ref)
+
+
 # endregion
 # region SHADING
 
@@ -1991,6 +2042,8 @@ def set_smooth_angle(ref, degrees=60):
     if objref.data.use_auto_smooth == False:
         objref.data.use_auto_smooth = True
     objref.data.auto_smooth_angle = math.radians(degrees)
+
+
 # endregion
 # region LIGHTING
 
@@ -2040,6 +2093,8 @@ def light_power_multiply(val=0, ref=None):
 
 def light_intensity_multiply(val=0, ref=None):
     light_power_multiply(val, ref)
+
+
 # endregion
 # region MESHES
 
@@ -2090,7 +2145,7 @@ def get_selected_vertices(ref=None):
     ref = get_object(ref)
     tmp_mode = ref.mode
     select_object(ref)
-    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.mode_set(mode="OBJECT")
     selected_vertices = [v for v in ref.data.vertices if v.select]
     bpy.ops.object.mode_set(mode=tmp_mode)
     return selected_vertices
@@ -2104,7 +2159,7 @@ def get_selected_edges(ref=None):
     ref = get_object(ref)
     tmp_mode = ref.mode
     select_object(ref)
-    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.mode_set(mode="OBJECT")
     selected_edges = [e for e in ref.data.edges if e.select]
     bpy.ops.object.mode_set(mode=tmp_mode)
     return selected_edges
@@ -2114,10 +2169,12 @@ def get_selected_faces(ref=None):
     ref = get_object(ref)
     tmp_mode = ref.mode
     select_object(ref)
-    bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.mode_set(mode="OBJECT")
     selected_faces = [f for f in ref.data.polygons if f.select]
     bpy.ops.object.mode_set(mode=tmp_mode)
     return selected_faces
+
+
 # endregion
 # region CURVES
 
@@ -2148,14 +2205,14 @@ def get_selected_curve_points(ref=None):
 
 # endregion
 # region VERTEX GROUPS
-''' FUTURE UPDATE
+""" FUTURE UPDATE
 def create_vertex_group(ref, group_name):
     ref.vertex_groups.new(name=group_name)
     return ref.vertex_groups[group_name]
 
 def delete_vertex_group(ref, group_name):
     pass
-'''
+"""
 # endregion
 # region SHAPE KEYS
 
@@ -2172,7 +2229,7 @@ def add_shape_key(name=None, ref=None):
 def get_shape_key(name_or_index=0, ref=None):
     objref = get_object(ref)
     sk = None
-    if (objref.data.shape_keys):
+    if objref.data.shape_keys:
         sk = objref.data.shape_keys.key_blocks[name_or_index]
     return sk
 
@@ -2190,7 +2247,7 @@ def remove_shape_key(shape_key, ref=None):
         sk_ref = get_shape_key(shape_key, objref)
         objref.shape_key_remove(sk_ref)
     else:
-        print('Invalid Input')
+        print("Invalid Input")
 
 
 def remove_all_shape_keys(ref=None):
@@ -2209,6 +2266,8 @@ def get_shape_keys(ref=None):
 
 def remove_shape_keys(ref=None):
     return remove_all_shape_keys(ref)
+
+
 # endregion
 # region PARTICLE SYSTEMS
 
@@ -2216,6 +2275,8 @@ def remove_shape_keys(ref=None):
 def get_particle_systems(ref):
     objref = get_object(ref)
     return objref.particle_systems
+
+
 # endregion
 # region COLLECTIONS
 
@@ -2343,6 +2404,7 @@ def hide_collection_viewport(ref=None):
     col = get_collection(ref)
     col.hide_viewport = True
 
+
 # most people will probably expect the viewport collection to be hidden with this function name
 
 
@@ -2364,6 +2426,7 @@ def show_collection_viewport(ref=None):
     col = get_collection(ref)
     col.hide_viewport = False
 
+
 # most people will probably expect the viewport collection to be unhidden with this function name
 
 
@@ -2384,6 +2447,7 @@ def show_collection_select(ref=None):
 def unhide_collection_viewport(ref=None):
     show_collection_viewport(ref)
 
+
 # most people will probably expect the viewport collection to be hidden with this function name
 
 
@@ -2398,6 +2462,7 @@ def unhide_collection_render(ref=None):
 def unhide_collection_select(ref=None):
     show_collection_select(ref)
 
+
 # Dev Function
 
 
@@ -2407,8 +2472,7 @@ def search_layer_collection_in_hierarchy_and_set_active(colref, hir):
             bpy.context.view_layer.active_layer_collection = hir
         else:
             for child in hir.children:
-                search_layer_collection_in_hierarchy_and_set_active(
-                    colref, child)
+                search_layer_collection_in_hierarchy_and_set_active(colref, child)
 
 
 def get_all_collections():
@@ -2501,6 +2565,7 @@ def collection_exists(col):
     if is_string(col):
         return col in bpy.data.collections
     return col.name in bpy.data.collections
+
 
 # endregion
 # region MATERIALS
@@ -2631,6 +2696,8 @@ def get_material_names_from_object(ref):
     for m in mats:
         name_list.append(m.name)
     return name_list
+
+
 # endregion
 # region NODES
 
@@ -2719,6 +2786,7 @@ def get_index_of_input(node, name):
         i += 1
     return index
 
+
 # World Nodes
 
 
@@ -2728,11 +2796,12 @@ def get_world_nodes(index=None):
     else:
         return bpy.data.worlds[0].node_tree.nodes
 
+
 # endregion
 # region TEXTURES AND IMAGES
 
 
-def create_texture(name="Texture", type='CLOUDS'):
+def create_texture(name="Texture", type="CLOUDS"):
     if type is not None:
         return bpy.data.textures.new(name, type.upper())
 
@@ -2766,7 +2835,7 @@ def delete_texture(ref):
         bpy.data.textures.remove(ref)
 
 
-def create_image(name='Image', width=1024, height=1024):
+def create_image(name="Image", width=1024, height=1024):
     return bpy.data.images.new(name=name, width=width, height=height)
 
 
@@ -2798,6 +2867,7 @@ def delete_image(ref):
     else:
         bpy.data.images.remove(ref)
 
+
 # endregion
 # region MODIFIERS
 
@@ -2810,7 +2880,7 @@ def add_modifier(ref=None, name="Modifier", id="SUBSURF"):
         new_mods.append(new_mod)
 
     for area in bpy.context.screen.areas:
-        if area.type == 'PROPERTIES':
+        if area.type == "PROPERTIES":
             area.tag_redraw()
 
     if len(new_mods) > 1:
@@ -2842,7 +2912,7 @@ def remove_modifier(ref=None, name=None):
         objref.modifiers.remove(objref.modifiers[0])
 
     for area in bpy.context.screen.areas:
-        if area.type == 'PROPERTIES':
+        if area.type == "PROPERTIES":
             area.tag_redraw()
 
 
@@ -2867,225 +2937,228 @@ def apply_all_modifiers(ref=None):
 def apply_modifiers(ref=None):
     apply_all_modifiers(ref)
 
+
 # Specific Modifiers
 
 
 def add_data_transfer(ref=None, modname="DataTransfer"):
-    return add_modifier(ref, modname, 'DATA_TRANSFER')
+    return add_modifier(ref, modname, "DATA_TRANSFER")
 
 
 def add_mesh_cache(ref=None, modname="MeshCache"):
-    return add_modifier(ref, modname, 'MESH_CACHE')
+    return add_modifier(ref, modname, "MESH_CACHE")
 
 
 def add_mesh_sequence_cache(ref=None, modname="MeshSequenceCache"):
-    return add_modifier(ref, modname, 'MESH_SEQUENCE_CACHE')
+    return add_modifier(ref, modname, "MESH_SEQUENCE_CACHE")
 
 
 def add_normal_edit(ref=None, modname="NormalEdit"):
-    return add_modifier(ref, modname, 'NORMAL_EDIT')
+    return add_modifier(ref, modname, "NORMAL_EDIT")
 
 
 def add_weighted_normal(ref=None, modname="WeightedNormal"):
-    return add_modifier(ref, modname, 'WEIGHTED_NORMAL')
+    return add_modifier(ref, modname, "WEIGHTED_NORMAL")
 
 
 def add_uv_project(ref=None, modname="UVProject"):
-    return add_modifier(ref, modname, 'UV_PROJECT')
+    return add_modifier(ref, modname, "UV_PROJECT")
 
 
 def add_uv_warp(ref=None, modname="Warp"):
-    return add_modifier(ref, modname, 'UV_WARP')
+    return add_modifier(ref, modname, "UV_WARP")
 
 
 def add_vertex_weight_edit(ref=None, modname="VertexWeightEdit"):
-    return add_modifier(ref, modname, 'VERTEX_WEIGHT_EDIT')
+    return add_modifier(ref, modname, "VERTEX_WEIGHT_EDIT")
 
 
 def add_vertex_weight_mix(ref=None, modname="VertexWeightMix"):
-    return add_modifier(ref, modname, 'VERTEX_WEIGHT_MIX')
+    return add_modifier(ref, modname, "VERTEX_WEIGHT_MIX")
 
 
 def add_vertex_weight_proximity(ref=None, modname="VertexWeightProximity"):
-    return add_modifier(ref, modname, 'VERTEX_WEIGHT_PROXIMITY')
+    return add_modifier(ref, modname, "VERTEX_WEIGHT_PROXIMITY")
 
 
 def add_array(ref=None, modname="Array"):
-    return add_modifier(ref, modname, 'ARRAY')
+    return add_modifier(ref, modname, "ARRAY")
 
 
 def add_bevel(ref=None, modname="Bevel"):
-    return add_modifier(ref, modname, 'BEVEL')
+    return add_modifier(ref, modname, "BEVEL")
 
 
 def add_boolean(ref=None, modname="Boolean"):
-    return add_modifier(ref, modname, 'BOOLEAN')
+    return add_modifier(ref, modname, "BOOLEAN")
 
 
 def add_build(ref=None, modname="Build"):
-    return add_modifier(ref, modname, 'BUILD')
+    return add_modifier(ref, modname, "BUILD")
 
 
 def add_decimate(ref=None, modname="Decimate"):
-    return add_modifier(ref, modname, 'DECIMATE')
+    return add_modifier(ref, modname, "DECIMATE")
 
 
 def add_edge_split(ref=None, modname="EdgeSplit"):
-    return add_modifier(ref, modname, 'EDGE_SPLIT')
+    return add_modifier(ref, modname, "EDGE_SPLIT")
 
 
 def add_mask(ref=None, modname="Mask"):
-    return add_modifier(ref, modname, 'MASK')
+    return add_modifier(ref, modname, "MASK")
 
 
 def add_mirror(ref=None, modname="Mirror"):
-    return add_modifier(ref, modname, 'MIRROR')
+    return add_modifier(ref, modname, "MIRROR")
 
 
 def add_multires(ref=None, modname="Multires"):
-    return add_modifier(ref, modname, 'MULTIRES')
+    return add_modifier(ref, modname, "MULTIRES")
 
 
 def add_remesh(ref=None, modname="Remesh"):
-    return add_modifier(ref, modname, 'REMESH')
+    return add_modifier(ref, modname, "REMESH")
 
 
 def add_screw(ref=None, modname="Screw"):
-    return add_modifier(ref, modname, 'SCREW')
+    return add_modifier(ref, modname, "SCREW")
 
 
 def add_skin(ref=None, modname="Skin"):
-    return add_modifier(ref, modname, 'SKIN')
+    return add_modifier(ref, modname, "SKIN")
 
 
 def add_solidify(ref=None, modname="Solidify"):
-    return add_modifier(ref, modname, 'SOLIDIFY')
+    return add_modifier(ref, modname, "SOLIDIFY")
 
 
 def add_subsurf(ref=None, modname="Subsurf"):
-    return add_modifier(ref, modname, 'SUBSURF')
+    return add_modifier(ref, modname, "SUBSURF")
 
 
 def add_triangulate(ref=None, modname="Triangulate"):
-    return add_modifier(ref, modname, 'TRIANGULATE')
+    return add_modifier(ref, modname, "TRIANGULATE")
 
 
 def add_weld(ref=None, modname="Weld"):
-    return add_modifier(ref, modname, 'WELD')
+    return add_modifier(ref, modname, "WELD")
 
 
 def add_wireframe(ref=None, modname="Wireframe"):
-    return add_modifier(ref, modname, 'WIREFRAME')
+    return add_modifier(ref, modname, "WIREFRAME")
 
 
 def add_armature(ref=None, modname="Armature"):
-    return add_modifier(ref, modname, 'ARMATURE')
+    return add_modifier(ref, modname, "ARMATURE")
 
 
 def add_cast(ref=None, modname="Cast"):
-    return add_modifier(ref, modname, 'CAST')
+    return add_modifier(ref, modname, "CAST")
 
 
 def add_curve(ref=None, modname="Curve"):
-    return add_modifier(ref, modname, 'CURVE')
+    return add_modifier(ref, modname, "CURVE")
 
 
 def add_displace(ref=None, modname="Displace"):
-    return add_modifier(ref, modname, 'DISPLACE')
+    return add_modifier(ref, modname, "DISPLACE")
 
 
 def add_hook(ref=None, modname="Hook"):
-    return add_modifier(ref, modname, 'HOOK')
+    return add_modifier(ref, modname, "HOOK")
 
 
 def add_laplacian_deform(ref=None, modname="LaplacianDeform"):
-    return add_modifier(ref, modname, 'LAPLACIANDEFORM')
+    return add_modifier(ref, modname, "LAPLACIANDEFORM")
 
 
 def add_lattice(ref=None, modname="Lattice"):
-    return add_modifier(ref, modname, 'LATTICE')
+    return add_modifier(ref, modname, "LATTICE")
 
 
 def add_mesh_deform(ref=None, modname="Deform"):
-    return add_modifier(ref, modname, 'MESH_DEFORM')
+    return add_modifier(ref, modname, "MESH_DEFORM")
 
 
 def add_shrinkwrap(ref=None, modname="Shrinkwrap"):
-    return add_modifier(ref, modname, 'SHRINKWRAP')
+    return add_modifier(ref, modname, "SHRINKWRAP")
 
 
 def add_simple_deform(ref=None, modname="SimpleDeform"):
-    return add_modifier(ref, modname, 'SIMPLE_DEFORM')
+    return add_modifier(ref, modname, "SIMPLE_DEFORM")
 
 
 def add_smooth(ref=None, modname="Smooth"):
-    return add_modifier(ref, modname, 'SMOOTH')
+    return add_modifier(ref, modname, "SMOOTH")
 
 
 def add_corrective_smooth(ref=None, modname="CorrectiveSmooth"):
-    return add_modifier(ref, modname, 'CORRECTIVE_SMOOTH')
+    return add_modifier(ref, modname, "CORRECTIVE_SMOOTH")
 
 
 def add_laplacian_smooth(ref=None, modname="LaplacianSmooth"):
-    return add_modifier(ref, modname, 'LAPLACIANSMOOTH')
+    return add_modifier(ref, modname, "LAPLACIANSMOOTH")
 
 
 def add_surface_deform(ref=None, modname="SurfaceDeform"):
-    return add_modifier(ref, modname, 'SURFACE_DEFORM')
+    return add_modifier(ref, modname, "SURFACE_DEFORM")
 
 
 def add_warp(ref=None, modname="Warp"):
-    return add_modifier(ref, modname, 'WARP')
+    return add_modifier(ref, modname, "WARP")
 
 
 def add_wave(ref=None, modname="Wave"):
-    mod = add_modifier(ref, modname, 'WAVE')
+    mod = add_modifier(ref, modname, "WAVE")
     mod.time_offset = random.random() * get_scene().render.fps
     return mod
 
 
 def add_cloth(ref=None, modname="Cloth"):
-    return add_modifier(ref, modname, 'CLOTH')
+    return add_modifier(ref, modname, "CLOTH")
 
 
 def add_collision(ref=None, modname="Collision"):
-    return add_modifier(ref, modname, 'COLLISION')
+    return add_modifier(ref, modname, "COLLISION")
 
 
 def add_dynamic_paint(ref=None, modname="DynamicPaint"):
-    return add_modifier(ref, modname, 'DYNAMIC_PAINT')
+    return add_modifier(ref, modname, "DYNAMIC_PAINT")
 
 
 def add_explode(ref=None, modname="Explode"):
-    return add_modifier(ref, modname, 'EXPLODE')
+    return add_modifier(ref, modname, "EXPLODE")
 
 
 def add_fluid(ref=None, modname="Fluid"):
-    return add_modifier(ref, modname, 'FLUID')
+    return add_modifier(ref, modname, "FLUID")
 
 
 def add_ocean(ref=None, modname="Ocean"):
-    return add_modifier(ref, modname, 'OCEAN')
+    return add_modifier(ref, modname, "OCEAN")
 
 
 def add_particle_instance(ref=None, modname="ParticleInstance"):
-    return add_modifier(ref, modname, 'PARTICLE_INSTANCE')
+    return add_modifier(ref, modname, "PARTICLE_INSTANCE")
 
 
 def add_particle_system(ref=None, modname="ParticleSystem"):
-    return add_modifier(ref, modname, 'PARTICLE_SYSTEM')
+    return add_modifier(ref, modname, "PARTICLE_SYSTEM")
 
 
 def add_soft_body(ref=None, modname="SoftBody"):
-    return add_modifier(ref, modname, 'SOFT_BODY')
+    return add_modifier(ref, modname, "SOFT_BODY")
 
 
 def add_surface(ref=None, modname=""):
-    return add_modifier(ref, modname, 'SURFACE')
+    return add_modifier(ref, modname, "SURFACE")
 
 
 def add_simulation(ref=None, modname=""):
-    return add_modifier(ref, modname, 'SIMULATION')
+    return add_modifier(ref, modname, "SIMULATION")
+
+
 # endregion
 # region PHYSICS
 
@@ -3093,7 +3166,7 @@ def add_simulation(ref=None, modname=""):
 def add_force_field_physics(ref=None):
     objref = get_object(ref)
     bpy.context.view_layer.objects.active = objref
-    if objref.field.type == 'NONE':
+    if objref.field.type == "NONE":
         bpy.ops.object.forcefield_toggle()
 
 
@@ -3127,6 +3200,8 @@ def add_rigid_body_constraint_physics(ref=None):
     objref = get_object(ref)
     bpy.context.view_layer.objects.active = objref
     bpy.ops.rigidbody.constraint_add()
+
+
 # endregion
 # region PHYSICS - FLUIDS
 
@@ -3145,6 +3220,7 @@ def set_fluid_type(fluidtype=None):
     else:
         ftype = "NONE"
 
+
 # Effector Parameters
 
 
@@ -3161,23 +3237,25 @@ def fluid_effector_thickness_value(value):
     intvalue = int(value)
     bpy.context.object.modifiers["Fluid"].effector_settings.surface_distance = intvalue
 
+
 # Use effector, 1 = on 0 = off
 
 
 def fluid_effector_use_toggle(fbool):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].effector_settings.use_effector = h
+
 
 # Is Planar, 1 = on 0 = off
 
 
 def fluid_effector_is_planar(fbool):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].effector_settings.use_plane_init = h
 
@@ -3188,14 +3266,15 @@ def fluid_effector_velocity(value):
 
 
 def fluid_effector_guide_mode(value):
-    if value == 'MAXIMUM' or value == 'MAX':
-        bpy.context.object.modifiers["Fluid"].effector_settings.guide_mode = 'MAXIMUM'
-    if value == 'MINIMUM' or value == 'MIN':
-        bpy.context.object.modifiers["Fluid"].effector_settings.guide_mode = 'MINIMUM'
-    if value == 'OVERRIDE' or value == 'OVER':
-        bpy.context.object.modifiers["Fluid"].effector_settings.guide_mode = 'OVERRIDE'
-    if value == 'AVERAGED' or value == 'MEAN':
-        bpy.context.object.modifiers["Fluid"].effector_settings.guide_mode = 'AVERAGED'
+    if value == "MAXIMUM" or value == "MAX":
+        bpy.context.object.modifiers["Fluid"].effector_settings.guide_mode = "MAXIMUM"
+    if value == "MINIMUM" or value == "MIN":
+        bpy.context.object.modifiers["Fluid"].effector_settings.guide_mode = "MINIMUM"
+    if value == "OVERRIDE" or value == "OVER":
+        bpy.context.object.modifiers["Fluid"].effector_settings.guide_mode = "OVERRIDE"
+    if value == "AVERAGED" or value == "MEAN":
+        bpy.context.object.modifiers["Fluid"].effector_settings.guide_mode = "AVERAGED"
+
 
 # Type Flow Parameters
 
@@ -3220,26 +3299,29 @@ def flow_set_behavior(value):
 
 
 def flow_use_flow_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].flow_settings.use_inflow = h
 
 
 def flow_source(value):
-    if value == 'PARTICLE SYSTEM':
-        value = 'PARTICLES'
+    if value == "PARTICLE SYSTEM":
+        value = "PARTICLES"
     bpy.context.object.modifiers["Fluid"].flow_settings.flow_source = value
 
 
 def flow_smoke_colour_rgb(r, g, b):
-    print(r+g+b)
+    print(r + g + b)
     rfloat = float(r)
     gfloat = float(g)
     bfloat = float(b)
     bpy.context.object.modifiers["Fluid"].flow_settings.smoke_color = (
-        rfloat, gfloat, bfloat)
+        rfloat,
+        gfloat,
+        bfloat,
+    )
 
 
 def flow_absolute_density(value):
@@ -3260,17 +3342,20 @@ def flow_density(value):
 def flow_vertexgroup(value):
     bpy.context.object.modifiers["Fluid"].flow_settings.density_vertex_group = value
 
+
 # Particle System
 
 
 def flow_particle_system_select(value):
-    bpy.context.object.modifiers["Fluid"].flow_settings.particle_system = bpy.data.objects["Cube"].particle_systems[value]
+    bpy.context.object.modifiers["Fluid"].flow_settings.particle_system = (
+        bpy.data.objects["Cube"].particle_systems[value]
+    )
 
 
 def flow_particle_set_size_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].flow_settings.use_particle_size = h
 
@@ -3279,13 +3364,14 @@ def flow_set_particle_size(value):
     size = float(value)
     bpy.context.object.modifiers["Fluid"].flow_settings.particle_size = size
 
+
 # Intial Velocity
 
 
 def flow_initial_velocity_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].flow_settings.use_initial_velocity = h
 
@@ -3293,6 +3379,7 @@ def flow_initial_velocity_toggle(value):
 def flow_initial_velocity_value(value):
     velocity = float(value)
     bpy.context.object.modifiers["Fluid"].flow_settings.velocity_factor = velocity
+
 
 # Domains
 
@@ -3306,6 +3393,7 @@ def fluid_set_domain_type(domaintype=None):
             dtype = "LIQUID"
     else:
         dtype = "LIQUID"
+
 
 # Global Fluid Settings
 
@@ -3334,23 +3422,37 @@ def fluid_domain_set_timesteps_min(value):
     timestep = int(value)
     bpy.context.object.modifiers["Fluid"].domain_settings.timesteps_min = timestep
 
+
 # Border Collisions
 
 
 def fluid_domain_border_colisions(side, toggle):
     bool = int(toggle)
-    if side == 'top' or side == 'TOP':
-        bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_top = bool
-    if side == 'back' or side == 'BACK':
-        bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_back = bool
-    if side == 'front' or side == 'FRONT':
-        bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_front = bool
-    if side == 'right' or side == 'RIGHT':
-        bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_right = bool
-    if side == 'left' or side == 'LEFT':
-        bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_left = bool
-    if side == 'bottom' or side == 'BOTTOM':
-        bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_bottom = bool
+    if side == "top" or side == "TOP":
+        bpy.context.object.modifiers[
+            "Fluid"
+        ].domain_settings.use_collision_border_top = bool
+    if side == "back" or side == "BACK":
+        bpy.context.object.modifiers[
+            "Fluid"
+        ].domain_settings.use_collision_border_back = bool
+    if side == "front" or side == "FRONT":
+        bpy.context.object.modifiers[
+            "Fluid"
+        ].domain_settings.use_collision_border_front = bool
+    if side == "right" or side == "RIGHT":
+        bpy.context.object.modifiers[
+            "Fluid"
+        ].domain_settings.use_collision_border_right = bool
+    if side == "left" or side == "LEFT":
+        bpy.context.object.modifiers[
+            "Fluid"
+        ].domain_settings.use_collision_border_left = bool
+    if side == "bottom" or side == "BOTTOM":
+        bpy.context.object.modifiers[
+            "Fluid"
+        ].domain_settings.use_collision_border_bottom = bool
+
 
 # Caches
 
@@ -3380,54 +3482,68 @@ def fluid_cache_type(value):
 
 
 def fluid_cache_continue_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.cache_resumable = h
 
 
 def fluid_cache_format(value):
-    if value.lower() == 'openvdb':
-        bpy.context.object.modifiers["Fluid"].domain_settings.cache_data_format = 'OPENVDB'
-    if value.lower() == 'uni cache':
-        bpy.context.object.modifiers["Fluid"].domain_settings.cache_data_format = 'UNI'
+    if value.lower() == "openvdb":
+        bpy.context.object.modifiers["Fluid"].domain_settings.cache_data_format = (
+            "OPENVDB"
+        )
+    if value.lower() == "uni cache":
+        bpy.context.object.modifiers["Fluid"].domain_settings.cache_data_format = "UNI"
 
 
 def fluid_cache_compress_type(value):
-    if value.lower() == 'zip':
-        bpy.context.object.modifiers["Fluid"].domain_settings.openvdb_cache_compress_type = 'ZIP'
-    if value.lower() == 'blosc':
-        bpy.context.object.modifiers["Fluid"].domain_settings.openvdb_cache_compress_type = 'BLOSC'
-    if value.lower() == 'none':
-        bpy.context.object.modifiers["Fluid"].domain_settings.openvdb_cache_compress_type = 'NONE'
+    if value.lower() == "zip":
+        bpy.context.object.modifiers[
+            "Fluid"
+        ].domain_settings.openvdb_cache_compress_type = "ZIP"
+    if value.lower() == "blosc":
+        bpy.context.object.modifiers[
+            "Fluid"
+        ].domain_settings.openvdb_cache_compress_type = "BLOSC"
+    if value.lower() == "none":
+        bpy.context.object.modifiers[
+            "Fluid"
+        ].domain_settings.openvdb_cache_compress_type = "NONE"
 
 
 def fluid_cache_precision(value):
     print(value)
-    if value.lower() == 'half':
+    if value.lower() == "half":
         value = "16"
-    if value.lower() == 'full':
+    if value.lower() == "full":
         value = "32"
     bpy.context.object.modifiers["Fluid"].domain_settings.openvdb_data_depth = value
+
 
 # Collections
 
 
 def fluid_flow_collection(value):
-    bpy.context.object.modifiers["Fluid"].domain_settings.fluid_group = bpy.data.collections[value]
+    bpy.context.object.modifiers["Fluid"].domain_settings.fluid_group = (
+        bpy.data.collections[value]
+    )
 
 
 def fluid_flow_effectorn(value):
-    bpy.context.object.modifiers["Fluid"].domain_settings.effector_group = bpy.data.collections[value]
+    bpy.context.object.modifiers["Fluid"].domain_settings.effector_group = (
+        bpy.data.collections[value]
+    )
+
 
 # Guides
 
 
 def fluid_domain_guides_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_guide = h
 
@@ -3448,14 +3564,16 @@ def fluid_domain_guides_velocity(value):
 
 
 def fluid_domain_guides_source(value):
-    bpy.context.object.modifiers["Fluid"].domain_settings.guide_source = value.upper(
-    )
+    bpy.context.object.modifiers["Fluid"].domain_settings.guide_source = value.upper()
+
 
 # Field Weights
 
 
 def fluid_field_weights_collection(value):
-    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.collection = bpy.data.collections[value]
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.effector_weights.collection = bpy.data.collections[value]
 
 
 def fluid_field_weights_gravity(value):
@@ -3480,12 +3598,16 @@ def fluid_field_weights_vortex(value):
 
 def fluid_field_weights_magnetic(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.magnetic = val
+    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.magnetic = (
+        val
+    )
 
 
 def fluid_field_weights_harmonic(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.harmonic = val
+    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.harmonic = (
+        val
+    )
 
 
 def fluid_field_weights_charge(value):
@@ -3495,7 +3617,9 @@ def fluid_field_weights_charge(value):
 
 def fluid_field_weights_lennardjones(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.lennardjones = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.effector_weights.lennardjones = val
 
 
 def fluid_field_weights_wind(value):
@@ -3505,7 +3629,9 @@ def fluid_field_weights_wind(value):
 
 def fluid_field_weights_curve_guide(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.curve_guide = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.effector_weights.curve_guide = val
 
 
 def fluid_field_weights_texture(value):
@@ -3515,12 +3641,16 @@ def fluid_field_weights_texture(value):
 
 def fluid_field_weights_smoke_flow(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.smokeflow = val
+    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.smokeflow = (
+        val
+    )
 
 
 def fluid_field_weights_turbulence(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.turbulence = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.effector_weights.turbulence = val
 
 
 def fluid_field_weights_drag(value):
@@ -3532,6 +3662,7 @@ def fluid_field_weights_boid(value):
     val = float(value)
     bpy.context.object.modifiers["Fluid"].domain_settings.effector_weights.boid = val
 
+
 # Viewport Display
 
 
@@ -3541,7 +3672,8 @@ def fluid_view_thickness(value):
 
 
 def fluid_view_interpolation(value):
-    bpy.context.object.modifiers["Fluid"].domain_settings.display_interpolation = value.upper(
+    bpy.context.object.modifiers["Fluid"].domain_settings.display_interpolation = (
+        value.upper()
     )
 
 
@@ -3551,9 +3683,9 @@ def fluid_view_slices_voxel(value):
 
 
 def fluid_view_slice_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_slice = h
 
@@ -3568,9 +3700,9 @@ def fluid_view_slice_position(value):
 
 
 def fluid_view_grid_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_color_ramp = h
 
@@ -3583,64 +3715,78 @@ def fluid_view_grid_scale(value):
 def fluid_view_grid_color_position(pos, stop):
     val = float(pos)
     position = int(stop)
-    bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.elements[position].position = val
+    bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.elements[
+        position
+    ].position = val
 
 
 def fluid_view_grid_color_hue_interpolation(value):
-    bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.hue_interpolation = value.upper(
-    )
+    bpy.context.active_object.modifiers[
+        "Fluid"
+    ].domain_settings.color_ramp.hue_interpolation = value.upper()
 
 
 def fluid_view_grid_color(stop, encoding, r, g, b, al):
-    bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.color_mode = encoding.upper(
-    )
+    bpy.context.active_object.modifiers[
+        "Fluid"
+    ].domain_settings.color_ramp.color_mode = encoding.upper()
     stopint = int(stop)
     red = float(r)
     green = float(b)
     blue = float(g)
     alpha = float(al)
-    bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.elements[stopint].color = (
-        red, green, blue, alpha)
+    bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.elements[
+        stopint
+    ].color = (red, green, blue, alpha)
 
 
 def fluid_view_grid_stops_new(value):
     val = float(value)
-    bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.elements.new(
-        val)
+    bpy.context.active_object.modifiers[
+        "Fluid"
+    ].domain_settings.color_ramp.elements.new(val)
 
 
 def fluid_view_grid_stops_remove(value):
     val = int(value)
-    bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.elements.remove(
-        bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.elements[val])
+    bpy.context.active_object.modifiers[
+        "Fluid"
+    ].domain_settings.color_ramp.elements.remove(
+        bpy.context.active_object.modifiers[
+            "Fluid"
+        ].domain_settings.color_ramp.elements[val]
+    )
 
 
 def fluid_view_vector_dis_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_slice = h
 
 
 def fluid_view_vector_display_type(value):
-    bpy.context.object.modifiers["Fluid"].domain_settings.vector_display_type = value.upper(
+    bpy.context.object.modifiers["Fluid"].domain_settings.vector_display_type = (
+        value.upper()
     )
 
 
 def fluid_view_vector_magnitude(value):
     val = int(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.vector_scale_with_magnitude = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.vector_scale_with_magnitude = val
 
 
 def fluid_view_vector_field(value):
-    bpy.context.object.modifiers["Fluid"].domain_settings.vector_field = value.upper(
-    )
+    bpy.context.object.modifiers["Fluid"].domain_settings.vector_field = value.upper()
 
 
 def fluid_view_vector_scale(value):
     val = float(value)
     bpy.context.object.modifiers["Fluid"].domain_settings.vector_scale = val
+
 
 # Gas Domain (not categorized)
 
@@ -3659,13 +3805,14 @@ def fluid_gas_buoyancy_vorticity(value):
     val = float(value)
     bpy.context.object.modifiers["Fluid"].domain_settings.vorticity = val
 
+
 # Dissolve
 
 
 def fluid_gas_dissolve_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_dissolve_smoke = h
 
@@ -3676,27 +3823,28 @@ def fluid_gas_dissolve_time(value):
 
 
 def fluid_gas_dissolve_slow_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_dissolve_smoke_log = h
+
 
 # Noise
 
 
 def fluid_gas_noise_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_noise = h
 
 
 def fluid_gas_noise_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.noise_scale = h
 
@@ -3707,8 +3855,7 @@ def fluid_gas_noise_upres_factor(value):
 
 
 def fluid_gas_noise_method(value):
-    bpy.context.object.modifiers["Fluid"].domain_settings.noise_type = value.upper(
-    )
+    bpy.context.object.modifiers["Fluid"].domain_settings.noise_type = value.upper()
 
 
 def fluid_gas_noise_strength(value):
@@ -3724,6 +3871,7 @@ def fluid_gas_noise_scale(value):
 def fluid_gas_noise_time(value):
     val = float(value)
     bpy.context.object.modifiers["Fluid"].domain_settings.noise_time_anim = val
+
 
 # Fire
 
@@ -3757,16 +3905,16 @@ def fluid_gas_fire_color_rgb(red, green, blue):
     r = float(red)
     g = float(green)
     b = float(blue)
-    bpy.context.object.modifiers["Fluid"].domain_settings.flame_smoke_color = (
-        r, g, b)
+    bpy.context.object.modifiers["Fluid"].domain_settings.flame_smoke_color = (r, g, b)
+
 
 # Fluid
 
 
 def fluid_fluid_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_flip_particles = h
 
@@ -3812,9 +3960,9 @@ def fluid_fluid_narrow_bandwidth(value):
 
 
 def fluid_fluid_frac_obs_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_fractions = h
 
@@ -3830,9 +3978,9 @@ def fluid_fluid_obs_threshold(value):
 
 
 def fluid_fluid_diffusion_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_diffusion = h
 
@@ -3853,25 +4001,25 @@ def fluid_fluid_diffusion_surface(value):
 
 
 def fluid_fluid_particles_bubbles_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_bubble_particles = h
 
 
 def fluid_fluid_particles_foam_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_foam_particles = h
 
 
 def fluid_fluid_particles_spray_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_spray_particles = h
 
@@ -3880,52 +4028,72 @@ def fluid_fluid_particles_combined_export(value):
     value = value.replace(" ", "_")
     value = value.upper()
     print(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_combined_export = value
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_combined_export = value
 
 
 def fluid_fluid_particles_wave_crest_potential_maximum(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_potential_max_wavecrest = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_potential_max_wavecrest = val
 
 
 def fluid_fluid_particles_wave_crest_potential_minimum(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_potential_min_wavecrest = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_potential_min_wavecrest = val
 
 
 def fluid_fluid_particles_traped_air_potential_minimum(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_potential_max_trappedair = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_potential_max_trappedair = val
 
 
 def fluid_fluid_particles_kinetic_potential_minimum(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_potential_max_energy = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_potential_max_energy = val
 
 
 def fluid_fluid_particles_kinetic_potential_minimum(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_potential_min_energy = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_potential_min_energy = val
 
 
 def fluid_fluid_particles_potential_radius(value):
     val = int(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_potential_min_energy = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_potential_min_energy = val
 
 
 def fluid_fluid_particles_particle_update_radius(value):
     val = int(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_potential_min_energy = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_potential_min_energy = val
 
 
 def fluid_fluid_particles_wave_crest_particle_sampling(value):
     val = int(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_sampling_trappedair = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_sampling_trappedair = val
 
 
 def fluid_fluid_particles_traped_air_particle_sampling(value):
     val = int(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_sampling_wavecrest = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_sampling_wavecrest = val
 
 
 def fluid_fluid_particles_particle_life_maximum(value):
@@ -3940,7 +4108,9 @@ def fluid_fluid_particles_particle_life_minimum(value):
 
 def fluid_fluid_particles_bubble_buoyancy(value):
     val = float(value)
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_bubble_buoyancy = val
+    bpy.context.object.modifiers[
+        "Fluid"
+    ].domain_settings.sndparticle_bubble_buoyancy = val
 
 
 def fluid_fluid_particles_bubble_drag(value):
@@ -3949,14 +4119,15 @@ def fluid_fluid_particles_bubble_drag(value):
 
 
 def fluid_fluid_particles_particles_in_boundary(value):
-    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_boundary = value.upper(
+    bpy.context.object.modifiers["Fluid"].domain_settings.sndparticle_boundary = (
+        value.upper()
     )
 
 
 def fluid_fluid_mesh_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_mesh = h
 
@@ -3982,18 +4153,20 @@ def fluid_fluid_mesh_smooth_pos(value):
 
 
 def fluid_fluid_mesh_use_speed_vectors(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_speed_vectors = h
 
 
 def fluid_fluid_mesh_generator(value):
-    if value.upper() == 'FINAL':
-        bpy.context.object.modifiers["Fluid"].domain_settings.mesh_generator = 'IMPROVED'
-    elif value.upper() == 'PREVIEW':
-        bpy.context.object.modifiers["Fluid"].domain_settings.mesh_generator = 'UNION'
+    if value.upper() == "FINAL":
+        bpy.context.object.modifiers["Fluid"].domain_settings.mesh_generator = (
+            "IMPROVED"
+        )
+    elif value.upper() == "PREVIEW":
+        bpy.context.object.modifiers["Fluid"].domain_settings.mesh_generator = "UNION"
 
 
 def fluid_fluid_mesh_concavity_upper(value):
@@ -4005,13 +4178,14 @@ def fluid_fluid_mesh_concavity_lower(value):
     val = float(value)
     bpy.context.object.modifiers["Fluid"].domain_settings.mesh_concave_lower = val
 
+
 # Adpative Domain
 
 
 def fluid_domain_adapt_toggle(value):
-    if value.upper() == 'FALSE':
+    if value.upper() == "FALSE":
         h = bool(False)
-    elif value.upper() == 'TRUE':
+    elif value.upper() == "TRUE":
         h = bool(True)
     bpy.context.object.modifiers["Fluid"].domain_settings.use_adaptive_domain = h
 
@@ -4035,6 +4209,8 @@ def fluid_domain_adapt_threshold(value):
         print("Too high")
     else:
         bpy.context.object.modifiers["Fluid"].domain_settings.adapt_threshold = floatval
+
+
 # endregion
 # region PHYSICS - COLLISION
 
@@ -4112,6 +4288,8 @@ def collision_soft_cloth_single_side(value=True):
 
 def collision_soft_cloth_override_normals(value=True):
     bpy.context.object.collision.use_normal = value
+
+
 # endregion
 # region TEXT OBJECTS
 
@@ -4130,6 +4308,8 @@ def delete_text_file(textname):
 
 def get_lines_in_text_object(textname):
     return bpy.data.texts[textname].lines
+
+
 # endregion
 # region FAKE USERS
 
@@ -4140,6 +4320,8 @@ def set_fake_user(ref, use=True):
 
 def use_fake_user(ref, use=True):
     ref.use_fake_user = use
+
+
 # endregion
 # region DATA CHECKS
 
@@ -4149,6 +4331,8 @@ def is_string(ref):
         return True
     else:
         return False
+
+
 # endregion
 # region DATA CONSTRUCTORS
 
@@ -4161,6 +4345,8 @@ def make_obj_list(ref):
     if ref is None:
         return [get_object(ref)]
     return get_objects(ref)
+
+
 # endregion
 # region MISC
 
@@ -4207,6 +4393,8 @@ def delete_unused_data():
 
 def debug_test():
     print("EasyBPY debug output")
+
+
 # endregion
 # region COMMON WORKFLOW FUNCTIONS
 
@@ -4255,8 +4443,8 @@ def organize_outliner():
     gc = get_collection
 
     if bpy.context.active_object != None:
-        if bpy.context.active_object.mode != 'OBJECT':
-            bpy.ops.object.mode_set(mode='OBJECT')
+        if bpy.context.active_object.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
 
     # Cameras
     d()
@@ -4434,38 +4622,55 @@ def organize_outliner():
 def suffix_convert_dataset(data):
     for d in data:
         nn = d.name
-        exclude = ["png", "jpg", "jpeg", "tif", "tiff", "bmp", "sgi", "rgb",
-                   "bw", "jp2", "j2c", "tga", "cin", "dpx", "exr", "hdr", "webp"]
+        exclude = [
+            "png",
+            "jpg",
+            "jpeg",
+            "tif",
+            "tiff",
+            "bmp",
+            "sgi",
+            "rgb",
+            "bw",
+            "jp2",
+            "j2c",
+            "tga",
+            "cin",
+            "dpx",
+            "exr",
+            "hdr",
+            "webp",
+        ]
         if not any(x in nn for x in exclude):
-            if '_' in d.name:
-                r = d.name.split('_')
-                if '.' in r[-1]:
-                    r2 = r[-1].split('.')
+            if "_" in d.name:
+                r = d.name.split("_")
+                if "." in r[-1]:
+                    r2 = r[-1].split(".")
                     if r2[0].isdigit():
                         val = int(r2[0]) + int(r2[1])
-                        nn = r[0] + '_' + str(val)
+                        nn = r[0] + "_" + str(val)
                         i = 1
                         while nn in data:
-                            nn = r[0] + '_' + str(val + i)
+                            nn = r[0] + "_" + str(val + i)
                             i += 1
                     else:
                         if r2[1].isdigit():
                             val = int(r2[1])
                             i = 0
                             nn = ""
-                            while i < len(r)-1:
+                            while i < len(r) - 1:
                                 nn = nn + r[i] + "_"
                                 i += 1
                             nn = nn + r2[0] + "_" + str(val)
             else:
-                if '.' in d.name:
-                    r = d.name.split('.')
+                if "." in d.name:
+                    r = d.name.split(".")
                     if r[-1].isdigit():
                         val = int(r[-1])
-                        nn = r[0] + '_' + str(val)
+                        nn = r[0] + "_" + str(val)
                         i = 1
                         while nn in data:
-                            nn = r[0] + '_' + str(val + i)
+                            nn = r[0] + "_" + str(val + i)
                             i += 1
         d.name = nn
 
@@ -4484,11 +4689,11 @@ def convert_suffixes():
 
 def trim_view_layer_suffixes():
     for o in bpy.context.view_layer.objects:
-        if '.' in o.name:
-            name_split = o.name.split('.')
-            if name_split[-1] == '001':
+        if "." in o.name:
+            name_split = o.name.split(".")
+            if name_split[-1] == "001":
                 del name_split[-1]
-            o.name = ''.join(name_split)
+            o.name = "".join(name_split)
 
 
 def add_prefix_to_name(ref, prefix, delim="_"):
@@ -4517,11 +4722,11 @@ def remove_suffix(ref, delim="_"):
 def replace_duplicate_nodes(nodes):
     for node in nodes:
         # If node is group
-        if node.type == 'GROUP':
+        if node.type == "GROUP":
             # If name has suffix
-            if '.' in node.name:
+            if "." in node.name:
                 # Remove suffix
-                sname = node.node_tree.name.split('.')
+                sname = node.node_tree.name.split(".")
                 # If name w/o suffix is node group
                 if sname[0] in bpy.data.node_groups:
                     # Set node group to node name w/o suffix
@@ -4542,7 +4747,9 @@ def fix_duplicate_nodes():
     fix_node_duplicates()
 
 
-def random_visibility_keyframes(objects=None, phase_min=0, phase_max=75, sustain_min=5, sustain_max=100, chance=6):
+def random_visibility_keyframes(
+    objects=None, phase_min=0, phase_max=75, sustain_min=5, sustain_max=100, chance=6
+):
     # Getting important information:
     end = frame_end()
     # Clearing animation data in preparation for new keyframes:
@@ -4581,4 +4788,6 @@ def random_visibility_keyframes(objects=None, phase_min=0, phase_max=75, sustain
                     hide_in_render(obj)
                     obj.keyframe_insert(data_path="hide_viewport", frame=count)
                     obj.keyframe_insert(data_path="hide_render", frame=count)
+
+
 # endregion

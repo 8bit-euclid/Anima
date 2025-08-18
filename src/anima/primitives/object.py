@@ -1,11 +1,23 @@
-import bpy
 import math
 from abc import ABC
 from copy import deepcopy
 from typing import Any, Optional
+
+import bpy
+
 from anima.globals.easybpy import apply_scale
-from anima.globals.general import Vector, Matrix, Euler, is_animable, add_object, \
-    deepcopy_object, make_active, deselect_all, ebpy, outer_product
+from anima.globals.general import (
+    Euler,
+    Matrix,
+    Vector,
+    add_object,
+    deepcopy_object,
+    deselect_all,
+    ebpy,
+    is_animable,
+    make_active,
+    outer_product,
+)
 
 
 class Object(ABC):
@@ -17,7 +29,7 @@ class Object(ABC):
     See: https://docs.python.org/3/library/functions.html#super for more details.
     """
 
-    def __init__(self, *, bl_object=None, name='Object', **kwargs):
+    def __init__(self, *, bl_object=None, name="Object", **kwargs):
         # There should be no additional keyword arguments (assuming cooperative inheritance).
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {kwargs}")
@@ -43,7 +55,13 @@ class Object(ABC):
         object._set_parent(self)
         self.children.append(object)
 
-    def add_keyframe(self, bl_data_path: str, index: int = -1, frame: int = None, is_custom: bool = False):
+    def add_keyframe(
+        self,
+        bl_data_path: str,
+        index: int = -1,
+        frame: int = None,
+        is_custom: bool = False,
+    ):
         """Add a keyframe for the specified object property at the given frame.
         Args:
             bl_data_path (str): The Blender data path to the property to keyframe.
@@ -51,7 +69,8 @@ class Object(ABC):
             frame (int, optional): The frame at which to insert the keyframe. Defaults to the current frame.
             is_custom (bool, optional): Whether the keyframe is for a custom property. Defaults to False.
         Raises:
-            AssertionError: If the frame is not specified or if the data path is invalid."""
+            AssertionError: If the frame is not specified or if the data path is invalid.
+        """
         path = bl_data_path
         if is_custom:
             path = f'["{path}"]'
@@ -117,15 +136,26 @@ class Object(ABC):
         x_set = x is not None
         y_set = y is not None
         z_set = z is not None
-        assert x_set or y_set or z_set, "At least one location dimension must be specified."
+        assert (
+            x_set or y_set or z_set
+        ), "At least one location dimension must be specified."
         loc = self.location
-        self._bl_object.location = (x if x_set else loc.x,
-                                    y if y_set else loc.y,
-                                    z if z_set else loc.z)
+        self._bl_object.location = (
+            x if x_set else loc.x,
+            y if y_set else loc.y,
+            z if z_set else loc.z,
+        )
         if apply:
             ebpy.apply_location(ref=self.object)
 
-    def translate(self, x: float = 0, y: float = 0, z: float = 0, local: bool = False, apply: bool = False):
+    def translate(
+        self,
+        x: float = 0,
+        y: float = 0,
+        z: float = 0,
+        local: bool = False,
+        apply: bool = False,
+    ):
         """Translates the object in world/local space (defaults to world).
         Args:
             x (float, optional): The translation in the x dimension. Defaults to 0.
@@ -135,7 +165,7 @@ class Object(ABC):
             apply (bool, optional): If True, permanently apply the translation to the object. Defaults to False.
         """
         self.make_active()
-        ref_frame = 'LOCAL' if local else 'GLOBAL'
+        ref_frame = "LOCAL" if local else "GLOBAL"
         bpy.ops.transform.translate(value=(x, y, z), orient_type=ref_frame)
         if apply:
             ebpy.apply_location(ref=self.object)
@@ -170,17 +200,28 @@ class Object(ABC):
         x_set = x is not None
         y_set = y is not None
         z_set = z is not None
-        assert x_set or y_set or z_set, "At least one rotation dimension must be specified."
+        assert (
+            x_set or y_set or z_set
+        ), "At least one rotation dimension must be specified."
         obj = self._bl_object
         rot = obj.rotation_euler
-        obj.rotation_mode = 'XYZ'
-        obj.rotation_euler = (x if x_set else rot.x,
-                              y if y_set else rot.y,
-                              z if z_set else rot.z)
+        obj.rotation_mode = "XYZ"
+        obj.rotation_euler = (
+            x if x_set else rot.x,
+            y if y_set else rot.y,
+            z if z_set else rot.z,
+        )
         if apply:
             ebpy.apply_rotation(ref=self.object)
 
-    def rotate(self, x: float = 0, y: float = 0, z: float = 0, local: bool = False, apply: bool = False):
+    def rotate(
+        self,
+        x: float = 0,
+        y: float = 0,
+        z: float = 0,
+        local: bool = False,
+        apply: bool = False,
+    ):
         """Rotates the object by the given Euler angles (x, y, z) in world/local space (defaults to world).
         Args:
             x (float, optional): The rotation angle around the x-axis in radians. Defaults to 0.
@@ -189,7 +230,7 @@ class Object(ABC):
             local (bool, optional): If True, rotates in local space; otherwise, rotates in world space. Defaults to False.
             apply (bool, optional): If True, permanently apply the rotation to the object. Defaults to False.
         """
-        rotation = Euler((x, y, z), 'XYZ')
+        rotation = Euler((x, y, z), "XYZ")
         if local:
             self._bl_object.rotation_euler.rotate(rotation)
         else:
@@ -199,20 +240,28 @@ class Object(ABC):
         if apply:
             ebpy.apply_rotation(ref=self.object)
 
-    def rotate_about(self, axis: tuple | list[float] | Vector, local: bool = False, apply: bool = False):
+    def rotate_about(
+        self,
+        axis: tuple | list[float] | Vector,
+        local: bool = False,
+        apply: bool = False,
+    ):
         """Rotates the object about a given axis.
         Args:
             axis: The axis of rotation, specified as a tuple/list/Vector of 2/3 floats or a Vector.
             local (bool, optional): If True, rotates in local space; otherwise, rotates in world space. Defaults to False.
             apply (bool, optional): If True, permanently apply the rotation to the object. Defaults to False.
         """
-        raise NotImplementedError(
-            "The rotate_about method is not implemented yet. ")
+        raise NotImplementedError("The rotate_about method is not implemented yet. ")
         if apply:
             ebpy.apply_rotation(ref=self.object)
 
-    def set_orientation(self, x_axis: tuple | list[float] | Vector,
-                        y_axis: tuple | list[float] | Vector, apply: bool = False):
+    def set_orientation(
+        self,
+        x_axis: tuple | list[float] | Vector,
+        y_axis: tuple | list[float] | Vector,
+        apply: bool = False,
+    ):
         """Sets the object's orientation based on two orthogonal axes.
         Args:
             x_axis: A tuple/list/Vector of 2/3 floats representing the x-axis direction.
@@ -223,8 +272,7 @@ class Object(ABC):
         """
         x_axis = Vector(x_axis)
         y_axis = Vector(y_axis)
-        assert math.isclose(x_axis.dot(y_axis), 0), \
-            "X and Y axes are not orthogonal."
+        assert math.isclose(x_axis.dot(y_axis), 0), "X and Y axes are not orthogonal."
 
         # Compute orthonormal basis
         x_axis.normalize()
@@ -233,11 +281,7 @@ class Object(ABC):
         z_axis.normalize()
 
         # Create a 3x3 rotation matrix
-        rot_matr = Matrix((
-            x_axis,
-            y_axis,
-            z_axis
-        )).transposed()
+        rot_matr = Matrix((x_axis, y_axis, z_axis)).transposed()
 
         # Convert to quaternion or Euler angles
         self.set_rotation(*rot_matr.to_euler(), apply)
@@ -287,7 +331,9 @@ class Object(ABC):
 
     # Scale-related methods -------------------------------------------------------------------------------- #
 
-    def set_scale(self, x: float = None, y: float = None, z: float = None, apply: bool = False):
+    def set_scale(
+        self, x: float = None, y: float = None, z: float = None, apply: bool = False
+    ):
         """Sets the object's scale.
         Args:
             x (float, optional): The scale in the x dimension. Defaults to None.
@@ -300,21 +346,32 @@ class Object(ABC):
         x_set = x is not None
         y_set = y is not None
         z_set = z is not None
-        assert x_set or y_set or z_set, "At least one scale dimension must be specified."
+        assert (
+            x_set or y_set or z_set
+        ), "At least one scale dimension must be specified."
         scale = self._bl_object.scale
-        self._bl_object.scale = (x if x_set else scale.x,
-                                 y if y_set else scale.y,
-                                 z if z_set else scale.z)
+        self._bl_object.scale = (
+            x if x_set else scale.x,
+            y if y_set else scale.y,
+            z if z_set else scale.z,
+        )
         if apply:
             apply_scale(ref=self.object)
 
-    def scale_by(self, x_fact: float = 1.0, y_fact: float = 1.0, z_fact: float = 1.0, apply: bool = False):
+    def scale_by(
+        self,
+        x_fact: float = 1.0,
+        y_fact: float = 1.0,
+        z_fact: float = 1.0,
+        apply: bool = False,
+    ):
         """Scale the object by the given factors.
         Args:
             x_fact (float, optional): The factor by which to scale in the x dimension. Defaults to 1.0.
             y_fact (float, optional): The factor by which to scale in the y dimension. Defaults to 1.0.
             z_fact (float, optional): The factor by which to scale in the z dimension. Defaults to 1.0.
-            apply (bool, optional): If True, permanently apply the scale to the object. Defaults to False."""
+            apply (bool, optional): If True, permanently apply the scale to the object. Defaults to False.
+        """
         self.scale *= Vector((x_fact, y_fact, z_fact))
         if apply:
             apply_scale(ref=self.object)
@@ -330,13 +387,14 @@ class Object(ABC):
     def scale(self, scale):
         """Set the object's scale.
         Args:
-            scale (tuple or list): A tuple or list of 3 floats representing the scale in x, y, z dimensions"""
+            scale (tuple or list): A tuple or list of 3 floats representing the scale in x, y, z dimensions
+        """
         self.set_scale(*scale)
 
     # Other geometric operations --------------------------------------------------------------------------- #
 
     def reflect(self, plane_normal, plane_point=(0, 0, 0)):
-        """ Reflects an object about an arbitrary plane. """
+        """Reflects an object about an arbitrary plane."""
         plane_normal = Vector(plane_normal).normalized()
         plane_point = Vector(plane_point)
 
@@ -346,8 +404,11 @@ class Object(ABC):
         R = I - 2 * N  # Reflection matrix
 
         # Convert to 4x4 transformation matrix
-        refl_matrix = Matrix.Translation(
-            plane_point) @ R.to_4x4() @ Matrix.Translation(-plane_point)
+        refl_matrix = (
+            Matrix.Translation(plane_point)
+            @ R.to_4x4()
+            @ Matrix.Translation(-plane_point)
+        )
 
         # Apply transformation
         self.world_matrix = refl_matrix @ self.world_matrix
@@ -430,7 +491,8 @@ class Object(ABC):
         # Copy all attributes except those in attrs_to_excl
         attrs_to_excl = self._deepcopy_excluded_attrs()
         attrs_to_copy = {
-            key: value for key, value in self.__dict__.items()
+            key: value
+            for key, value in self.__dict__.items()
             if key not in attrs_to_excl
         }
         new_copy.__dict__.update(deepcopy(attrs_to_copy, memo))
@@ -448,9 +510,8 @@ class Object(ABC):
         """Attributes to exclude from deep copying.
         Returns:
             set[str]: A set of attribute names to exclude from deep copying."""
-        assert len(self.shape_keys) == 0, \
-            'Cannot deepcopy objects with shape keys yet.'
-        return {'_bl_object', 'shape_keys', 'parent'}
+        assert len(self.shape_keys) == 0, "Cannot deepcopy objects with shape keys yet."
+        return {"_bl_object", "shape_keys", "parent"}
 
     # Private methods -------------------------------------------------------------------------------------- #
 
@@ -460,18 +521,18 @@ class Object(ABC):
             bool: True if the Blender object has data, else False.
         Raises:
             AssertionError: If the Blender object is not set."""
-        assert self._bl_object is not None, \
-            "The Blender object is not set. Cannot check for data."
+        assert (
+            self._bl_object is not None
+        ), "The Blender object is not set. Cannot check for data."
         return self._bl_object.data is not None
 
-    def _set_parent(self, parent: type['Object']):
+    def _set_parent(self, parent: type["Object"]):
         """Sets the parent (of type BaseObject) of the current object.
         Args:
             parent (BaseObject): The parent object to set.
         Raises:
             AssertionError: If the parent is not of type BaseObject."""
-        assert is_animable(parent), \
-            "Can only set a parent of type BaseObject."
+        assert is_animable(parent), "Can only set a parent of type BaseObject."
         self.parent = parent
         self._bl_object.parent = parent._bl_object
 
@@ -485,19 +546,22 @@ class Object(ABC):
     def _set_viewport_visibility(self, val: bool):
         """Sets the object's visibility in the viewport.
         Args:
-            val (bool): True if the object should be visible in the viewport, else False."""
+            val (bool): True if the object should be visible in the viewport, else False.
+        """
         self._bl_object.hide_viewport = not val
 
     def _set_render_visibility(self, val: bool):
         """Sets the object's visibility in the render.
         Args:
-            val (bool): True if the object should be visible in the render, else False."""
+            val (bool): True if the object should be visible in the render, else False.
+        """
         self._bl_object.hide_render = not val
 
     def _log_info(self, visitor: callable):
         """Logs information about the object using the provided visitor function.
         Args:
-            visitor (callable): A function that takes the object as an argument and logs its information."""
-        print(f'Object {self.name} logs:')
+            visitor (callable): A function that takes the object as an argument and logs its information.
+        """
+        print(f"Object {self.name} logs:")
         if self._write_logs:
             visitor(self)

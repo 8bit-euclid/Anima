@@ -13,6 +13,7 @@ class MetaObject(ABCMeta, type):
     2. UUID is generated after full object initialization
     3. UUID is cached and consistent across calls
     """
+
     def __new__(mcs, name, bases, class_dict):
         def generate_deterministic_uuid(self):
             # Collect all attributes from the entire inheritance hierarchy
@@ -20,9 +21,9 @@ class MetaObject(ABCMeta, type):
 
             # Traverse the Method Resolution Order (MRO) to collect attributes
             for cls in reversed(self.__class__.mro()):
-                if hasattr(cls, '__dict__'):
+                if hasattr(cls, "__dict__"):
                     for key, value in cls.__dict__.items():
-                        if not key.startswith('_'):
+                        if not key.startswith("_"):
                             full_state[f"{cls.__name__}_{key}"] = value
 
             # Add instance attributes
@@ -38,7 +39,7 @@ class MetaObject(ABCMeta, type):
             return uuid.uuid5(uuid.NAMESPACE_DNS, state_str)
 
         # Add the UUID generation as a cached_property
-        class_dict['uuid'] = cached_property(generate_deterministic_uuid)
+        class_dict["uuid"] = cached_property(generate_deterministic_uuid)
 
         # Create the class
         return super().__new__(mcs, name, bases, class_dict)

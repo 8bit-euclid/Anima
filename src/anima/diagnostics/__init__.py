@@ -1,2 +1,2 @@
-from .logger import logger, format_output
+from .logger import format_output, logger
 from .profiler import profiler

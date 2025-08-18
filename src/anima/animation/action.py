@@ -1,14 +1,15 @@
-from collections import namedtuple
 from abc import ABC, abstractmethod
+from collections import namedtuple
 from enum import Enum
 
-Interval = namedtuple("Interval", ['start', 'stop'])
+Interval = namedtuple("Interval", ["start", "stop"])
 
 
 class Action(ABC):
     def __init__(self, obj, interval: Interval):
         self.obj = obj  # of type Object
         self.interval = Interval(*interval)
+
 
 # class Type(Enum):
 #     INTRO = 1

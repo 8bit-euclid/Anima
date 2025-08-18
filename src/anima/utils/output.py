@@ -1,5 +1,6 @@
 import subprocess
 import threading
+
 from anima.diagnostics import logger
 from anima.utils.subprocess import SubprocessManager
 
@@ -25,7 +26,7 @@ class BlenderOutputMonitor:
         self._thread = threading.Thread(
             target=self._read_stream,
             args=(process.stdout,),  # stderr already merged into stdout
-            daemon=True
+            daemon=True,
         )
         self._thread.start()
 

@@ -1,16 +1,24 @@
-import math
 import bisect
-from .curves import Curve, DEFAULT_LINE_WIDTH
-from .joints import Joint, RoundJoint, DEFAULT_LINE_WIDTH
-from anima.globals.general import Vector, are_vectors_close, reciprocal, clip
+import math
+
+from anima.globals.general import Vector, are_vectors_close, clip, reciprocal
+
+from .curves import DEFAULT_LINE_WIDTH, Curve
+from .joints import DEFAULT_LINE_WIDTH, Joint, RoundJoint
 
 
 class CurveChain(Curve):
-    def __init__(self, curves: list[type[Curve]], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
-                 name: str = 'CurveChain'):
+    def __init__(
+        self,
+        curves: list[type[Curve]],
+        width: float = DEFAULT_LINE_WIDTH,
+        bias: float = 0.0,
+        name: str = "CurveChain",
+    ):
         for c in curves:
-            assert not isinstance(c, Joint), \
-                "The curves in a curve chain cannot be joints."
+            assert not isinstance(
+                c, Joint
+            ), "The curves in a curve chain cannot be joints."
         self._curves: list[type[Curve]] = curves
         self._joints: list[type[Joint]] = []
         self._cumu_lengths: list[float] = []
@@ -19,8 +27,9 @@ class CurveChain(Curve):
 
         # Initialise joints.
         for curve_1, curve_2 in zip(curves, curves[1:]):
-            assert are_vectors_close(curve_1.point(1), curve_2.point(0)), \
-                f"The end-point of the first curve must be the start-point for the second."
+            assert are_vectors_close(
+                curve_1.point(1), curve_2.point(0)
+            ), f"The end-point of the first curve must be the start-point for the second."
             joint = RoundJoint(curve_1, curve_2)
             self._joints.append(joint)
 
@@ -61,7 +70,7 @@ class CurveChain(Curve):
         return crv.normal(t, normalise)
 
     def length(self, t: float = 1.0) -> float:
-        assert 0.0 <= t <= 1.0, f'Parameter must be in range [0, 1]. Got: {t:.3f}'
+        assert 0.0 <= t <= 1.0, f"Parameter must be in range [0, 1]. Got: {t:.3f}"
         return t * self._length
 
     # Private methods -------------------------------------------------------------------------------------- #
@@ -73,10 +82,10 @@ class CurveChain(Curve):
         return [crv for pair in zip(curves, joints) for crv in pair] + curves[-1:]
 
     def _set_param(self, param: float, end_idx: int):
-        param_old = getattr(self, f'param_{end_idx}')
+        param_old = getattr(self, f"param_{end_idx}")
         super()._set_param(param, end_idx)
 
-        crv_str = f'_curve_{end_idx}_idx'
+        crv_str = f"_curve_{end_idx}_idx"
         idx_ = getattr(self, crv_str)
         crv, idx, t = self._compute_curve_info(param)
         crv._set_param(t, end_idx)
@@ -84,10 +93,10 @@ class CurveChain(Curve):
 
         curves = self._all_entities
         if param < param_old:
-            for c in curves[idx + 1: idx_ + 1]:
+            for c in curves[idx + 1 : idx_ + 1]:
                 c._set_param(0, end_idx)
         else:
-            for c in curves[idx_: idx]:
+            for c in curves[idx_:idx]:
                 c._set_param(1, end_idx)
 
     def _update_attachment(self, end_index: int):
@@ -104,8 +113,7 @@ class CurveChain(Curve):
         crv = self._all_entities[idx]
 
         end_offs = crv._compute_end_offset(0, is_distance=True)
-        crv_param = (arc_len + end_offs - cumu_lens[idx]) * \
-            crv._length_inverse
+        crv_param = (arc_len + end_offs - cumu_lens[idx]) * crv._length_inverse
         crv_param = clip(crv_param, 0, 1)
         return crv, idx, crv_param
 
@@ -135,7 +143,8 @@ class CurveChain(Curve):
 
         # Need to override super()._update_length() to avoid a cycle. This is because the latter invokes
         # self.length(), which requires self._length to have already been set.
-        assert math.isclose(cumu_len, true_len, abs_tol=1e-6), \
-            f'Inconsistent total length. Abs Error: {abs(cumu_len - true_len)}'
+        assert math.isclose(
+            cumu_len, true_len, abs_tol=1e-6
+        ), f"Inconsistent total length. Abs Error: {abs(cumu_len - true_len)}"
         self._length = cumu_len
         self._length_inverse = reciprocal(cumu_len)

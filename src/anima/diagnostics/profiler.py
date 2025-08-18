@@ -1,10 +1,10 @@
 import cProfile
-import pstats
 import io
+import pstats
 from pstats import SortKey
 
 
-class Profiler():
+class Profiler:
     """
     A simple wrapper around Python's cProfile to profile code execution.
 

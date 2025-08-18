@@ -14,12 +14,24 @@ for path in paths_to_add:
 
 # Now import modules as usual
 import bpy
+
 from anima.diagnostics import logger
+from anima.globals.general import (
+    clear_scene,
+    deselect_all,
+    ebpy,
+    hide_relationship_lines,
+    to_frame,
+)
 from anima.utils.blender import configure_blender_viewport
-from anima.globals.general import clear_scene, to_frame, deselect_all, hide_relationship_lines, ebpy
 from anima.utils.socket.server import BlenderSocketServer
-from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
+from tests.visual_tests.test_curves import (
+    test_bezier_splines,
+    test_curve_joints,
+    test_dashed_curves,
+)
 from tests.visual_tests.test_latex import test_text_to_glyphs
+
 # fmt: on
 
 
@@ -33,7 +45,7 @@ def main():
     clear_scene()
     ebpy.set_render_fps(60)
 
-    end_frame = to_frame('00:06')
+    end_frame = to_frame("00:06")
 
     # Run visual tests
     logger.info("Running visual tests...")

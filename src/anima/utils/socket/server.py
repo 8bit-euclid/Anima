@@ -1,10 +1,18 @@
-import bpy
+import queue
 import socket
 import threading
+
+import bpy
 import dill
-import queue
+
 from anima.diagnostics import logger
-from anima.utils.socket.common import TCP_HOST, TCP_PORT, QUEUE_FULL, QUEUED, receive_data
+from anima.utils.socket.common import (
+    QUEUE_FULL,
+    QUEUED,
+    TCP_HOST,
+    TCP_PORT,
+    receive_data,
+)
 
 
 class BlenderSocketServer:
@@ -45,8 +53,7 @@ class BlenderSocketServer:
             bpy.app.timers.register(process_cmds, first_interval=0.1)
 
         # Start socket server in background thread
-        self._server_thread = threading.Thread(
-            target=self._listen, daemon=True)
+        self._server_thread = threading.Thread(target=self._listen, daemon=True)
         self._server_thread.start()
         self._is_running = True
 

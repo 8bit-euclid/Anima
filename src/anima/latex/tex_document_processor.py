@@ -1,22 +1,27 @@
 import subprocess
 import tempfile
-import svgpathtools as svgtools
 import xml.etree.ElementTree as ET
-from pathlib import Path
 from functools import partial
-from anima.diagnostics import logger, format_output
-from anima.latex.tex_document import TeXDocument, DEFAULT_FONT_SIZE
+from pathlib import Path
 
-TEX_POINT_TO_BL_UNIT = 0.005   # Length (in Blender units) of 1pt (in LaTeX)
-SAMPLING_LENGTH = \
-    0.01 * DEFAULT_FONT_SIZE * TEX_POINT_TO_BL_UNIT  # For points along glyph curves
+import svgpathtools as svgtools
+
+from anima.diagnostics import format_output, logger
+from anima.latex.tex_document import DEFAULT_FONT_SIZE, TeXDocument
+
+TEX_POINT_TO_BL_UNIT = 0.005  # Length (in Blender units) of 1pt (in LaTeX)
+SAMPLING_LENGTH = (
+    0.01 * DEFAULT_FONT_SIZE * TEX_POINT_TO_BL_UNIT
+)  # For points along glyph curves
 TEX_DEBUG_MODE = True  # Print LaTeX and DVI logs to console
-SVG_NAMESPACE = \
-    {'svg': 'http://www.w3.org/2000/svg'}  # Namespace for SVG elements in XML
+SVG_NAMESPACE = {
+    "svg": "http://www.w3.org/2000/svg"
+}  # Namespace for SVG elements in XML
 
 GlyphPathsType = dict[str, svgtools.Path]  # Maps glyph IDs to their SVG paths
-GlyphPositionsType = \
-    list[tuple[str, tuple[float, float]]]  # List of (glyph ID, (x, y)) tuples
+GlyphPositionsType = list[
+    tuple[str, tuple[float, float]]
+]  # List of (glyph ID, (x, y)) tuples
 
 
 class TeXDocumentProcessor:
@@ -27,8 +32,7 @@ class TeXDocumentProcessor:
         """Initialize the converter with LaTeX content.
         Args:
             texfile: A TeXFile object containing LaTeX content."""
-        assert isinstance(texfile, TeXDocument), \
-            "Content must be a TeXFile instance."
+        assert isinstance(texfile, TeXDocument), "Content must be a TeXFile instance."
         self._content = str(texfile)
         self._temp_dir: tempfile.TemporaryDirectory = None
         self._tex_path: Path = None  # Path to the temporary directory for LaTeX files
@@ -61,7 +65,7 @@ class TeXDocumentProcessor:
             RuntimeError: If the LaTeX compilation fails.
         """
         tex_path = self._tex_path
-        tex_file = tex_path/f'{self._tex_name}.tex'
+        tex_file = tex_path / f"{self._tex_name}.tex"
 
         # Write LaTeX content
         logger.trace(format_output("LaTeX document content", self._content))
@@ -69,17 +73,20 @@ class TeXDocumentProcessor:
 
         # Run lualatex to generate DVI
         logger.info("Compiling TeX to DVI...")
-        run_proc = partial(subprocess.run,
-                           cwd=tex_path,
-                           stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT,
-                           #    capture_output=True,
-                           check=True,
-                           text=True)
+        run_proc = partial(
+            subprocess.run,
+            cwd=tex_path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            #    capture_output=True,
+            check=True,
+            text=True,
+        )
         cmd = "lualatex"
         try:
-            res = run_proc([cmd, "-interaction=nonstopmode",
-                            "-output-format=dvi", str(tex_file)])
+            res = run_proc(
+                [cmd, "-interaction=nonstopmode", "-output-format=dvi", str(tex_file)]
+            )
             print_logs(cmd, res)
         except subprocess.CalledProcessError as err:
             print_logs(cmd, err)
@@ -90,21 +97,32 @@ class TeXDocumentProcessor:
         Raises:
             RuntimeError: If the DVI to SVG conversion fails."""
         tex_path = self._tex_path
-        svg_file = tex_path/f'{self._tex_name}.svg'
+        svg_file = tex_path / f"{self._tex_name}.svg"
 
         logger.info("Compiling DVI to SVG...")
-        run_proc = partial(subprocess.run,
-                           cwd=tex_path,
-                           stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT,
-                           #    capture_output=True,
-                           check=True,
-                           text=True)
+        run_proc = partial(
+            subprocess.run,
+            cwd=tex_path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            #    capture_output=True,
+            check=True,
+            text=True,
+        )
         cmd = "dvisvgm"
         try:
-            dvi_file = tex_path/f'{self._tex_name}.dvi'
-            res = run_proc([cmd, "--no-fonts", "--exact-bbox", "--precision=6",
-                            str(dvi_file), "-o", str(svg_file)])
+            dvi_file = tex_path / f"{self._tex_name}.dvi"
+            res = run_proc(
+                [
+                    cmd,
+                    "--no-fonts",
+                    "--exact-bbox",
+                    "--precision=6",
+                    str(dvi_file),
+                    "-o",
+                    str(svg_file),
+                ]
+            )
             print_logs(cmd, res)
         except subprocess.CalledProcessError as err:
             print_logs(cmd, err)
@@ -116,12 +134,14 @@ class TeXDocumentProcessor:
             Path: The path to the SVG file.
         Raises:
             RuntimeError: If the SVG file is not found."""
-        svg_file = self._tex_path/f'{self._tex_name}.svg'
+        svg_file = self._tex_path / f"{self._tex_name}.svg"
         if not svg_file.exists():
-            raise RuntimeError(f"SVG file '{svg_file}' not found. "
-                               "Ensure that the DVI to SVG conversion was successful.")
+            raise RuntimeError(
+                f"SVG file '{svg_file}' not found. "
+                "Ensure that the DVI to SVG conversion was successful."
+            )
         # Print contents of the SVG file for debugging
-        with open(svg_file, 'r', encoding='utf-8') as f:
+        with open(svg_file, "r", encoding="utf-8") as f:
             logger.trace(format_output(f"SVG file content", f.read()))
         return svg_file
 
@@ -141,32 +161,35 @@ class TeXDocumentProcessor:
         # Create all unique Glyph objects
         glyph_paths = GlyphPathsType()
         for path, attrs in zip(all_paths, all_attrs):
-            gid = attrs['id']
+            gid = attrs["id"]
             glyph_paths[gid] = path
 
         # Store the positions of the instances of each glyph.
         glyph_positions = GlyphPositionsType()
         tree = ET.parse(svg_file)
         root = tree.getroot()
-        for use in root.findall('.//svg:use', SVG_NAMESPACE):
-            gid = use.attrib['{http://www.w3.org/1999/xlink}href'][1:]
+        for use in root.findall(".//svg:use", SVG_NAMESPACE):
+            gid = use.attrib["{http://www.w3.org/1999/xlink}href"][1:]
             assert gid in glyph_paths, f"Glyph with ID '{gid}' not found."
 
-            x = float(use.attrib.get('x', 0))
-            y = float(use.attrib.get('y', 0))
+            x = float(use.attrib.get("x", 0))
+            y = float(use.attrib.get("y", 0))
             glyph_positions.append((gid, (x, -y)))  # Invert y-coordinate
 
         return glyph_paths, glyph_positions
 
 
-def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.CalledProcessError):
+def print_logs(
+    command: str, result: subprocess.CompletedProcess | subprocess.CalledProcessError
+):
     """Print the stdout and stderr result of a subprocess.
     Args:
         command: The command that was run.
-        result: The result of the subprocess run, which can be a CompletedProcess or CalledProcessError."""
+        result: The result of the subprocess run, which can be a CompletedProcess or CalledProcessError.
+    """
     if isinstance(result, subprocess.CompletedProcess) and not TEX_DEBUG_MODE:
         return
 
-    output = getattr(result, "stdout", '')
+    output = getattr(result, "stdout", "")
     if output.rstrip():
         logger.trace(format_output(f"{command.capitalize()} output", output))

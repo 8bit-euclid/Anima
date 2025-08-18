@@ -1,11 +1,13 @@
 import math
 from copy import deepcopy
-from functools import partial
 from dataclasses import dataclass, field
+from functools import partial
+
 from anima.globals.general import Vector, clip
 from anima.primitives.chains import CurveChain
 from anima.primitives.joints import Joint
-from .curves import Curve, DEFAULT_LINE_WIDTH, DEFAULT_DASH_LENGTH, DEFAULT_GAP_LENGTH
+
+from .curves import DEFAULT_DASH_LENGTH, DEFAULT_GAP_LENGTH, DEFAULT_LINE_WIDTH, Curve
 
 
 class DashedCurve(Curve):
@@ -15,9 +17,16 @@ class DashedCurve(Curve):
         ref_param_0: float = field(default=0.0)
         ref_param_1: float = field(default=0.0)
 
-    def __init__(self, curve: type[Curve], width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
-                 dash_len: float = DEFAULT_DASH_LENGTH, gap_len: float = DEFAULT_GAP_LENGTH,
-                 offset: float = 0.0, name: str = 'DashedCurve'):
+    def __init__(
+        self,
+        curve: type[Curve],
+        width: float = DEFAULT_LINE_WIDTH,
+        bias: float = 0.0,
+        dash_len: float = DEFAULT_DASH_LENGTH,
+        gap_len: float = DEFAULT_GAP_LENGTH,
+        offset: float = 0.0,
+        name: str = "DashedCurve",
+    ):
         self._base_curve = curve
         self._dash_len = dash_len
         self._gap_len = gap_len
@@ -135,8 +144,9 @@ class DashedCurve(Curve):
             for c in crv._all_entities:
                 self._check_dash_len(c)
         elif isinstance(crv, Joint):
-            assert crv._length <= self._dash_len, \
-                "Dash length must be greater than the largest joint length."
+            assert (
+                crv._length <= self._dash_len
+            ), "Dash length must be greater than the largest joint length."
 
     def _set_param(self, param: float, end_idx: int):
         super()._set_param(param, end_idx)

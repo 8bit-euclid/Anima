@@ -1,12 +1,14 @@
-import math
 import bisect
+import math
 from enum import Enum
-from .curves import Curve, DEFAULT_LINE_WIDTH
-from .bezier_spline import BezierSpline
-from .points import Point
-from .attachments import Attachment
+
+from anima.globals.general import Euler, UnitZ, Vector, are_vectors_close
 from anima.primitives.mesh import Mesh
-from anima.globals.general import Vector, Euler, UnitZ, are_vectors_close
+
+from .attachments import Attachment
+from .bezier_spline import BezierSpline
+from .curves import DEFAULT_LINE_WIDTH, Curve
+from .points import Point
 
 DEFAULT_FILLET_FACTOR = 0.0
 DEFAULT_RADIUS_FACTOR = 0.5
@@ -24,9 +26,16 @@ class Joint(Attachment, Curve, Mesh):
         BEVEL = 3
         # POINT = 4
 
-    def __init__(self, curve_1: Curve, curve_2: Curve, width: float = DEFAULT_LINE_WIDTH,
-                 bias: float = 0.0, fillet_factor: float = DEFAULT_FILLET_FACTOR, num_subdiv: int = 0,
-                 name: str = 'Joint'):
+    def __init__(
+        self,
+        curve_1: Curve,
+        curve_2: Curve,
+        width: float = DEFAULT_LINE_WIDTH,
+        bias: float = 0.0,
+        fillet_factor: float = DEFAULT_FILLET_FACTOR,
+        num_subdiv: int = 0,
+        name: str = "Joint",
+    ):
         """
         4------3------2
         |             |
@@ -51,16 +60,19 @@ class Joint(Attachment, Curve, Mesh):
 
         # Set the joint path.
         path = BezierSpline([(0, 0, 0)] * 3)
-        path.set_both_handle_types(1, 'Vector')
-        path.set_width(width/50)
+        path.set_both_handle_types(1, "Vector")
+        path.set_width(width / 50)
         path.hide()
         self._path = path
 
         # Now that the path is set, we can initialise super().
-        super().__init__(connections=[curve_1, curve_2],
-                         width=width, bias=bias, name=name)
+        super().__init__(
+            connections=[curve_1, curve_2], width=width, bias=bias, name=name
+        )
 
-        assert 0 <= fillet_factor <= 1, 'Currently, only a fillet factor in [0, 1] is supported.'
+        assert (
+            0 <= fillet_factor <= 1
+        ), "Currently, only a fillet factor in [0, 1] is supported."
         self._fillet_factor = fillet_factor
         self._num_subdiv = num_subdiv
         self._frame_points = []
@@ -142,7 +154,7 @@ class Joint(Attachment, Curve, Mesh):
             n_subdiv = self._num_subdiv
             angle = n1.angle(n2)
             delta = angle / n_subdiv
-            eul = Euler((0.0, 0.0, sgn * delta), 'XYZ')
+            eul = Euler((0.0, 0.0, sgn * delta), "XYZ")
             v = n2.copy()
 
             verts.extend([p1, p2, p3])
@@ -152,7 +164,7 @@ class Joint(Attachment, Curve, Mesh):
                 verts.append(p)
             verts.extend([p5, p6])
         else:
-            raise Exception(f'Unsupported joint type: {type}')
+            raise Exception(f"Unsupported joint type: {type}")
 
         # If necessary, reverse to maintain positive orientation.
         if sgn < 0:
@@ -166,7 +178,7 @@ class Joint(Attachment, Curve, Mesh):
         for i in range(1, num_angles):
             angles[i] = ref.angle(verts[i + 1] - p1)
 
-        assert all(angles[i] <= angles[i+1] for i in range(len(angles) - 1))
+        assert all(angles[i] <= angles[i + 1] for i in range(len(angles) - 1))
 
         # Create mesh faces
         self._frame_faces = []
@@ -201,8 +213,9 @@ class Joint(Attachment, Curve, Mesh):
         curve_1 = self.connections[1]
 
         p0 = curve_0.point(1)  # End of curve 1
-        assert are_vectors_close(p0, curve_1.point(0)), \
-            f"The curves must coincide at the joint. {p0} --- {(p0 - curve_1.point(0)).magnitude:.3e}"
+        assert are_vectors_close(
+            p0, curve_1.point(0)
+        ), f"The curves must coincide at the joint. {p0} --- {(p0 - curve_1.point(0)).magnitude:.3e}"
 
         t0 = curve_0.tangent(1, normalise=True)
         t1 = curve_1.tangent(0, normalise=True)
@@ -228,7 +241,7 @@ class Joint(Attachment, Curve, Mesh):
 
         # Now compute the centre based on the bias and fillet factor.
         f = self._fillet_factor
-        r = min(f*w, w1)
+        r = min(f * w, w1)
         c = p4 + r * n3
 
         return p0, c, r, p1, p4, n1, n2, n3
@@ -266,7 +279,7 @@ class Joint(Attachment, Curve, Mesh):
 
         type = self._type
         if type not in [Joint.Type.MITER, Joint.Type.BEVEL, Joint.Type.ROUND]:
-            raise Exception(f'Unsupported joint type: {type}')
+            raise Exception(f"Unsupported joint type: {type}")
 
         verts_init = self._frame_points
         faces_init = self._frame_faces
@@ -298,12 +311,14 @@ class Joint(Attachment, Curve, Mesh):
             v1 = verts_init[vert_idx_1]
 
             denom = a1 - a0
-            pt = v0 if math.isclose(denom, 0) \
-                else v0.lerp(v1, (a - a0)/denom)
+            pt = v0 if math.isclose(denom, 0) else v0.lerp(v1, (a - a0) / denom)
 
-            verts = [p1, pt] + verts_init[vert_idx_1:] if cw_turn \
+            verts = (
+                [p1, pt] + verts_init[vert_idx_1:]
+                if cw_turn
                 else verts_init[:vert_idx_1] + [pt]
-            faces = faces_init[:len(verts) - 2]
+            )
+            faces = faces_init[: len(verts) - 2]
 
         # Update mesh
         self.set_mesh(verts, faces)
@@ -313,30 +328,50 @@ class Joint(Attachment, Curve, Mesh):
 
 
 class MiterJoint(Joint):
-    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0, name='MiterJoint'):
-        super().__init__(curve_1, curve_2,
-                         width=width,
-                         bias=bias,
-                         name=name)
+    def __init__(
+        self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0, name="MiterJoint"
+    ):
+        super().__init__(curve_1, curve_2, width=width, bias=bias, name=name)
 
 
 class BevelJoint(Joint):
-    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0,
-                 fillet_factor=DEFAULT_FILLET_FACTOR, name='BevelJoint'):
-        super().__init__(curve_1, curve_2,
-                         width=width,
-                         bias=bias,
-                         fillet_factor=fillet_factor,
-                         num_subdiv=1,
-                         name=name)
+    def __init__(
+        self,
+        curve_1,
+        curve_2,
+        width=DEFAULT_LINE_WIDTH,
+        bias=0,
+        fillet_factor=DEFAULT_FILLET_FACTOR,
+        name="BevelJoint",
+    ):
+        super().__init__(
+            curve_1,
+            curve_2,
+            width=width,
+            bias=bias,
+            fillet_factor=fillet_factor,
+            num_subdiv=1,
+            name=name,
+        )
 
 
 class RoundJoint(Joint):
-    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0,
-                 radius_factor=DEFAULT_RADIUS_FACTOR, num_subdiv=DEFAULT_NUM_SUBDIV, name='RoundJoint'):
-        super().__init__(curve_1, curve_2,
-                         width=width,
-                         bias=bias,
-                         fillet_factor=radius_factor,
-                         num_subdiv=num_subdiv,
-                         name=name)
+    def __init__(
+        self,
+        curve_1,
+        curve_2,
+        width=DEFAULT_LINE_WIDTH,
+        bias=0,
+        radius_factor=DEFAULT_RADIUS_FACTOR,
+        num_subdiv=DEFAULT_NUM_SUBDIV,
+        name="RoundJoint",
+    ):
+        super().__init__(
+            curve_1,
+            curve_2,
+            width=width,
+            bias=bias,
+            fillet_factor=radius_factor,
+            num_subdiv=num_subdiv,
+            name=name,
+        )

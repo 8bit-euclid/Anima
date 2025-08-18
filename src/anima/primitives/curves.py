@@ -1,8 +1,9 @@
-from .object import Object
-from .attachments import Attachment
-from anima.globals.general import Vector, reciprocal
 from abc import abstractmethod
 
+from anima.globals.general import Vector, reciprocal
+
+from .attachments import Attachment
+from .object import Object
 
 # Line widths
 DEFAULT_LINE_WIDTH = 0.02
@@ -20,8 +21,14 @@ class Curve(Object):
     Base class from which all curve objects will derive.
     """
 
-    def __init__(self, bl_object=None, width: float = DEFAULT_LINE_WIDTH, bias: float = 0.0,
-                 name: str = 'Curve', **kwargs):
+    def __init__(
+        self,
+        bl_object=None,
+        width: float = DEFAULT_LINE_WIDTH,
+        bias: float = 0.0,
+        name: str = "Curve",
+        **kwargs,
+    ):
         super().__init__(bl_object=bl_object, name=name, **kwargs)
 
         self._width = width
@@ -52,13 +59,24 @@ class Curve(Object):
         self._set_attachment(attmnt, 1)
         return self
 
-    def make_dashed(self, dash_len: float = DEFAULT_DASH_LENGTH, gap_len: float = DEFAULT_GAP_LENGTH,
-                    offset: float = 0.0):
+    def make_dashed(
+        self,
+        dash_len: float = DEFAULT_DASH_LENGTH,
+        gap_len: float = DEFAULT_GAP_LENGTH,
+        offset: float = 0.0,
+    ):
         """Instantiates and returns the dashed version of this curve. Note: DashedCurve hides this curve."""
         from anima.primitives.dashed_curves import DashedCurve
-        return DashedCurve(self, width=self._width, bias=self._bias,
-                           dash_len=dash_len, gap_len=gap_len, offset=offset,
-                           name=self.name)
+
+        return DashedCurve(
+            self,
+            width=self._width,
+            bias=self._bias,
+            dash_len=dash_len,
+            gap_len=gap_len,
+            offset=offset,
+            name=self.name,
+        )
 
     @abstractmethod
     def set_width(self, width: float):
@@ -101,7 +119,7 @@ class Curve(Object):
 
     def curvature(self, t: float) -> float:
         """Computes the curvature of the curve at the paramater t."""
-        raise Exception(f'Cannot yet compute curvature for curve {self.name}.')
+        raise Exception(f"Cannot yet compute curvature for curve {self.name}.")
 
     # Property getters/setters ----------------------------------------------------------------------------- #
 
@@ -123,7 +141,7 @@ class Curve(Object):
     @bias.setter
     def bias(self, b: float):
         """Set the curve's bias."""
-        assert -1.0 <= b <= 1.0, 'The bias must be in the range [-1, 1].'
+        assert -1.0 <= b <= 1.0, "The bias must be in the range [-1, 1]."
         self.set_bias(b)
 
     @property
@@ -170,8 +188,8 @@ class Curve(Object):
 
     @abstractmethod
     def _set_param(self, param: float, end_idx: int):
-        assert end_idx in {0, 1}, 'The end index must be either 0 or 1.'
-        setattr(self, f'_param_{end_idx}', param)
+        assert end_idx in {0, 1}, "The end index must be either 0 or 1."
+        setattr(self, f"_param_{end_idx}", param)
         self._update_attachment(end_idx)
 
     def _set_both_params(self, param: float):
@@ -185,11 +203,12 @@ class Curve(Object):
         self.set_param_1(self._param_1)
 
     def _set_attachment(self, attmnt: type[Attachment], end_idx: int):
-        setattr(self, f'_attachment_{end_idx}', attmnt)
-        getattr(self, f'_update_param_{end_idx}')()
+        setattr(self, f"_attachment_{end_idx}", attmnt)
+        getattr(self, f"_update_param_{end_idx}")()
         from .endcaps import Endcap
+
         if isinstance(attmnt, Endcap):
-            getattr(self, f'_update_attachment_{end_idx}')()
+            getattr(self, f"_update_attachment_{end_idx}")()
         self.add_subobject(attmnt)
         return self
 
@@ -211,7 +230,7 @@ class Curve(Object):
         self._update_attachment_1()
 
     def _compute_end_offset(self, end_idx: int, is_distance=False):
-        attmt = getattr(self, f'_attachment_{end_idx}')
+        attmt = getattr(self, f"_attachment_{end_idx}")
         mult = self._length_inverse if not is_distance else 1
         return mult * attmt.offset_distance() if attmt is not None else 0.0
 
@@ -223,16 +242,21 @@ class Curve(Object):
 
     def _compute_offset_param(self, param: float, end_idx: int) -> float:
         # Compute end offsets.
-        attmt = getattr(self, f'_attachment_{end_idx}')
+        attmt = getattr(self, f"_attachment_{end_idx}")
         offs_0 = self._compute_end_offset(0, is_distance=False)
         offs_1 = self._compute_end_offset(1, is_distance=False)
 
         # If the attachment is a joint, only need to apply offset at the ends.
         from .joints import Joint
+
         if isinstance(attmt, Joint) and offs_0 < param < 1 - offs_1:
             offs_0 = offs_1 = 0
 
-        return min(param + offs_0, 1.0 - offs_1) if end_idx == 0 else max(param - offs_1, offs_0)
+        return (
+            min(param + offs_0, 1.0 - offs_1)
+            if end_idx == 0
+            else max(param - offs_1, offs_0)
+        )
 
     def _compute_offset_param_0(self, param: float) -> float:
         return self._compute_offset_param(param, 0)
