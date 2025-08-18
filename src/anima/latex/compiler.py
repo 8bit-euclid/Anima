@@ -46,7 +46,7 @@ class TeXCompiler(Compiler):
         ]
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
-            output_file = Path(tex_file).with_suffix(f".{output_format}")
+            output_file = Path(tex_file).with_suffix(f".{self.output_format}")
             return str(output_file)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Compilation failed: {e.stderr}") from e
