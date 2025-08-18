@@ -1,79 +1,56 @@
-# Anima Development Container
+# Anima DevContainer
 
-This devcontainer provides a Python 3.11 development environment specifically configured for the Anima project - a Blender-based animation library.
+This DevContainer provides a pre-configured development environment for the Anima project with automatic dependency installation and development tools setup.
 
-## Features
+## Container Features
 
-- **Python 3.11**: Matches the required Python version for Blender compatibility
-- **Pre-configured Extensions**: 
-  - Python development tools (pylint, black formatter, isort)
-  - Makefile tools
-- **Auto-setup**: Automatically installs the project in development mode
-- **Testing**: Pre-configured pytest support
+- **Python 3.11 Environment**: Pre-installed with Blender-compatible Python version
+- **VS Code Extensions**: Python development tools, Makefile support
+- **Automatic Setup**: Project installed in editable mode on container start
+- **Development Tools**: Black, isort, pylint, pytest pre-configured
 
-## Getting Started
+## Using the DevContainer
 
-1. Open this project in VS Code
-2. When prompted, reopen in container
-3. The environment will automatically install dependencies
-4. You can start developing immediately!
+### VS Code Integration
+- Open project in VS Code
+- Click "Reopen in Container" when prompted
+- Or use `Ctrl+Shift+P` → "Dev Containers: Reopen in Container"
 
-## Project Structure
-
-The container automatically installs the project during build:
-1. Installs the project in editable mode (`pip install -e .`) with all dependencies
-2. Sets up the development environment with Python 3.11
-
-This means your changes to the source code are immediately available for testing.
-
-## Manual Installation Commands
-
-If you need to reinstall or work with Blender integration:
-
+### Terminal Access
 ```bash
-# Install the project in editable mode (already done automatically)
-make install
-
-# Install dependencies into your local Blender installation
-make install-blender-deps
+make enter-devcontainer
 ```
 
-**Note**: `make install-blender-deps` requires:
-- A local Blender installation (configured in `pyproject.toml` under `[tool.blender]`)
-- The Blender Python executable to be accessible
-- This installs anima's dependencies (bpy, numpy, scipy, etc.) into Blender's Python environment
+## Container Setup
 
-## Testing
+The container automatically:
+- Installs project dependencies from `pyproject.toml`
+- Sets up the project in editable mode
+- Configures development tools (black, isort, pylint, pytest)
 
-### Local Testing
-Run tests with:
+Changes to source code are immediately available without reinstallation.
+
+## DevContainer Validation
+
+Test that the container is working correctly:
 ```bash
-pytest
-# or use make
-make test
+bash .devcontainer/test_workspace.sh
 ```
 
-### Available Make Targets
-- `make install`: Install the project in editable mode
-- `make install-blender-deps`: Install dependencies into Blender's Python environment
-- `make run`: Run the main application (`python run.py`)
-- `make test`: Run tests with pytest
-
-### DevContainer Validation
-To test that the devcontainer is working correctly:
-```bash
-bash .devcontainer/test-workspace.sh
-```
-
-This script validates:
+This validates:
 - Python 3.11 availability
-- Essential packages (bpy, numpy, scipy)
+- Essential packages (bpy, numpy, scipy, pytest)
 - Project installation and importability
-- pytest functionality
-- Make targets
-- Development tools
+- Development tools functionality
 
-### CI/CD Testing
-The project includes a GitHub Actions workflow (`.github/workflows/devcontainer.yml`) that automatically tests the devcontainer setup on every push and pull request. This ensures the development environment remains consistent and functional.
+## CI Integration
 
-The container is configured to recognize the `tests/` directory and exclude visual tests by default.
+GitHub Actions workflows test the DevContainer:
+- `.github/workflows/test_devcontainer.yml` - Container functionality
+- `.github/workflows/build_devcontainer.yml` - Container build process
+
+## Troubleshooting
+
+**Container build fails**: Check Docker is running and disk space
+**Dependencies missing**: Rebuild container (`Ctrl+Shift+P` → "Dev Containers: Rebuild Container")
+**Environment issues**: Run the validation script to diagnose problems
