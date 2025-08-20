@@ -55,7 +55,7 @@ class BlenderInputMonitor:
         self._blender_to_front()
 
         def call():
-            script_path = main_path()
+            script_path = main_path(on_host=True)
 
             # Clear existing handlers to avoid duplicates
             logger.info("Clearing existing handlers...")
