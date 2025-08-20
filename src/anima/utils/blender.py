@@ -6,7 +6,7 @@ import bpy
 from anima.diagnostics import logger
 from anima.utils.input import BlenderInputMonitor
 from anima.utils.output import BlenderOutputMonitor
-from anima.utils.project import get_pyproject_config_value
+from anima.utils.project import get_pyproject_config_entry
 from anima.utils.subprocess import SubprocessManager
 
 
@@ -76,7 +76,7 @@ def get_blender_root_path() -> Path:
     Raises:
         FileNotFoundError: If Blender path does not exist.
     """
-    bl_config = get_pyproject_config_value("tool.blender")
+    bl_config = get_pyproject_config_entry("tool.blender")
     root_dir = Path(bl_config.get("root-dir", "")).expanduser()
     if not root_dir.exists():
         raise FileNotFoundError(f"Blender path does not exist: {root_dir}")
