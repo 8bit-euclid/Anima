@@ -82,7 +82,7 @@ format: ## Format the code using black and isort
 lint: ## Lint the project using pylint and flake8
 	@pip install --quiet pylint flake8 || true
 	@echo "Linting the project..."
-	@pylint --errors-only .
+	@pylint .
 	@flake8 .
 
 
