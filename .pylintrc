@@ -8,19 +8,10 @@ ignore-paths=
 init-hook='import sys; sys.path.append("src")'
 
 [MESSAGES CONTROL]
-# Only show errors by default
-errors-only=yes
-
 # Disable specific error types that are known false positives
-disable=
-    import-error,           # E0401 - Disable import errors (bpy, svgpathtools issues)
-    no-name-in-module,      # E0611 - Disable missing names in modules (mathutils issues)
-    syntax-error,           # E0001 - Disable syntax errors from binary modules
-    wrong-import-position,  # C0413 - Imports might need specific ordering
-    cyclic-import,          # R0401 - Some circular imports might be intentional
-    duplicate-code,         # R0801 - Some code duplication might be necessary
-    broad-except,           # W0703 - Sometimes we need to catch all exceptions
-    missing-docstring       # C0111 - Not all elements need documentation
+; disable=
+    ; syntax-error,           # E0001 - Disable syntax errors from binary modules
+    ; wrong-import-position,  # C0413 - Imports might need specific ordering
 
 # Maximum line length (matches Black formatter)
 max-line-length=88
