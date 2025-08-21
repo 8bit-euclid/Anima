@@ -79,10 +79,11 @@ format: ## Format the code using black and isort
 	@black .
 	@isort .
 
-lint: ## Lint the project using pylint
-	@pip install --quiet pylint || true
+lint: ## Lint the project using pylint and flake8
+	@pip install --quiet pylint flake8 || true
 	@echo "Linting the project..."
 	@pylint --errors-only .
+	@flake8 .
 
 
 # Maintenance targets
