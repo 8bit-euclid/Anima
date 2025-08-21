@@ -1,13 +1,15 @@
 SHELL := /bin/bash
-.PHONY: help all install install-dev install-debug install-release update ci install-blender-deps run run-release test test-verbose test-ignored bench check lint lint-fix format format-check enter-devcontainer clean clean-all
+.PHONY: help all install install-dev install-debug install-release update install-blender-deps run run-release test test-verbose test-ignored bench format format-check lint enter-devcontainer clean clean-all
+
 
 # Default target
 help: ## Show this help message
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "   \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+
 # Project targets
-all: clean format lint test install ## Run clean, format, lint, test, and install
+all: clean format lint install test ## Run clean, format, lint, install, and test
 
 install: install-dev ## Default install target (dev mode)
 
@@ -28,13 +30,13 @@ update: ## Update dependencies
 	@pip install --upgrade pip
 	@pip install --upgrade -e .
 
-ci: format-check lint test ## Run CI checks (format check, lint, test) - requires dev dependencies
 
 # Blender targets
 install-blender-deps: ## Install Blender dependencies
 	@echo "Installing Blender dependencies..."
 	@python scripts/install_blender_dependencies.py
 	@echo "Blender dependencies successfully installed."
+
 
 # Run targets
 run: ## Run the project
@@ -44,6 +46,7 @@ run: ## Run the project
 run-release: ## Run the project (same as run for Python)
 	@echo "Running the project..."
 	@python run.py
+
 
 # Testing targets
 test: ## Run all tests
@@ -62,29 +65,25 @@ bench: ## Run benchmarks (if any)
 	@echo "Running benchmarks..."
 	@PYTHONPATH=. pytest --benchmark-only
 
+
 # Code quality targets
-check: ## Check the project for errors without installing
-	@echo "Checking the project for errors..."
-	@python -m py_compile run.py
-	@python -c "import ast; [ast.parse(open(f).read()) for f in __import__('glob').glob('**/*.py', recursive=True)]"
-
-lint: ## Lint the project using pylint
-	@echo "Linting the project..."
-	@pylint --errors-only .
-
-format: ## Format the code using black and isort
-	@echo "Formatting the code..."
-	@black .
-	@isort .
-
 format-check: ## Check if code is formatted correctly
+	@pip install --quiet black isort || true
 	@echo "Checking code formatting..."
 	@black --check .
 	@isort --check-only .
 
-# DevContainer targets
-enter-devcontainer: ## Build and run the DevContainer
-	@bash scripts/enter_devcontainer.sh
+format: ## Format the code using black and isort
+	@pip install --quiet black isort || true
+	@echo "Formatting the code..."
+	@black .
+	@isort .
+
+lint: ## Lint the project using pylint
+	@pip install --quiet pylint || true
+	@echo "Linting the project..."
+	@pylint --errors-only .
+
 
 # Maintenance targets
 clean: ## Clean build artifacts
@@ -97,3 +96,8 @@ clean: ## Clean build artifacts
 clean-all: clean ## Clean everything including pip cache
 	@echo "Cleaning pip cache..."
 	@pip cache purge
+
+
+# DevContainer targets
+enter-devcontainer: ## Build and run the DevContainer
+	@bash scripts/enter_devcontainer.sh

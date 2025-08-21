@@ -1,26 +1,41 @@
 name: Test Anima
 
 env:
-  PYTHON_VERSION: '3.11.9' # Should match version in pyproject.toml
-  PROJECT_CONFIG: 'pyproject.toml'
+  PYTHON_VERSION: "3.11.9" # Should match version in pyproject.toml
+  PROJECT_CONFIG: "pyproject.toml"
 
 on:
   push:
-    branches: [ "**" ]  # Run on all branches
+    branches: ["**"] # Run on all branches
   workflow_dispatch:
 
 jobs:
-  test:
+  format-check:
     runs-on: ubuntu-latest
-    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check formatting
+        run: make format-check
+
+  lint:
+    needs: format-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint the project
+        run: make lint
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ env.PYTHON_VERSION }} 
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Upgrade pip
       run: python -m pip install --upgrade pip
@@ -40,5 +55,5 @@ jobs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       run: make install-debug
 
-    - name: Run CI checks
-      run: make ci
+    - name: Run tests
+      run: make test
