@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help all install install-dev install-debug install-release update install-blender-deps run run-release test test-verbose test-ignored bench format format-check lint enter-devcontainer clean clean-all
+.PHONY: help all install install-dev install-debug install-release update install-blender-deps run test test-verbose test-ignored bench format format-check lint enter-devcontainer clean clean-all
 
 
 # Default target
@@ -25,45 +25,41 @@ install-release: ## Install the project in production mode
 	@echo "Installing in production mode..."
 	@pip install .
 
+install-blender-deps: ## Install Blender dependencies
+	@echo "Installing Blender dependencies..."
+	@python scripts/install_blender_dependencies.py
+	@echo "Blender dependencies successfully installed."
+
 update: ## Update dependencies
 	@echo "Updating dependencies..."
 	@pip install --upgrade pip
 	@pip install --upgrade -e .
 
 
-# Blender targets
-install-blender-deps: ## Install Blender dependencies
-	@echo "Installing Blender dependencies..."
-	@python scripts/install_blender_dependencies.py
-	@echo "Blender dependencies successfully installed."
-
-
 # Run targets
 run: ## Run the project
-	@echo "Running the project..."
-	@python run.py
-
-run-release: ## Run the project (same as run for Python)
-	@echo "Running the project..."
 	@python run.py
 
 
 # Testing targets
+PYTEST_BASE := PYTHONPATH=. pytest --verbose
+PYTEST_DETAILED := $(PYTEST_BASE) --capture=no --showlocals --tb=long --full-trace
+
 test: ## Run all tests
 	@echo "Running tests..."
-	@PYTHONPATH=. pytest --verbose --disable-warnings
+	@$(PYTEST_BASE) --disable-warnings
 
 test-verbose: ## Run tests with verbose output
 	@echo "Running tests with verbose output..."
-	@PYTHONPATH=. pytest -v -s
+	@$(PYTEST_DETAILED)
 
 test-ignored: ## Run tests marked as slow or ignored
 	@echo "Running ignored/slow tests..."
-	@PYTHONPATH=. pytest -m "slow or ignore" --verbose
+	@$(PYTEST_DETAILED) -m "slow or ignore" --durations=0 --maxfail=1
 
 bench: ## Run benchmarks (if any)
 	@echo "Running benchmarks..."
-	@PYTHONPATH=. pytest --benchmark-only
+	@$(PYTEST_BASE) --benchmark-only
 
 
 # Code quality targets
