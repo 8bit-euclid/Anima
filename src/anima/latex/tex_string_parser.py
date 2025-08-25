@@ -70,18 +70,14 @@ class TeXStringParser:
                 for child in child_nodes:
                     walk_and_collect(child)
             elif hasattr(node, "textContent"):
-                assert hasattr(
-                    node, "source"
-                ), "Node must have a 'source' attribute for latex text"
+                assert hasattr(node, "source"), "Node must have a 'source' attribute for latex text"
                 tex_src = node.source.strip()
                 unicode = node.textContent.strip()
                 if tex_src == "":  # skip whitespace
                     return
 
                 if not tex_src.startswith("\\"):
-                    assert (
-                        unicode == tex_src
-                    ), f"Expected unicode '{unicode}' to match TeX source '{tex_src}'"
+                    assert unicode == tex_src, f"Expected unicode '{unicode}' to match TeX source '{tex_src}'"
                     for char in tex_src:
                         if char.strip():  # skip whitespace
                             glyphs.append(char)

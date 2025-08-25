@@ -48,9 +48,7 @@ class RoundEndcap(Endcap):
                     center.y + radius * math.sin(angle),
                     center.z,
                 )
-                for angle in [
-                    start_angle + i * delta_angle for i in range(segments + 1)
-                ]
+                for angle in [start_angle + i * delta_angle for i in range(segments + 1)]
             ]
 
         half_width = 0.5 * width

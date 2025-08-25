@@ -65,9 +65,7 @@ class SubprocessManager:
                 try:
                     self.subprocess.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    logger.warning(
-                        "Subprocess didn't terminate gracefully, forcing kill"
-                    )
+                    logger.warning("Subprocess didn't terminate gracefully, forcing kill")
                     self.subprocess.kill()
             except (ProcessLookupError, AttributeError):
                 pass

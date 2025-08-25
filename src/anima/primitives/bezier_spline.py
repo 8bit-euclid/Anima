@@ -230,17 +230,11 @@ class BezierSpline(Curve):
     def _spline_points(self):
         return self.object.data.splines[0].bezier_points
 
-    def _compute_spline_param(
-        self, param: float, is_len_fraction: bool = True
-    ) -> float:
-        assert (
-            0.0 <= param <= 1.0
-        ), f"Parameter must be in range [0, 1]. Got: {param:.3f}"
+    def _compute_spline_param(self, param: float, is_len_fraction: bool = True) -> float:
+        assert 0.0 <= param <= 1.0, f"Parameter must be in range [0, 1]. Got: {param:.3f}"
         return self._get_u_from_s(param * self._length) if is_len_fraction else param
 
-    def _bezier_curve_info(
-        self, param: float, is_len_fraction: bool = True
-    ) -> tuple[float, int]:
+    def _bezier_curve_info(self, param: float, is_len_fraction: bool = True) -> tuple[float, int]:
         num_bzr = len(self._spline_points()) - 1
         u = self._compute_spline_param(param, is_len_fraction)
         val = u * num_bzr
@@ -329,12 +323,7 @@ class BezierSpline(Curve):
         p0, h0, h1, p1 = self._control_points(bzr_index)
         t = param
         t_sq = t * t
-        return (
-            -3 * (1 - t) ** 2 * p0
-            + 3 * (1 - 4 * t + 3 * t_sq) * h0
-            + 3 * (2 * t - 3 * t_sq) * h1
-            + 3 * t_sq * p1
-        )
+        return -3 * (1 - t) ** 2 * p0 + 3 * (1 - 4 * t + 3 * t_sq) * h0 + 3 * (2 * t - 3 * t_sq) * h1 + 3 * t_sq * p1
 
     def _bezier_length(self, bzr_index: int, param: float = 1.0) -> float:
         def integrand(t):

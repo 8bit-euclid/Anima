@@ -104,10 +104,7 @@ def validate_project_configuration():
         value = get_pyproject_config_entry(config_key)
         if not value:
             errors.append(f"{config_key} is not set in pyproject.toml")
-        elif (
-            config_key == "tool.blender.root-dir"
-            and not Path(value).expanduser().exists()
-        ):
+        elif config_key == "tool.blender.root-dir" and not Path(value).expanduser().exists():
             errors.append(f"{config_key} does not exist: {Path(value).expanduser()}")
 
     if errors:
@@ -122,9 +119,7 @@ def configure_project_reload():
 
     # Delete all project-related modules from sys.modules
     modules_to_delete = [
-        name
-        for name in sys.modules.keys()
-        if name.startswith(get_project_name()) or name.startswith("tests")
+        name for name in sys.modules.keys() if name.startswith(get_project_name()) or name.startswith("tests")
     ]
     for name in modules_to_delete:
         del sys.modules[name]

@@ -10,9 +10,7 @@ class Attachment(Object):
 
     def __init__(self, bl_object=None, connections=None, name="Attachment", **kwargs):
         super().__init__(bl_object=bl_object, name=name, **kwargs)
-        self.connections = (
-            connections if connections is not None else []
-        )  # entries of base type Curve
+        self.connections = connections if connections is not None else []  # entries of base type Curve
 
     @abstractmethod
     def offset_distance(self) -> float:

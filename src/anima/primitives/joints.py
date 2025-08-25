@@ -66,13 +66,9 @@ class Joint(Attachment, Curve, Mesh):
         self._path = path
 
         # Now that the path is set, we can initialise super().
-        super().__init__(
-            connections=[curve_1, curve_2], width=width, bias=bias, name=name
-        )
+        super().__init__(connections=[curve_1, curve_2], width=width, bias=bias, name=name)
 
-        assert (
-            0 <= fillet_factor <= 1
-        ), "Currently, only a fillet factor in [0, 1] is supported."
+        assert 0 <= fillet_factor <= 1, "Currently, only a fillet factor in [0, 1] is supported."
         self._fillet_factor = fillet_factor
         self._num_subdiv = num_subdiv
         self._frame_points = []
@@ -313,11 +309,7 @@ class Joint(Attachment, Curve, Mesh):
             denom = a1 - a0
             pt = v0 if math.isclose(denom, 0) else v0.lerp(v1, (a - a0) / denom)
 
-            verts = (
-                [p1, pt] + verts_init[vert_idx_1:]
-                if cw_turn
-                else verts_init[:vert_idx_1] + [pt]
-            )
+            verts = [p1, pt] + verts_init[vert_idx_1:] if cw_turn else verts_init[:vert_idx_1] + [pt]
             faces = faces_init[: len(verts) - 2]
 
         # Update mesh
@@ -328,9 +320,7 @@ class Joint(Attachment, Curve, Mesh):
 
 
 class MiterJoint(Joint):
-    def __init__(
-        self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0, name="MiterJoint"
-    ):
+    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0, name="MiterJoint"):
         super().__init__(curve_1, curve_2, width=width, bias=bias, name=name)
 
 

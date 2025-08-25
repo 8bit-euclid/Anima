@@ -28,9 +28,7 @@ class Point(Object):
     A point object that is visible in both the viewport and the render.
     """
 
-    def __init__(
-        self, location=(0, 0, 0), radius=DEFAULT_POINT_RADIUS, parent=None, name="Point"
-    ):
+    def __init__(self, location=(0, 0, 0), radius=DEFAULT_POINT_RADIUS, parent=None, name="Point"):
         # Add a filled circle
         bpy.ops.mesh.primitive_circle_add(
             radius=radius,

@@ -79,9 +79,7 @@ class GlyphBorder:
         Raises:
             AssertionError: If the path is not an instance of svgtools.Path.
         """
-        assert isinstance(
-            path, svgtools.Path
-        ), "Path must be an instance of svgtools.Path"
+        assert isinstance(path, svgtools.Path), "Path must be an instance of svgtools.Path"
         self.subpaths: list[Subpath] = [Subpath(s) for s in path.continuous_subpaths()]
 
 
@@ -108,10 +106,7 @@ def signed_area(points: list[tuple[float, float]]) -> float:
         The signed area of the polygon. Positive if the points are ordered counter-clockwise, negative if clockwise.
     """
     # points: list of (x, y) tuples
-    return 0.5 * sum(
-        (x1 * y2 - x2 * y1)
-        for (x1, y1), (x2, y2) in zip(points, points[1:] + [points[0]])
-    )
+    return 0.5 * sum((x1 * y2 - x2 * y1) for (x1, y1), (x2, y2) in zip(points, points[1:] + [points[0]]))
 
 
 def is_inner_loop(points: list[tuple[float, float]]) -> bool:

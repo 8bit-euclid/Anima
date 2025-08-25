@@ -252,11 +252,7 @@ class Curve(Object):
         if isinstance(attmt, Joint) and offs_0 < param < 1 - offs_1:
             offs_0 = offs_1 = 0
 
-        return (
-            min(param + offs_0, 1.0 - offs_1)
-            if end_idx == 0
-            else max(param - offs_1, offs_0)
-        )
+        return min(param + offs_0, 1.0 - offs_1) if end_idx == 0 else max(param - offs_1, offs_0)
 
     def _compute_offset_param_0(self, param: float) -> float:
         return self._compute_offset_param(param, 0)

@@ -136,9 +136,7 @@ class Object(ABC):
         x_set = x is not None
         y_set = y is not None
         z_set = z is not None
-        assert (
-            x_set or y_set or z_set
-        ), "At least one location dimension must be specified."
+        assert x_set or y_set or z_set, "At least one location dimension must be specified."
         loc = self.location
         self._bl_object.location = (
             x if x_set else loc.x,
@@ -200,9 +198,7 @@ class Object(ABC):
         x_set = x is not None
         y_set = y is not None
         z_set = z is not None
-        assert (
-            x_set or y_set or z_set
-        ), "At least one rotation dimension must be specified."
+        assert x_set or y_set or z_set, "At least one rotation dimension must be specified."
         obj = self._bl_object
         rot = obj.rotation_euler
         obj.rotation_mode = "XYZ"
@@ -331,9 +327,7 @@ class Object(ABC):
 
     # Scale-related methods -------------------------------------------------------------------------------- #
 
-    def set_scale(
-        self, x: float = None, y: float = None, z: float = None, apply: bool = False
-    ):
+    def set_scale(self, x: float = None, y: float = None, z: float = None, apply: bool = False):
         """Sets the object's scale.
         Args:
             x (float, optional): The scale in the x dimension. Defaults to None.
@@ -346,9 +340,7 @@ class Object(ABC):
         x_set = x is not None
         y_set = y is not None
         z_set = z is not None
-        assert (
-            x_set or y_set or z_set
-        ), "At least one scale dimension must be specified."
+        assert x_set or y_set or z_set, "At least one scale dimension must be specified."
         scale = self._bl_object.scale
         self._bl_object.scale = (
             x if x_set else scale.x,
@@ -404,11 +396,7 @@ class Object(ABC):
         R = I - 2 * N  # Reflection matrix
 
         # Convert to 4x4 transformation matrix
-        refl_matrix = (
-            Matrix.Translation(plane_point)
-            @ R.to_4x4()
-            @ Matrix.Translation(-plane_point)
-        )
+        refl_matrix = Matrix.Translation(plane_point) @ R.to_4x4() @ Matrix.Translation(-plane_point)
 
         # Apply transformation
         self.world_matrix = refl_matrix @ self.world_matrix
@@ -490,11 +478,7 @@ class Object(ABC):
 
         # Copy all attributes except those in attrs_to_excl
         attrs_to_excl = self._deepcopy_excluded_attrs()
-        attrs_to_copy = {
-            key: value
-            for key, value in self.__dict__.items()
-            if key not in attrs_to_excl
-        }
+        attrs_to_copy = {key: value for key, value in self.__dict__.items() if key not in attrs_to_excl}
         new_copy.__dict__.update(deepcopy(attrs_to_copy, memo))
 
         # Initialize excluded attributes as None
@@ -521,9 +505,7 @@ class Object(ABC):
             bool: True if the Blender object has data, else False.
         Raises:
             AssertionError: If the Blender object is not set."""
-        assert (
-            self._bl_object is not None
-        ), "The Blender object is not set. Cannot check for data."
+        assert self._bl_object is not None, "The Blender object is not set. Cannot check for data."
         return self._bl_object.data is not None
 
     def _set_parent(self, parent: type["Object"]):

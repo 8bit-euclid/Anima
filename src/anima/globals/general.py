@@ -176,9 +176,7 @@ def add_line_segment(name: str, point_0, point_1):
 
 
 def add_circle(radius: float = 1, centre=(0, 0, 0)):
-    bpy.ops.curve.primitive_nurbs_circle_add(
-        radius=radius, location=centre, scale=(1, 1, 1)
-    )
+    bpy.ops.curve.primitive_nurbs_circle_add(radius=radius, location=centre, scale=(1, 1, 1))
     return active_object()
 
 
@@ -286,9 +284,7 @@ def get_pyproject_path() -> Path:
     root = get_project_root_path()
     pyproject = root / "pyproject.toml"
     if not pyproject.exists():
-        raise FileNotFoundError(
-            f"pyproject.toml not found in {root}. Ensure it exists."
-        )
+        raise FileNotFoundError(f"pyproject.toml not found in {root}. Ensure it exists.")
     return pyproject
 
 

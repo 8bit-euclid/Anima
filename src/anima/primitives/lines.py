@@ -33,9 +33,7 @@ class Segment(BezierCurve):
 
 
 class Ray(Segment):
-    def __init__(
-        self, point, direction, width=DEFAULT_LINE_WIDTH, bias=0.0, name="Ray", **kwargs
-    ):
+    def __init__(self, point, direction, width=DEFAULT_LINE_WIDTH, bias=0.0, name="Ray", **kwargs):
         pt_0 = make_3d_vector(point)
         pt_1 = pt_0 + 100.0 * make_3d_vector(direction)
         super().__init__(pt_0, pt_1, width=width, bias=bias, name=name, **kwargs)

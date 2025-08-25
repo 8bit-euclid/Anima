@@ -29,9 +29,9 @@ class TeXDocument:
 
     def set_defaults(self):
         """Set default document class and font."""
-        self.set_document_class("standalone", ["preview"]).set_main_font(
-            DEFAULT_FONT, DEFAULT_FONT_SIZE
-        ).add_package("amsmath").add_package("amssymb")
+        self.set_document_class("standalone", ["preview"]).set_main_font(DEFAULT_FONT, DEFAULT_FONT_SIZE).add_package(
+            "amsmath"
+        ).add_package("amssymb")
         return self
 
     def set_document_class(self, name: str, options: str | list[str] | None = None):
@@ -58,9 +58,7 @@ class TeXDocument:
             self.add_package("fontspec")
         disable_ligatures = "Ligatures=NoCommon"
         self.add_to_preamble(rf"\setmainfont{{{name}}}[{disable_ligatures}]")
-        self.add_to_preamble(
-            rf"\fontsize{{{font_size}}}{{{1.2*float(font_size)}}}\selectfont"
-        )
+        self.add_to_preamble(rf"\fontsize{{{font_size}}}{{{1.2*float(font_size)}}}\selectfont")
         return self
 
     def add_package(self, name: str, options: str | list[str] | None = None):
@@ -111,9 +109,7 @@ class TeXDocument:
         self._other_commands.append(entry)
         return self
 
-    def add_to_body(
-        self, text: str, font: str | None = None, font_size: int | float | None = None
-    ):
+    def add_to_body(self, text: str, font: str | None = None, font_size: int | float | None = None):
         """Add text to the document body.
         Args:
             text: Text to add to the body. If it contains LaTeX commands, they will be processed as such.
@@ -147,9 +143,7 @@ class TeXDocument:
             parts.extend(self._body)
         else:
             # Document class
-            assert (
-                self._document_class is not None
-            ), "The document class has not been set."
+            assert self._document_class is not None, "The document class has not been set."
             parts.append(self._document_class)
 
             # Document preamble
