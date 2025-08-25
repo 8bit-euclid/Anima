@@ -1,4 +1,5 @@
 import functools
+import os
 import sys
 import tomllib
 from pathlib import Path
@@ -92,6 +93,30 @@ def get_pyproject_config_entry(key_path: str, default=None):
     return value
 
 
+def validate_project_configuration():
+    """Validate that required project configuration is set in pyproject.toml."""
+    errors = []
+
+    # Check required configurations
+    configs = ["tool.blender.root-dir", "tool.blender.workspace-folder"]
+
+    for config_key in configs:
+        value = get_pyproject_config_entry(config_key)
+        if not value:
+            errors.append(f"{config_key} is not set in pyproject.toml")
+        elif (
+            config_key == "tool.blender.root-dir"
+            and not Path(value).expanduser().exists()
+        ):
+            errors.append(f"{config_key} does not exist: {Path(value).expanduser()}")
+
+    if errors:
+        error_list = "\n".join(f"  - {error}" for error in errors)
+        raise ValueError(
+            f"Project configuration validation failed:\n{error_list}\n\nPlease update your pyproject.toml file with the required configuration."
+        )
+
+
 def configure_project_reload():
     """Configure the script to auto-reload modules when changes are made."""
 
@@ -125,24 +150,40 @@ def running_in_container() -> bool:
 # Private functions ------------------------------------------------------------------------------------------
 
 
+def _get_host_workspace_folder() -> Path | None:
+    """Get the host workspace folder path from pyproject.toml configuration."""
+    try:
+        workspace_folder = get_pyproject_config_entry("tool.blender.workspace-folder")
+        return Path(workspace_folder).expanduser() if workspace_folder else None
+    except Exception:
+        return None
+
+
 def _map_container_to_host_path(container_path: Path) -> Path:
-    """Map container path to host path based on volume mounts."""
+    """Map container path to host path based on configuration."""
     path_str = str(container_path)
 
-    # Map workspace paths
     if path_str.startswith("/workspace"):
-        return Path(path_str.replace("/workspace", "${localWorkspaceFolder}"))
+        host_workspace = _get_host_workspace_folder()
+        if host_workspace:
+            host_path = Path(path_str.replace("/workspace", str(host_workspace)))
+            if host_path.exists():
+                return host_path
+        return container_path
 
-    # Map Blender paths
     if path_str.startswith("/home/vscode/Applications/blender"):
-        return Path(
-            path_str.replace(
-                "/home/vscode/Applications/blender",
-                "${localEnv:HOME}/Applications/blender",
+        home_dir = os.environ.get("HOME")
+        if home_dir:
+            host_path = Path(
+                path_str.replace(
+                    "/home/vscode/Applications/blender",
+                    f"{home_dir}/Applications/blender",
+                )
             )
-        )
+            if host_path.exists():
+                return host_path
+        return container_path
 
-    # Return unchanged if no mapping needed
     return container_path
 
 

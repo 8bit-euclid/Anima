@@ -6,15 +6,19 @@ import bpy
 from anima.diagnostics import logger
 from anima.utils.input import BlenderInputMonitor
 from anima.utils.output import BlenderOutputMonitor
-from anima.utils.project import get_pyproject_config_entry
+from anima.utils.project import (
+    get_pyproject_config_entry,
+    validate_project_configuration,
+)
 from anima.utils.subprocess import SubprocessManager
 
 
 class BlenderProcess:
     """Main facade class that coordinates all Blender operations."""
 
-    def __init__(self, script_path: Path = None):
-        self._subproc_manager = SubprocessManager(script_path)
+    def __init__(self):
+        validate_project_configuration()
+        self._subproc_manager = SubprocessManager()
         self._input_monitor = BlenderInputMonitor(self._subproc_manager)
         self._output_monitor = BlenderOutputMonitor(self._subproc_manager)
 
@@ -84,8 +88,10 @@ def get_blender_root_path() -> Path:
 
 
 @functools.lru_cache(maxsize=1)
-def get_blender_executable_path() -> Path:
+def get_blender_executable_path(on_host: bool = True) -> Path:
     """Get Blender executable path from project config.
+    Args:
+        on_host (bool): Whether the path is on the host machine or the container.
     Returns:
         Path: The path to the Blender executable.
     Raises:

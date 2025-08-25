@@ -3,11 +3,14 @@ import tomllib  # Python 3.11+ only
 
 from anima.globals.general import get_pyproject_path
 from anima.utils.blender import get_blender_root_path
+from anima.utils.project import validate_project_configuration
 
 # Note: This script assumes that the blender Python path has been set in the pyproject.toml file
 
 
 def main():
+    validate_project_configuration()
+
     # Parse dependencies from pyproject.toml and get blender Python path
     with open(get_pyproject_path(), "rb") as f:
         pyproject = tomllib.load(f)

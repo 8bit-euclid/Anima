@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 ## Blender-specific configurations
 [tool.blender]
 root-dir = "~/Applications/blender/blender-4.3.2-linux-x64"
+workspace-folder = "~/Projects/Anima"  # Host path to the workspace folder
 
 ## Project configurations
 [project]

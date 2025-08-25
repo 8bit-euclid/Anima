@@ -8,9 +8,8 @@ from anima.utils.project import get_main_file_path
 class SubprocessManager:
     """Manages the Blender subprocess lifecycle. Handles starting, checking if running, and cleaning up the Blender process."""
 
-    def __init__(self, script_path: Path = None):
+    def __init__(self):
         self._subprocess: subprocess.Popen | None = None
-        self._script_path: Path = script_path or get_main_file_path()
 
     def start(self) -> bool:
         """Start a new Blender process.
@@ -18,17 +17,20 @@ class SubprocessManager:
             bool: True if the subprocess was started successfully, False otherwise.
         """
         try:
-            from anima.utils.blender import get_blender_executable_path as bl_path
+            from anima.utils.blender import get_blender_executable_path
 
-            logger.info(f"Starting Blender from: {bl_path()}")
+            bl_path = get_blender_executable_path(on_host=True)
+            main_path = get_main_file_path(on_host=True)
 
+            logger.info(f"Starting Blender from: {bl_path}")
+            logger.info(f"Running main script from: {main_path}")
             self._subprocess = subprocess.Popen(
                 [
-                    bl_path(),
+                    str(bl_path),
                     "--window-maximized",
                     "--factory-startup",
                     "--python",
-                    self._script_path,
+                    str(main_path),
                 ],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
