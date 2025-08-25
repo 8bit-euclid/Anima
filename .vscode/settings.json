@@ -1,11 +1,11 @@
 {
-   "editor.foldingMaximumRegions": 100,
+   "editor.foldingMaximumRegions": 120,
    "window.zoomLevel": 2,
    "makefile.configureOnOpen": false,
    "python.analysis.extraPaths": [
       "./src"
    ],
-   "black-formatter.args": ["--line-length=88"],
+   "black-formatter.args": [],
    "editor.formatOnSave": true,
    "editor.codeActionsOnSave": {
       "source.organizeImports": "explicit"

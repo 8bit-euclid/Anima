@@ -6,10 +6,7 @@ import bpy
 from anima.diagnostics import logger
 from anima.utils.input import BlenderInputMonitor
 from anima.utils.output import BlenderOutputMonitor
-from anima.utils.project import (
-    get_pyproject_config_entry,
-    validate_project_configuration,
-)
+from anima.utils.project import get_pyproject_config_entry, validate_project_configuration
 from anima.utils.subprocess import SubprocessManager
 
 
@@ -116,11 +113,7 @@ def configure_blender_viewport():
                         override = {
                             "area": area,
                             "region": region,
-                            "space_data": (
-                                area.spaces.active
-                                if hasattr(area.spaces, "active")
-                                else area.spaces[0]
-                            ),
+                            "space_data": (area.spaces.active if hasattr(area.spaces, "active") else area.spaces[0]),
                         }
                         with bpy.context.temp_override(**override):
                             if bpy.ops.view3d.view_axis.poll():

@@ -25,9 +25,7 @@ class BlenderInputMonitor:
         if not sys.stdin.isatty():
             logger.warning("stdin not a TTY; hotkey listener disabled")
             return
-        self._listener_thread = threading.Thread(
-            target=self._listen_for_hotkeys, daemon=True
-        )
+        self._listener_thread = threading.Thread(target=self._listen_for_hotkeys, daemon=True)
         self._listener_thread.start()
 
     def stop(self):

@@ -16,9 +16,7 @@ class CurveChain(Curve):
         name: str = "CurveChain",
     ):
         for c in curves:
-            assert not isinstance(
-                c, Joint
-            ), "The curves in a curve chain cannot be joints."
+            assert not isinstance(c, Joint), "The curves in a curve chain cannot be joints."
         self._curves: list[type[Curve]] = curves
         self._joints: list[type[Joint]] = []
         self._cumu_lengths: list[float] = []

@@ -10,18 +10,12 @@ from anima.diagnostics import format_output, logger
 from anima.latex.tex_document import DEFAULT_FONT_SIZE, TeXDocument
 
 TEX_POINT_TO_BL_UNIT = 0.005  # Length (in Blender units) of 1pt (in LaTeX)
-SAMPLING_LENGTH = (
-    0.01 * DEFAULT_FONT_SIZE * TEX_POINT_TO_BL_UNIT
-)  # For points along glyph curves
+SAMPLING_LENGTH = 0.01 * DEFAULT_FONT_SIZE * TEX_POINT_TO_BL_UNIT  # For points along glyph curves
 TEX_DEBUG_MODE = True  # Print LaTeX and DVI logs to console
-SVG_NAMESPACE = {
-    "svg": "http://www.w3.org/2000/svg"
-}  # Namespace for SVG elements in XML
+SVG_NAMESPACE = {"svg": "http://www.w3.org/2000/svg"}  # Namespace for SVG elements in XML
 
 GlyphPathsType = dict[str, svgtools.Path]  # Maps glyph IDs to their SVG paths
-GlyphPositionsType = list[
-    tuple[str, tuple[float, float]]
-]  # List of (glyph ID, (x, y)) tuples
+GlyphPositionsType = list[tuple[str, tuple[float, float]]]  # List of (glyph ID, (x, y)) tuples
 
 
 class TeXDocumentProcessor:
@@ -84,9 +78,7 @@ class TeXDocumentProcessor:
         )
         cmd = "lualatex"
         try:
-            res = run_proc(
-                [cmd, "-interaction=nonstopmode", "-output-format=dvi", str(tex_file)]
-            )
+            res = run_proc([cmd, "-interaction=nonstopmode", "-output-format=dvi", str(tex_file)])
             print_logs(cmd, res)
         except subprocess.CalledProcessError as err:
             print_logs(cmd, err)
@@ -137,8 +129,7 @@ class TeXDocumentProcessor:
         svg_file = self._tex_path / f"{self._tex_name}.svg"
         if not svg_file.exists():
             raise RuntimeError(
-                f"SVG file '{svg_file}' not found. "
-                "Ensure that the DVI to SVG conversion was successful."
+                f"SVG file '{svg_file}' not found. " "Ensure that the DVI to SVG conversion was successful."
             )
         # Print contents of the SVG file for debugging
         with open(svg_file, "r", encoding="utf-8") as f:
@@ -179,9 +170,7 @@ class TeXDocumentProcessor:
         return glyph_paths, glyph_positions
 
 
-def print_logs(
-    command: str, result: subprocess.CompletedProcess | subprocess.CalledProcessError
-):
+def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.CalledProcessError):
     """Print the stdout and stderr result of a subprocess.
     Args:
         command: The command that was run.

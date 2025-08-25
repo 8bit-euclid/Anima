@@ -141,12 +141,8 @@ class TestCurveChain:
         l3 = crv3.length()
         t = 0.783
         assert_vectors_equal(crv1.tangent(t), chain.tangent(t * l1 / l), places=8)
-        assert_vectors_equal(
-            crv2.tangent(t), chain.tangent((l1 + t * l2) / l), places=6
-        )
-        assert_vectors_equal(
-            crv3.tangent(t), chain.tangent((l1 + l2 + t * l3) / l), places=6
-        )
+        assert_vectors_equal(crv2.tangent(t), chain.tangent((l1 + t * l2) / l), places=6)
+        assert_vectors_equal(crv3.tangent(t), chain.tangent((l1 + l2 + t * l3) / l), places=6)
 
     def test_normal(self):
         # The endpoint tangents should match those of the first and last curves

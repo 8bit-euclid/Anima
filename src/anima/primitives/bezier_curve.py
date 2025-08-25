@@ -32,9 +32,7 @@ class BezierCurve(BezierSpline):
             **kwargs,
         )
         if control_pts is not None:
-            assert (
-                len(control_pts) == 2
-            ), "Only cubic Bezier curves are currently supported."
+            assert len(control_pts) == 2, "Only cubic Bezier curves are currently supported."
             self.set_handle_0(control_pts[0], relative=False)
             self.set_handle_1(control_pts[1], relative=False)
 

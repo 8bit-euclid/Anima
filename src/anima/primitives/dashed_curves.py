@@ -144,9 +144,7 @@ class DashedCurve(Curve):
             for c in crv._all_entities:
                 self._check_dash_len(c)
         elif isinstance(crv, Joint):
-            assert (
-                crv._length <= self._dash_len
-            ), "Dash length must be greater than the largest joint length."
+            assert crv._length <= self._dash_len, "Dash length must be greater than the largest joint length."
 
     def _set_param(self, param: float, end_idx: int):
         super()._set_param(param, end_idx)

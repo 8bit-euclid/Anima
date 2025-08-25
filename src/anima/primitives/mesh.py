@@ -13,9 +13,7 @@ class Mesh(Object):
             **kwargs: Additional keyword arguments passed to the parent class.
         """
         if bl_object is not None:
-            assert (
-                bl_object.type == "MESH"
-            ), f"Expected a mesh but got a {bl_object.type}"
+            assert bl_object.type == "MESH", f"Expected a mesh but got a {bl_object.type}"
         super().__init__(bl_object=bl_object, name=name, **kwargs)
 
         self._hooks = []
@@ -81,9 +79,7 @@ class Mesh(Object):
         # Create empty. Note: Lazy import to prevent cyclic imports.
         from .points import Empty
 
-        empty = Empty(
-            location=obj.data.vertices[vertex_index].co, parent=self, name=name
-        )
+        empty = Empty(location=obj.data.vertices[vertex_index].co, parent=self, name=name)
 
         # Link the hook to the empty.
         hook.object = empty.object

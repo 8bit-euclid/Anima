@@ -93,9 +93,7 @@ class SegmentChain:
 
         # Note: currently only works for 2D but we resize to 3.
         self.vertices = [
-            add_empty(
-                name=f"{name}.V{i}", location=Vector(v).resized(3), parent=self.obj
-            )
+            add_empty(name=f"{name}.V{i}", location=Vector(v).resized(3), parent=self.obj)
             for i, v in enumerate(vertices)
         ]
         self.angle_offs0 = angle_offs0
@@ -156,9 +154,7 @@ class SegmentChain:
             assert_2d(self.dim)
             norm = tang.cross(UnitZ)
 
-            assert (
-                abs(angle_offs[i]) < MAX_SEGMENT_ANGLE_OFFSET
-            ), "The offset angle is out of range."
+            assert abs(angle_offs[i]) < MAX_SEGMENT_ANGLE_OFFSET, "The offset angle is out of range."
 
             # Compute the end-direction at this vertex by applying the angle offset to the normal.
             direc = norm.copy()
@@ -173,10 +169,7 @@ class SegmentChain:
             v0 = verts[i] + (bias - 1.0) * (0.5 * self.width) * direc
             v1 = verts[i] + (bias + 1.0) * (0.5 * self.width) * direc
 
-            detached = (
-                0 < i < (n_verts - 1)
-                and abs(angle_offs[i]) >= MIN_DETACHED_ANGLE_OFFSET
-            )
+            detached = 0 < i < (n_verts - 1) and abs(angle_offs[i]) >= MIN_DETACHED_ANGLE_OFFSET
             if detached:
                 # Compute next tangent and normalise in the same manner as for direc.
                 tang2 = verts[i + 1] - verts[i]
@@ -210,13 +203,9 @@ class SegmentChain:
 
         # Set load ratio keyframes.
         self.obj["load_ratio"] = 0.0
-        self.obj.keyframe_insert(
-            data_path='["load_ratio"]', frame=to_frame(self.intro.start)
-        )
+        self.obj.keyframe_insert(data_path='["load_ratio"]', frame=to_frame(self.intro.start))
         self.obj["load_ratio"] = 1.0
-        self.obj.keyframe_insert(
-            data_path='["load_ratio"]', frame=to_frame(self.intro.stop)
-        )
+        self.obj.keyframe_insert(data_path='["load_ratio"]', frame=to_frame(self.intro.stop))
 
         # Set vertices 2 and 3 of each segment to be driven by the 'load_ratio'.
         obj_verts = self.obj.data.vertices
@@ -251,13 +240,9 @@ class SegmentChain:
 
         # Set load ratio keyframes.
         self.obj["load_ratio"] = 1.0
-        self.obj.keyframe_insert(
-            data_path='["load_ratio"]', frame=to_frame(self.outro.start)
-        )
+        self.obj.keyframe_insert(data_path='["load_ratio"]', frame=to_frame(self.outro.start))
         self.obj["load_ratio"] = 0.0
-        self.obj.keyframe_insert(
-            data_path='["load_ratio"]', frame=to_frame(self.outro.stop)
-        )
+        self.obj.keyframe_insert(data_path='["load_ratio"]', frame=to_frame(self.outro.stop))
 
 
 class Segment(SegmentChain):
@@ -372,9 +357,7 @@ class EllipticalArc(ParametricCurve):
         self.radius_y = radius_y
 
         def point(t) -> Vector:
-            return self.centre + Vector(
-                [radius_x * math.cos(t), radius_y * math.sin(t), 0.0]
-            )
+            return self.centre + Vector([radius_x * math.cos(t), radius_y * math.sin(t), 0.0])
 
         super().__init__(
             point_func=point,
