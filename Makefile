@@ -99,5 +99,5 @@ clean-all: clean ## Clean everything including pip cache
 
 
 # DevContainer targets
-enter-devcontainer: ## Build and run the DevContainer
+enter-devcontainer: ## Enter the running DevContainer
 	@bash scripts/enter_devcontainer.sh

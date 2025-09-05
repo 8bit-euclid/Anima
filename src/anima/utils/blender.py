@@ -88,7 +88,7 @@ def get_blender_root_path() -> Path:
 def get_blender_executable_path(on_host: bool = True) -> Path:
     """Get Blender executable path from project config.
     Args:
-        on_host (bool): Whether the path is on the host machine or the container.
+        on_host (bool): Whether the path is on the host machine or the DevContainer.
     Returns:
         Path: The path to the Blender executable.
     Raises:

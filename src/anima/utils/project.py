@@ -19,7 +19,7 @@ def get_project_name() -> str:
 def get_project_root_path(on_host: bool = True, marker: str = ".git") -> Path:
     """Find the root directory of the project by looking for a 'marker' file.
     Args:
-        on_host (bool): Whether the path is on the host machine or the container.
+        on_host (bool): Whether the path is on the host machine or the DevContainer.
         marker (str): The name of the file that indicates the project root (default is '.git').
     Returns:
         Path: The path to the project root directory.
@@ -29,9 +29,9 @@ def get_project_root_path(on_host: bool = True, marker: str = ".git") -> Path:
     for parent in current.parents:
         if (parent / marker).exists():
             # Handle path resolution based on environment:
-            # If running in container and host path requested, map the path
+            # If running in DevContainer and host path requested, map the path
             path = parent
-            if running_in_container() and on_host:
+            if on_host and in_devcontainer():
                 path = _map_container_to_host_path(parent)
 
             logger.trace(f"Project root found: {path}")
@@ -44,7 +44,7 @@ def get_project_root_path(on_host: bool = True, marker: str = ".git") -> Path:
 def get_main_file_path(on_host: bool = True) -> Path:
     """Get the main.py file path from the project.
     Args:
-        on_host (bool): Whether the path is on the host machine or the container.
+        on_host (bool): Whether the path is on the host machine or the DevContainer.
     Returns:
         Path: The path to the main.py file.
     Raises:
@@ -125,21 +125,19 @@ def configure_project_reload():
         del sys.modules[name]
 
 
-def running_in_container() -> bool:
-    """Check if running inside a Docker container.
+def in_devcontainer() -> bool:
+    """Check if running inside a DevContainer.
     Returns:
-        bool: True if running in a container, False otherwise."""
+        bool: True if running in a DevContainer, False otherwise."""
 
-    # Check for Docker environment file
-    if Path("/.dockerenv").exists():
-        return True
+    # Check for common container indicators
+    container_files = ["/.dockerenv", "/proc/1/cgroup"]  # Docker creates this file, Container process info
 
-    # Check for container indicator in cgroup
-    try:
-        cgroup_content = Path("/proc/1/cgroup").read_text(errors="ignore")
-        return "container" in cgroup_content
-    except (OSError, IOError):
-        return False
+    for file_path in container_files:
+        if os.path.exists(file_path):
+            return True
+
+    return False
 
 
 # Private functions ------------------------------------------------------------------------------------------

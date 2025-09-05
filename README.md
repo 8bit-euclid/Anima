@@ -86,7 +86,7 @@ The project includes several make targets for common development tasks. Run `mak
 | `make help` | Show all available targets with descriptions |
 | `make install` | Install the project and its dependencies |
 | `make install-blender-deps` | Install Blender-specific dependencies |
-| `make enter-devcontainer` | Build and run the DevContainer |
+| `make enter-devcontainer` | Enter the running DevContainer |
 | `make run` | Run the project |
 | `make test` | Run all tests |
 | `make fmt` | Format code using black and isort |
