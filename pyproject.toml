@@ -1,19 +1,18 @@
+## Build system configurations
 [build-system]
-requires = ["setuptools>=65.0", "setuptools-scm[toml]>=8.3", "wheel"]
+requires = ["setuptools>=80.0", "setuptools-scm>=9.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 ## Blender-specific configurations
 [tool.blender]
-root-dir = "~/Applications/blender/blender-4.3.2-linux-x64"
-workspace-folder = "~/Projects/Anima"  # Host path to the workspace folder
+version = "4.5.1"
+install-dir = "~/Applications/blender/"
 
 ## Project configurations
 [project]
 name = "anima"
 dynamic = ["version"]
-requires-python = ">=3.11.4,<=3.11.13" # Ensure the range contains Blender's Python version
 dependencies = [
-   "bpy==4.4.0",
    "mathutils==3.3.0",
    "numpy==1.26.4",
    "scipy==1.15.3",
@@ -22,7 +21,16 @@ dependencies = [
    "dill==0.4.0",
    "loguru==0.7.3",
 ]
+requires-python = ">=3.11.4,<=3.11.13" # Ensure compatibility with Blender's Python version
+description = "Anima is a Python framework for Blender focused on mathematical visualizations, procedural animations, and educational content."
+readme = "README.md"
+authors = [
+   { name = "8bit-euclid", email = "8bit.euclid@gmail.com" },
+]
+license = "GPL-3.0"
+urls = { homepage = "https://github.com/8bit-euclid/Anima" }
 
+## Development dependencies
 [project.optional-dependencies]
 dev = [
    "black>=23.0.0",
@@ -30,14 +38,18 @@ dev = [
    "pylint>=2.17.0",
 ]
 
-## Other tool configurations
+## Setuptools configurations
 [tool.setuptools]
 packages.find.where = ["src"]
 package-dir = { "" = "src" }
 
+## Versioning configurations
 [tool.setuptools_scm]
-fallback_version = "0.1.0"
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
+git_describe_command = [ "git", "describe", "--tags", "--match", "v*", "--first-parent"]
 
+## Testing configurations
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
@@ -45,6 +57,7 @@ addopts = [
     "--ignore=tests/visual_tests/",
 ]
 
+## Formatter and linter configurations 
 [tool.black]
 line-length = 120
 target-version = ['py311']
