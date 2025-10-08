@@ -19,8 +19,8 @@ class SubprocessManager:
         try:
             from anima.utils.blender import get_blender_executable_path
 
-            bl_path = get_blender_executable_path(on_host=True)
-            main_path = get_main_file_path(on_host=True)
+            bl_path = get_blender_executable_path()
+            main_path = get_main_file_path()
 
             logger.info(f"Starting Blender from: {bl_path}")
             logger.info(f"Running main script from: {main_path}")

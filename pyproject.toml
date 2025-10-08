@@ -5,14 +5,15 @@ build-backend = "setuptools.build_meta"
 
 ## Blender-specific configurations
 [tool.blender]
-version = "4.5.1"
+version = "4.5.3" # NOTE: The bpy version below may need to be changed as well
 install-dir = "~/Applications/blender/"
 
 ## Project configurations
 [project]
 name = "anima"
 dynamic = ["version"]
-dependencies = [
+dependencies = [ 
+   "bpy==4.5.3", # NOTE: See `pip index versions bpy` for versions and match with tool.blender.version
    "mathutils==3.3.0",
    "numpy==1.26.4",
    "scipy==1.15.3",
@@ -20,6 +21,7 @@ dependencies = [
    "plastex==3.1",
    "dill==0.4.0",
    "loguru==0.7.3",
+   "svgpathtools>=1.7.1",
 ]
 requires-python = ">=3.11.4,<=3.11.13" # Ensure compatibility with Blender's Python version
 description = "Anima is a Python framework for Blender focused on mathematical visualizations, procedural animations, and educational content."
@@ -57,7 +59,7 @@ addopts = [
     "--ignore=tests/visual_tests/",
 ]
 
-## Formatter and linter configurations 
+## Formatter and linter configurations
 [tool.black]
 line-length = 120
 target-version = ['py311']

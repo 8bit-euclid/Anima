@@ -17,61 +17,36 @@ ANIMA
 - [GNU Make](https://www.gnu.org/software/make/) (for building and testing)
 - [Python 3.11+](https://www.python.org/downloads/) (specifically 3.11.4 - 3.11.13 for Blender compatibility)
 - [Blender](https://www.blender.org/download/) (4.0+ recommended)
-- [Visual Studio Code](https://code.visualstudio.com/) with [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) (optional, for DevContainer development)
+- [Visual Studio Code](https://code.visualstudio.com/) (optional, but recommended for development)
 
 ## Installation
 
-You can set up Anima in two ways: using a DevContainer (recommended for consistent development environment) or local installation.
-
-### Option 1: DevContainer Setup (Recommended)
-
-The DevContainer provides a pre-configured Python 3.11 environment with all dependencies.
-
 1. **Clone the Repository**
    ```bash
    git clone https://github.com/8bit-euclid/Anima.git
    cd Anima
    ```
 
-2. **Open in DevContainer**
-   - Open the project in Visual Studio Code
-   - When prompted, click "Reopen in Container" or use `Ctrl+Shift+P` → "Dev Containers: Reopen in Container"
-   - The environment will automatically install all dependencies
+2. **Configure Blender Settings**
 
-3. **Enter DevContainer from Terminal** (Alternative)
-   ```bash
-   make enter-devcontainer
+   Edit `pyproject.toml` to specify your Blender version and installation directory:
+
+   ```toml
+   [tool.blender]
+   version = "4.5.1"
+   install-dir = "~/Applications/blender/"
    ```
 
-### Option 2: Local Installation
-
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/8bit-euclid/Anima.git
-   cd Anima
-   ```
-
-2. **Set the Blender Python path**
-
-Ensure you have the Blender Python executable available. This is located in the Blender installation directory, e.g. `blender/4.x/python/bin/python3.x`. In the `pyproject.toml` file, set the `root-dir` under the `[tool.blender]` section to your Blender directory:
-
-```toml
-[tool.blender]
-root-dir = "/path/to/blender/directory"
-```
-
-> **Note:** Unless renamed, the Blender directory will be akin to `blender-4.3.2-linux-x64` on Linux.
+   > **Note:** Your Blender directory must follow the naming convention `blender-{version}-{platform}` (e.g., `blender-4.5.1-linux-x64`)
 
 3. **Install the Project**
    ```bash
    make install
    ```
 
-   > **Note:** If you add or change dependencies in `pyproject.toml`, you must run `make install` again. This ensures that the dependencies are installed in Blender's Python environment as well.
-
 ## Verification
 
-After installation (either method), verify the setup by running tests:
+After installation, verify the setup by running tests:
 
 ```bash
 make test
@@ -85,29 +60,26 @@ The project includes several make targets for common development tasks. Run `mak
 |---------|-------------|
 | `make help` | Show all available targets with descriptions |
 | `make install` | Install the project and its dependencies |
+| `make install-dev` | Install the project in development mode |
 | `make install-blender-deps` | Install Blender-specific dependencies |
-| `make enter-devcontainer` | Enter the running DevContainer |
 | `make run` | Run the project |
 | `make test` | Run all tests |
-| `make fmt` | Format code using black and isort |
+| `make format` | Format code using black and isort |
 | `make lint` | Lint the project using flake8 and pylint |
 | `make clean` | Clean build artifacts and cache files |
 | `make all` | Run the complete workflow (clean, format, lint, test, build) |
 
+## Upgrading Blender
+
+To upgrade to a new Blender version:
+
+1. Install the new Blender version following the naming convention
+2. Update `version = "4.6.0"` in `pyproject.toml`
+3. Run `make install`
+
+The system automatically updates the `bpy` dependency and paths to match.
+
 ## Development Workflows
-
-### DevContainer Development
-
-If you're using the DevContainer setup, you have a consistent Python 3.11 environment with all dependencies pre-installed. The DevContainer automatically:
-
-- Installs the project in editable mode
-- Sets up development tools (black, isort, pylint, pytest)
-- Provides a clean, reproducible environment
-
-You can validate the DevContainer setup by running:
-```bash
-bash .devcontainer/test_workspace.sh
-```
 
 ### Running Anima with Blender
 
@@ -119,7 +91,7 @@ make run
 
 1. Open the Anima project folder in VSCode and navigate to the `run.py` file.
 2. Select **Blender: Start** from the command palette (`Ctrl+Shift+P` → "Blender: Start").
-3. When prompted, select the Blender executable (e.g., `~/applications/blender/blender-4.3.2-linux-x64/blender` on Linux).
+3. When prompted, select the Blender executable from your installation directory.
 4. Blender will launch with the current project loaded, enabling rapid development and testing.
 5. Run `anima` in Blender by selecting **Blender: Run Script** from the command palette (`Ctrl+Shift+P` → "Blender: Run Script").
 6. Repeat step 5 to hot-reload recent changes into Blender.
