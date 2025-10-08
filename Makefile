@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help all install install-dev install-debug install-release update install-blender-deps run test test-verbose test-ignored bench format format-check lint enter-devcontainer clean clean-all
+.PHONY: help all install install-dev install-debug install-release update install-blender-deps run test test-verbose test-ignored bench format format-check lint clean clean-all
 
 
 # Default target
@@ -15,30 +15,32 @@ install: install-dev ## Default install target (dev mode)
 
 install-dev: ## Install the project with development dependencies
 	@echo "Installing with development dependencies..."
-	@pip install -e .[dev]
+	@uv sync --dev
 
 install-debug: ## Install the project in debug mode with dev dependencies
 	@echo "Installing in debug mode..."
-	@pip install -e .[dev] --verbose
+	@uv sync --dev --verbose
 
 install-release: ## Install the project in production mode
 	@echo "Installing in production mode..."
-	@pip install .
+	@uv sync
 
 install-blender-deps: ## Install Blender dependencies
 	@echo "Installing Blender dependencies..."
-	@python scripts/install_blender_dependencies.py
+	@uv run python scripts/install_blender_dependencies.py
 	@echo "Blender dependencies successfully installed."
 
 update: ## Update dependencies
 	@echo "Updating dependencies..."
-	@pip install --upgrade pip
-	@pip install --upgrade -e .
+	@uv sync --upgrade
+
+reinstall: clean-all install ## Clean and reinstall the project
+	@echo "Cleaning and reinstalling the project..."
 
 
 # Run targets
 run: ## Run the project
-	@python run.py
+	@uv run python run.py
 
 
 # Testing targets
@@ -64,24 +66,20 @@ bench: ## Run benchmarks (if any)
 
 # Code quality targets
 format-check: ## Check if code is formatted correctly
-	@pip install --quiet black isort || true
-	@echo "Checking code formatting..."
-	@black --check .
-	@isort --check-only .
+	@uv tool run black --check .
+	@uv tool run isort --check-only .
 
 format: ## Format the code using black and isort
-	@pip install --quiet black isort || true
 	@echo "Formatting the code..."
-	@black .
-	@isort .
+	@uv tool run black .
+	@uv tool run isort .
 
 lint: ## Lint the project using pylint and flake8 (temporarily suppressed)
-	@pip install --quiet pylint flake8 || true
 	@echo "Linting the project (temporarily suppressed)..."
 	@echo "pylint... (suppressed)"
-	@pylint . > /dev/null 2>&1 || true
+	@uv tool run pylint . > /dev/null 2>&1 || true
 	@echo "flake8... (suppressed)"
-	@flake8 . > /dev/null 2>&1 || true
+	@uv tool run flake8 . > /dev/null 2>&1 || true
 	@echo "Linting completed (all warnings and errors suppressed)"
 
 
@@ -93,11 +91,6 @@ clean: ## Clean build artifacts
 	@find . -type d -name "*.egg-info" -exec rm -rf {} +
 	@rm -rf .pytest_cache/
 
-clean-all: clean ## Clean everything including pip cache
-	@echo "Cleaning pip cache..."
-	@pip cache purge
-
-
-# DevContainer targets
-enter-devcontainer: ## Enter the running DevContainer
-	@bash scripts/enter_devcontainer.sh
+clean-all: clean ## Clean everything including uv cache
+	@echo "Cleaning uv cache..."
+	@uv cache clean
