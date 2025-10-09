@@ -1,8 +1,8 @@
 import socket
 
-TCP_HOST = '127.0.0.1'  # Localhost for Blender socket communication
-TCP_PORT = 65432        # Default port
-PACKET_SIZE = 4096      # Size (bytes) of each packet to read from the socket
+TCP_HOST = "127.0.0.1"  # Localhost for Blender socket communication
+TCP_PORT = 65432  # Default port
+PACKET_SIZE = 4096  # Size (bytes) of each packet to read from the socket
 
 QUEUED = "QUEUED"
 QUEUE_FULL = "QUEUE_FULL"
@@ -26,4 +26,4 @@ def receive_data(socket_stub: socket.socket) -> bytes:
                 break
         except socket.timeout:
             break
-    return b''.join(data)
+    return b"".join(data)

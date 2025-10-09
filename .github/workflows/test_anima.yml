@@ -1,25 +1,48 @@
-name: Run Anima Test Suite
+name: Test Anima
 
 env:
-  PYTHON_VERSION: '3.11.9' # Should match version in pyproject.toml
-  PROJECT_CONFIG: 'pyproject.toml'
+  PYTHON_VERSION: "3.11.9" # Should match version in pyproject.toml
+  PROJECT_CONFIG: "pyproject.toml"
 
 on:
   push:
-    branches: [ "**" ]  # Run on all branches
+    branches: ["**"] # Run on all branches
+  workflow_dispatch:
 
 jobs:
-  test:
+  format-check:
     runs-on: ubuntu-latest
-    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Check formatting
+        run: make format-check
+
+  lint:
+    needs: format-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Lint the project
+        run: make lint
+
+  test:
+    # needs: lint
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ env.PYTHON_VERSION }} 
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Upgrade pip
       run: python -m pip install --upgrade pip
@@ -35,9 +58,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-python-${{ env.PYTHON_VERSION }}-
 
-    - name: Install the anima package
+    - name: Install the anima package in debug mode
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      run: make install
+      run: make install-debug
 
     - name: Run tests
       run: make test

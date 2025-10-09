@@ -1,7 +1,21 @@
 {
-   "editor.foldingMaximumRegions": 100,
+   "editor.foldingMaximumRegions": 120,
+   "window.zoomLevel": 1,
    "makefile.configureOnOpen": false,
    "python.analysis.extraPaths": [
       "./src"
-   ]
+   ],
+   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+   "black-formatter.interpreter": ["${workspaceFolder}/.venv/bin/python"],
+   "black-formatter.args": [],
+   "editor.formatOnSave": true,
+   "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+   },
+   "[python]": {
+      "editor.defaultFormatter": "ms-python.black-formatter"
+   },
+   "augment.nextEdit.showDiffInHover": true,
+   "augment.nextEdit.enableGlobalBackgroundSuggestions": true,
+   "augment.nextEdit.highlightSuggestionsInTheEditor": true
 }

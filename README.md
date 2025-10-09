@@ -8,54 +8,80 @@ ANIMA
 
 - Tools for animating curves, splines, and geometric objects
 - LaTeX text rendering as animated 3D glyphs
-- Advanced Bézier spline and curve utilities
+- Bézier spline and curve utilities
 - Automated scene setup and cleanup
 - Hot reload support for rapid development
 
 ## Prerequisites
 
 - [GNU Make](https://www.gnu.org/software/make/) (for building and testing)
-- [Python 3.10+](https://www.python.org/downloads/)
+- [Python 3.11+](https://www.python.org/downloads/) (specifically 3.11.4 - 3.11.13 for Blender compatibility)
 - [Blender](https://www.blender.org/download/) (4.0+ recommended)
-- [Visual Studio Code](https://code.visualstudio.com/)
+- [Visual Studio Code](https://code.visualstudio.com/) (optional, but recommended for development)
 
 ## Installation
 
-### 1. Clone the Repository
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/8bit-euclid/Anima.git
+   cd Anima
+   ```
 
-```bash
-git clone https://github.com/8bit-euclid/Anima.git
-cd Anima
-```
+2. **Configure Blender Settings**
 
-### 2. Set the Blender Python path
+   Edit `pyproject.toml` to specify your Blender version and installation directory:
 
-Ensure you have the Blender Python executable available. This is located in the Blender installation directory, e.g. `blender/4.x/python/bin/python3.x`. In the `pyproject.toml` file, set the `root-dir` under the `[tool.blender]` section to your Blender directory:
+   ```toml
+   [tool.blender]
+   version = "4.5.1"
+   install-dir = "~/Applications/blender/"
+   ```
 
-```toml
-[tool.blender]
-root-dir = "/path/to/blender/directory"
-```
+   > **Note:** Your Blender directory must follow the naming convention `blender-{version}-{platform}` (e.g., `blender-4.5.1-linux-x64`)
 
-> **Note:** Unless renamed, the Blender directory will be akin to `blender-4.3.2-linux-x64` on Linux.
+3. **Install the Project**
+   ```bash
+   make install
+   ```
 
-### 3. Install the Project
+## Verification
 
-```bash
-make install
-```
-
-> **Note:** If you add or change dependencies in `pyproject.toml`, you must run `make install` again. This ensures that the dependencies are installed in Blender's Python environment as well.
-
-### 5. Run Tests
-
-Verify the installation by running:
+After installation, verify the setup by running tests:
 
 ```bash
 make test
 ```
 
-## Running Anima with Blender
+## Make Targets
+
+The project includes several make targets for common development tasks. Run `make help` to see all available targets, or use these essential commands:
+
+| Command | Description |
+|---------|-------------|
+| `make help` | Show all available targets with descriptions |
+| `make install` | Install the project and its dependencies |
+| `make install-dev` | Install the project in development mode |
+| `make install-blender-deps` | Install Blender-specific dependencies |
+| `make run` | Run the project |
+| `make test` | Run all tests |
+| `make format` | Format code using black and isort |
+| `make lint` | Lint the project using flake8 and pylint |
+| `make clean` | Clean build artifacts and cache files |
+| `make all` | Run the complete workflow (clean, format, lint, test, build) |
+
+## Upgrading Blender
+
+To upgrade to a new Blender version:
+
+1. Install the new Blender version following the naming convention
+2. Update `version = "4.6.0"` in `pyproject.toml`
+3. Run `make install`
+
+The system automatically updates the `bpy` dependency and paths to match.
+
+## Development Workflows
+
+### Running Anima with Blender
 
 To start Blender using the **Blender Development** extension in Visual Studio Code:
 
@@ -65,7 +91,7 @@ make run
 
 1. Open the Anima project folder in VSCode and navigate to the `run.py` file.
 2. Select **Blender: Start** from the command palette (`Ctrl+Shift+P` → "Blender: Start").
-3. When prompted, select the Blender executable (e.g., `~/applications/blender/blender-4.3.2-linux-x64/blender` on Linux).
+3. When prompted, select the Blender executable from your installation directory.
 4. Blender will launch with the current project loaded, enabling rapid development and testing.
 5. Run `anima` in Blender by selecting **Blender: Run Script** from the command palette (`Ctrl+Shift+P` → "Blender: Run Script").
 6. Repeat step 5 to hot-reload recent changes into Blender.

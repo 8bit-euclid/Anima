@@ -1,6 +1,6 @@
-from anima.latex.tex_document_processor import TeXDocumentProcessor
-from anima.latex.tex_document import TeXDocument
 from anima.latex.glyph import Glyph
+from anima.latex.tex_document import TeXDocument
+from anima.latex.tex_document_processor import TeXDocumentProcessor
 from anima.latex.tex_string_parser import TeXStringParser
 
 
@@ -43,7 +43,7 @@ def test_text_to_glyphs():
     # \end{align}
     # """
     # text = '$E = mc^2$'
-    text = r'$E^2 = (\mathit{mc}^2)^2 + (pc)^2$'
+    text = r"$E^2 = (\mathit{mc}^2)^2 + (pc)^2$"
     # text = r'$E = \mathit{mc}^2$'
     # text = 'C'
     # text = '8'

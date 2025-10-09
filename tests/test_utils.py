@@ -12,8 +12,7 @@ def assert_vectors_equal(v1: list, v2: list, places: int = None):
     """
     for i in range(len(v1)):
         if places is not None:
-            assert round(
-                v1[i] - v2[i], places) == 0, f"{v1} != {v2} at index {i}"
+            assert round(v1[i] - v2[i], places) == 0, f"{v1} != {v2} at index {i}"
         else:
             assert v1[i] == v2[i], f"{v1} != {v2} at index {i}"
 
