@@ -1,5 +1,6 @@
-from .action import Action
 from anima.primitives.curves import Curve
+
+from .action import Action
 
 
 class Construct(Action):
@@ -13,7 +14,7 @@ class Construct(Action):
             # keyframe on data.bevel_factor_end for curve objects.
             pass
         else:
-            raise Exception(f'Cannot construct objects of type {type(obj)}')
+            raise Exception(f"Cannot construct objects of type {type(obj)}")
 
     def set_outro(self, interval):
         pass

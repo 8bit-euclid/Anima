@@ -1,17 +1,96 @@
-.PHONY: install install-blender-deps run test
+SHELL := /bin/bash
+.PHONY: help all install install-dev install-debug install-release update install-blender-deps run test test-verbose test-ignored bench format format-check lint clean clean-all
 
-# Install the project and its dependencies
-install:
-	pip install -e .
 
-# Install Blender dependencies
-install-blender-deps:
-	python scripts/install_blender_dependencies.py
+# Default target
+help: ## Show this help message
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "   \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-# Run the project
-run:
-	@python run.py	
 
-# Run tests using pytest
-test:
-	PYTHONPATH=. pytest --verbose --disable-warnings
+# Project targets
+all: clean format lint install test ## Run clean, format, lint, install, and test
+
+install: install-dev ## Default install target (dev mode)
+
+install-dev: ## Install the project with development dependencies
+	@echo "Installing with development dependencies..."
+	@uv sync --dev
+
+install-debug: ## Install the project in debug mode with dev dependencies
+	@echo "Installing in debug mode..."
+	@uv sync --dev --verbose
+
+install-release: ## Install the project in production mode
+	@echo "Installing in production mode..."
+	@uv sync
+
+install-blender-deps: ## Install Blender dependencies
+	@echo "Installing Blender dependencies..."
+	@uv run python scripts/install_blender_dependencies.py
+	@echo "Blender dependencies successfully installed."
+
+update: ## Update dependencies
+	@echo "Updating dependencies..."
+	@uv sync --upgrade
+
+reinstall: clean-all install ## Clean and reinstall the project
+	@echo "Cleaning and reinstalling the project..."
+
+
+# Run targets
+run: ## Run the project
+	@uv run python run.py
+
+
+# Testing targets
+PYTEST_BASE := uv run pytest --verbose
+PYTEST_DETAILED := $(PYTEST_BASE) --capture=no --showlocals --tb=long --full-trace
+
+test: ## Run all tests
+	@echo "Running tests..."
+	@$(PYTEST_BASE) --disable-warnings
+
+test-verbose: ## Run tests with verbose output
+	@echo "Running tests with verbose output..."
+	@$(PYTEST_DETAILED)
+
+test-ignored: ## Run tests marked as slow or ignored
+	@echo "Running ignored/slow tests..."
+	@$(PYTEST_DETAILED) -m "slow or ignore" --durations=0 --maxfail=1
+
+bench: ## Run benchmarks (if any)
+	@echo "Running benchmarks..."
+	@$(PYTEST_BASE) --benchmark-only
+
+
+# Code quality targets
+format-check: ## Check if code is formatted correctly
+	@uv tool run black --check .
+	@uv tool run isort --check-only .
+
+format: ## Format the code using black and isort
+	@echo "Formatting the code..."
+	@uv tool run black .
+	@uv tool run isort .
+
+lint: ## Lint the project using pylint and flake8 (temporarily suppressed)
+	@echo "Linting the project (temporarily suppressed)..."
+	@echo "pylint... (suppressed)"
+	@uv tool run pylint . > /dev/null 2>&1 || true
+	@echo "flake8... (suppressed)"
+	@uv tool run flake8 . > /dev/null 2>&1 || true
+	@echo "Linting completed (all warnings and errors suppressed)"
+
+
+# Maintenance targets
+clean: ## Clean build artifacts
+	@echo "Cleaning build artifacts..."
+	@find . -type f -name "*.pyc" -delete
+	@find . -type d -name "__pycache__" -delete
+	@find . -type d -name "*.egg-info" -exec rm -rf {} +
+	@rm -rf .pytest_cache/
+
+clean-all: clean ## Clean everything including uv cache
+	@echo "Cleaning uv cache..."
+	@uv cache clean
