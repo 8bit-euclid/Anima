@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 ## Blender-specific configurations
 [tool.blender]
-version = "4.5.3" # NOTE: The bpy version below may need to be changed as well
+version = "4.5.3" # NOTE: When updating, the bpy version below may need to be changed as well
 install-dir = "~/Applications/blender/"
 
 ## Project configurations
