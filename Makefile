@@ -44,7 +44,7 @@ run: ## Run the project
 
 
 # Testing targets
-PYTEST_BASE := PYTHONPATH=. pytest --verbose
+PYTEST_BASE := uv run pytest --verbose
 PYTEST_DETAILED := $(PYTEST_BASE) --capture=no --showlocals --tb=long --full-trace
 
 test: ## Run all tests
