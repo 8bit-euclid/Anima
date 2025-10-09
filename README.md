@@ -15,7 +15,7 @@ ANIMA
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
-- [GNU Make](https://www.gnu.org/software/make/) (for building and testing)
+- [GNU Make](https://www.gnu.org/software/make/) (for building, testing, and running)
 - [Python 3.11+](https://www.python.org/downloads/) (specifically 3.11.4 - 3.11.13 for Blender compatibility)
 - [Blender](https://www.blender.org/download/) (4.0+ recommended)
 - [Visual Studio Code](https://code.visualstudio.com/) (optional, but recommended for development)
