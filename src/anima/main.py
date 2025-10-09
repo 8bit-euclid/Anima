@@ -49,7 +49,7 @@ def main():
 
     # Run visual tests
     logger.info("Running visual tests...")
-    # test_text_to_glyphs()
+    test_text_to_glyphs()
     test_bezier_splines(end_frame)
     test_curve_joints(end_frame)
     test_dashed_curves(end_frame)
