@@ -14,6 +14,7 @@ ANIMA
 
 ## Prerequisites
 
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
 - [GNU Make](https://www.gnu.org/software/make/) (for building and testing)
 - [Python 3.11+](https://www.python.org/downloads/) (specifically 3.11.4 - 3.11.13 for Blender compatibility)
 - [Blender](https://www.blender.org/download/) (4.0+ recommended)
@@ -33,11 +34,11 @@ ANIMA
 
    ```toml
    [tool.blender]
-   version = "4.5.1"
+   version = "4.5.3"
    install-dir = "~/Applications/blender/"
    ```
 
-   > **Note:** Your Blender directory must follow the naming convention `blender-{version}-{platform}` (e.g., `blender-4.5.1-linux-x64`)
+   > **Note:** Your Blender directory must follow the naming convention `blender-{version}-{platform}` (e.g., `blender-4.5.3-linux-x64`)
 
 3. **Install the Project**
    ```bash
@@ -65,9 +66,9 @@ The project includes several make targets for common development tasks. Run `mak
 | `make run` | Run the project |
 | `make test` | Run all tests |
 | `make format` | Format code using black and isort |
-| `make lint` | Lint the project using flake8 and pylint |
+| `make lint` | Lint the project using pylint and flake8 |
 | `make clean` | Clean build artifacts and cache files |
-| `make all` | Run the complete workflow (clean, format, lint, test, build) |
+| `make all` | Run the complete workflow (clean, format, lint, install, and test) |
 
 ## Upgrading Blender
 
