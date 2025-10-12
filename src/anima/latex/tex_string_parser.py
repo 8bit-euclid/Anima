@@ -42,6 +42,7 @@ class TeXStringParser:
 
     def __init__(self, text: str, math_mode: bool = False):
         """Initialize the TeX parser with regex patterns.
+
         Args:
             text (str): The LaTeX text to parse.
             math_mode (bool): Whether to enable math mode.

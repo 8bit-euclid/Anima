@@ -22,6 +22,7 @@ dependencies = [
    "dill==0.4.0",
    "loguru==0.7.3",
    "svgpathtools>=1.7.1",
+   "pytriwild @ git+https://github.com/8bit-euclid/TriWild.git@master",
 ]
 requires-python = ">=3.11.4,<=3.11.13" # Ensure compatibility with Blender's Python version
 description = "Anima is a Python framework for Blender focused on mathematical visualizations, procedural animations, and educational content."

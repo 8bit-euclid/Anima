@@ -36,6 +36,7 @@ class TeXDocument:
 
     def set_document_class(self, name: str, options: str | list[str] | None = None):
         """Set the document class in the preamble.
+
         Args:
             name: Name of the document class
             options: Class options
@@ -50,6 +51,7 @@ class TeXDocument:
     def set_main_font(self, name: str, font_size: int | float = DEFAULT_FONT_SIZE):
         """Set the main font for the document. Adds the fontspec package if not already added.
         Optionally sets the default font size.
+
         Args:
             name: Name of the font package (e.g. 'Times New Roman', 'TeX Gyre Termes', etc.)
             font_size: Optional font size in points (e.g., 12)
@@ -63,6 +65,7 @@ class TeXDocument:
 
     def add_package(self, name: str, options: str | list[str] | None = None):
         """Add a LaTeX package to the preamble.
+
         Args:
             name: Name of the package
             options: Package options
@@ -79,6 +82,7 @@ class TeXDocument:
 
     def add_new_command(self, name: str, definition: str):
         """Add a \\newcommand to the preamble.
+
         Args:
             name: Command name (with or without leading backslash)
             definition: Command definition
@@ -103,6 +107,7 @@ class TeXDocument:
 
     def add_to_preamble(self, entry: str):
         """Add a generic line to the preamble.
+
         Args:
             entry: Generic LaTeX entry to add
         """
@@ -111,6 +116,7 @@ class TeXDocument:
 
     def add_to_body(self, text: str, font: str | None = None, font_size: int | float | None = None):
         """Add text to the document body.
+
         Args:
             text: Text to add to the body. If it contains LaTeX commands, they will be processed as such.
             font: Optional font to use for this text. If None, DEFAULT_FONT is used.
@@ -128,10 +134,13 @@ class TeXDocument:
 
     def to_string(self, body_only: bool = False) -> str:
         """Return the string representation of the LaTeX document or its body.
+
         Args:
             body_only: If True, return only the document body without preamble.
+
         Raises:
             AssertionError: If the document class is not set or the document body is empty.
+
         Returns:
             str: The LaTeX document or its body as a string.
         """
@@ -172,17 +181,22 @@ class TeXDocument:
 
     def __str__(self) -> str:
         """Return the string representation of the LaTeX document.
+
         Returns:
-            str: The LaTeX document as a string."""
+            str: The LaTeX document as a string.
+        """
         return self.to_string(body_only=False)
 
 
 def get_options_str(options: str | list[str]) -> str:
     """Convert options to a string format for LaTeX.
+
     Args:
         options: Options as a string or a list of strings
+
     Returns:
         str: A comma-separated string of options, or a single string if not a list.
+
     Raises:
         AssertionError: If options are not specified.
     """

@@ -13,6 +13,7 @@ dependencies = [
     { name = "numpy" },
     { name = "plastex" },
     { name = "pytest" },
+    { name = "pytriwild" },
     { name = "scipy" },
     { name = "svgpathtools" },
 ]
@@ -36,6 +37,7 @@ requires-dist = [
     { name = "plastex", specifier = "==3.1" },
     { name = "pylint", marker = "extra == 'dev'", specifier = ">=2.17.0" },
     { name = "pytest", specifier = "==8.4.0" },
+    { name = "pytriwild", git = "https://github.com/8bit-euclid/TriWild.git?rev=master" },
     { name = "scipy", specifier = "==1.15.3" },
     { name = "svgpathtools", specifier = ">=1.7.1" },
 ]
@@ -405,6 +407,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/30/5f/e959a442435e24f6fb5a01aec6c657079ceaca1b3baf18561c3728d681da/pytokens-0.1.10.tar.gz", hash = "sha256:c9a4bfa0be1d26aebce03e6884ba454e842f186a59ea43a6d3b25af58223c044", size = 12171, upload-time = "2025-02-19T14:51:22.001Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/e5/63bed382f6a7a5ba70e7e132b8b7b8abbcf4888ffa6be4877698dcfbed7d/pytokens-0.1.10-py3-none-any.whl", hash = "sha256:db7b72284e480e69fb085d9f251f66b3d2df8b7166059261258ff35f50fb711b", size = 12046, upload-time = "2025-02-19T14:51:18.694Z" },
+]
+
+[[package]]
+name = "pytriwild"
+version = "0.1.0"
+source = { git = "https://github.com/8bit-euclid/TriWild.git?rev=master#e43f64eb366a4cd978cdab06686f787fa96b6a83" }
+dependencies = [
+    { name = "numpy" },
 ]
 
 [[package]]

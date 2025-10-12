@@ -24,8 +24,10 @@ class TeXDocumentProcessor:
 
     def __init__(self, texfile: TeXDocument):
         """Initialize the converter with LaTeX content.
+
         Args:
-            texfile: A TeXFile object containing LaTeX content."""
+            texfile: A TeXFile object containing LaTeX content.
+        """
         assert isinstance(texfile, TeXDocument), "Content must be a TeXFile instance."
         self._content = str(texfile)
         self._temp_dir: tempfile.TemporaryDirectory = None
@@ -34,10 +36,11 @@ class TeXDocumentProcessor:
 
     def __enter__(self) -> tuple[GlyphPathsType, GlyphPositionsType]:
         """Context manager to handle LaTeX compilation, SVG generation, and file cleanup.
+
         Returns:
             A tuple containing:
-                - A dictionary mapping glyph IDs to their (unique) SVG paths.
-                - A list of ordered glyph IDs and their positions (x, y).
+            - A dictionary mapping glyph IDs to their (unique) SVG paths.
+            - A list of ordered glyph IDs and their positions (x, y).
         """
         # Create a temporary directory to store the LaTeX, SVG, and other generated files
         self._temp_dir = tempfile.TemporaryDirectory()
@@ -55,6 +58,7 @@ class TeXDocumentProcessor:
 
     def _convert_tex_to_dvi(self):
         """Compile the LaTeX file to DVI format and prepare for glyph extraction.
+
         Raises:
             RuntimeError: If the LaTeX compilation fails.
         """
@@ -86,8 +90,10 @@ class TeXDocumentProcessor:
 
     def _convert_dvi_to_svg(self):
         """Convert the DVI file to SVG format using dvisvgm.
+
         Raises:
-            RuntimeError: If the DVI to SVG conversion fails."""
+            RuntimeError: If the DVI to SVG conversion fails.
+        """
         tex_path = self._tex_path
         svg_file = tex_path / f"{self._tex_name}.svg"
 
@@ -122,10 +128,13 @@ class TeXDocumentProcessor:
 
     def _get_svg_file(self) -> Path:
         """Get the SVG file generated from the LaTeX document.
+
         Returns:
             Path: The path to the SVG file.
+
         Raises:
-            RuntimeError: If the SVG file is not found."""
+            RuntimeError: If the SVG file is not found.
+        """
         svg_file = self._tex_path / f"{self._tex_name}.svg"
         if not svg_file.exists():
             raise RuntimeError(
@@ -138,10 +147,12 @@ class TeXDocumentProcessor:
 
     def _extract_glyph_data(self) -> tuple[GlyphPathsType, GlyphPositionsType]:
         """Extract cubic Bézier curves and bounding boxes using svgpathtools.
+
         Returns:
             A tuple containing:
-                - A dictionary mapping glyph IDs to their (unique) SVG paths.
-                - A list of ordered glyph IDs and their positions (x, y).
+            - A dictionary mapping glyph IDs to their (unique) SVG paths.
+            - A list of ordered glyph IDs and their positions (x, y).
+
         Raises:
             RuntimeError: If the SVG file cannot be processed or glyphs are not found.
         """
@@ -172,6 +183,7 @@ class TeXDocumentProcessor:
 
 def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.CalledProcessError):
     """Print the stdout and stderr result of a subprocess.
+
     Args:
         command: The command that was run.
         result: The result of the subprocess run, which can be a CompletedProcess or CalledProcessError.
