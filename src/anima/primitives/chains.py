@@ -4,7 +4,7 @@ import math
 from anima.globals.general import Vector, are_vectors_close, clip, reciprocal
 
 from .curves import DEFAULT_LINE_WIDTH, Curve
-from .joints import DEFAULT_LINE_WIDTH, Joint, RoundJoint
+from .joints import Joint, RoundJoint
 
 
 class CurveChain(Curve):
@@ -15,6 +15,14 @@ class CurveChain(Curve):
         bias: float = 0.0,
         name: str = "CurveChain",
     ):
+        """Initialise a CurveChain with a list of curves.
+
+        Args:
+            curves: A list of curves to be chained together.
+            width: The width of the curve chain.
+            bias: The bias of the curve chain.
+            name: The name of the curve chain.
+        """
         for c in curves:
             assert not isinstance(c, Joint), "The curves in a curve chain cannot be joints."
         self._curves: list[type[Curve]] = curves
@@ -46,40 +54,94 @@ class CurveChain(Curve):
         self.set_bias(bias)
 
     def set_width(self, width: float):
+        """Set the width of the curve chain.
+
+        Args:
+            width: The width of the curve chain.
+        """
         for c in self._all_entities:
             c.set_width(width)
         self._update_length()
 
     def set_bias(self, bias: float):
+        """Set the bias of the curve chain.
+
+        Args:
+            bias: The bias of the curve chain.
+        """
         for c in self._all_entities:
             c.set_bias(bias)
         self._update_length()
 
     def point(self, t: float) -> Vector:
+        """Compute the point on the curve chain associated to the paramater t.
+
+        Args:
+            t: The parameter value.
+
+        Returns:
+            The point on the curve chain associated to the paramater t.
+        """
         crv, _, t = self._compute_curve_info(t)
         return crv.point(t)
 
     def tangent(self, t: float, normalise=False) -> Vector:
+        """Compute the tangent of the curve chain associated to the paramater t.
+
+        Args:
+            t: The parameter value.
+            normalise: Whether to normalise the tangent.
+
+        Returns:
+            The tangent of the curve chain associated to the paramater t.
+        """
         crv, _, t = self._compute_curve_info(t)
         return crv.tangent(t, normalise)
 
     def normal(self, t: float, normalise=False) -> Vector:
+        """Compute the normal of the curve chain associated to the paramater t.
+
+        Args:
+            t: The parameter value.
+            normalise: Whether to normalise the normal.
+
+        Returns:
+            The normal of the curve chain associated to the paramater t.
+        """
         crv, _, t = self._compute_curve_info(t)
         return crv.normal(t, normalise)
 
     def length(self, t: float = 1.0) -> float:
+        """Compute the length of the curve chain up to the paramater t.
+
+        Args:
+            t: The parameter value. Defaults to 1.0 (full length).
+
+        Returns:
+            The length of the curve chain up to the paramater t.
+        """
         assert 0.0 <= t <= 1.0, f"Parameter must be in range [0, 1]. Got: {t:.3f}"
         return t * self._length
 
     # Private methods -------------------------------------------------------------------------------------- #
     @property
     def _all_entities(self) -> list[type[Curve]]:
-        """Attributes to exclude from deep copying"""
+        """Get the list of all entities in the curve chain (curves and joints).
+
+        Returns:
+            list[type[Curve]]: A list of all entities in the curve chain (curves and joints).
+        """
         curves = self._curves
         joints = self._joints
         return [crv for pair in zip(curves, joints) for crv in pair] + curves[-1:]
 
     def _set_param(self, param: float, end_idx: int):
+        """Set the parameter value for the start or end of the curve chain.
+
+        Args:
+            param: The parameter value.
+            end_idx: The index of the end of the curve chain.
+        """
         param_old = getattr(self, f"param_{end_idx}")
         super()._set_param(param, end_idx)
 
@@ -98,10 +160,23 @@ class CurveChain(Curve):
                 c._set_param(1, end_idx)
 
     def _update_attachment(self, end_index: int):
-        # todo
+        """Update the attachment at the specified end of the curve chain.
+
+        Args:
+            end_index: The index of the end of the curve chain.
+        """
+        # TODO: Implement attachment update for curve chains.
         super()._update_attachment(end_index)
 
     def _compute_curve_info(self, param: float) -> tuple[type[Curve], int, float]:
+        """Compute the curve and parameter value associated to the paramater t.
+
+        Args:
+            param: The parameter value.
+
+        Returns:
+            A tuple containing the curve, its index, and the parameter value associated to the paramater t.
+        """
         cumu_lens = self._cumu_lengths
         sz = len(cumu_lens)
 
@@ -116,6 +191,8 @@ class CurveChain(Curve):
         return crv, idx, crv_param
 
     def _update_length(self):
+        """Update the length, cumulative lengths, and inverse length of the curve chain after a change in width or bias."""
+
         # Compute and store curve lengths, cumulative lengths, and total length.
         curves = self._all_entities
         sz = len(curves)

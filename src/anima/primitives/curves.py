@@ -19,6 +19,16 @@ DEFAULT_GAP_LENGTH = 0.02
 class Curve(Object):
     """
     Base class from which all curve objects will derive.
+
+    Attributes:
+        _width: The width of the curve.
+        _bias: The bias of the curve.
+        _param_0: The parameter value at the start of the curve.
+        _param_1: The parameter value at the end of the curve.
+        _attachment_0: The attachment at the start of the curve.
+        _attachment_1: The attachment at the end of the curve.
+        _length: The length of the curve.
+        _length_inverse: The inverse length of the curve.
     """
 
     def __init__(
@@ -29,6 +39,15 @@ class Curve(Object):
         name: str = "Curve",
         **kwargs,
     ):
+        """Initialises the curve object.
+
+        Args:
+            bl_object: The blender object to which this curve belongs.
+            width: The width of the curve.
+            bias: The bias of the curve.
+            name: The name of the curve.
+            **kwargs: Additional keyword arguments for cooperative inheritance.
+        """
         super().__init__(bl_object=bl_object, name=name, **kwargs)
 
         self._width = width
@@ -44,18 +63,38 @@ class Curve(Object):
         self._update_length()
 
     def set_param_0(self, param: float):
+        """Set the parameter value for the start of the curve. Forwards to _set_param().
+
+        Args:
+            param: The parameter value.
+        """
         self._set_param(param, 0)
         return self
 
     def set_param_1(self, param: float):
+        """Set the parameter value for the end of the curve. Forwards to _set_param().
+
+        Args:
+            param: The parameter value.
+        """
         self._set_param(param, 1)
         return self
 
     def set_attachment_0(self, attmnt: type[Attachment]):
+        """Set the attachment for the start of the curve. Forwards to _set_attachment().
+
+        Args:
+            attmnt: The attachment.
+        """
         self._set_attachment(attmnt, 0)
         return self
 
     def set_attachment_1(self, attmnt: type[Attachment]):
+        """Set the attachment for the end of the curve. Forwards to _set_attachment().
+
+        Args:
+            attmnt: The attachment.
+        """
         self._set_attachment(attmnt, 1)
         return self
 
@@ -65,8 +104,14 @@ class Curve(Object):
         gap_len: float = DEFAULT_GAP_LENGTH,
         offset: float = 0.0,
     ):
-        """Instantiates and returns the dashed version of this curve. Note: DashedCurve hides this curve."""
-        from anima.primitives.dashed_curves import DashedCurve
+        """Instantiates and returns the dashed version of this curve. Note: DashedCurve hides this curve.
+
+        Args:
+            dash_len: The length of the dashes.
+            gap_len: The length of the gaps.
+            offset: The offset of the dashes.
+        """
+        from anima.primitives.dashed_curves import DashedCurve  # Avoid circular import.
 
         return DashedCurve(
             self,
@@ -81,128 +126,248 @@ class Curve(Object):
     @abstractmethod
     def set_width(self, width: float):
         """Sets the width of the curve by setting a line segment as its profile, which is then swept along
-        the curve."""
+        the curve.
+
+        Args:
+            width: The width of the curve.
+        """
         self._width = width
 
     @abstractmethod
     def set_bias(self, bias: float):
         """Sets a bias that offsets the curve from its centreline. A bias of 1 offsets the curve to the right
         (when looking along the tangent of the curve) by half the width, while a bias of -1 offsets it to the
-        left by half the width."""
+        left by half the width.
+
+        Args:
+            bias: The bias of the curve.
+        """
         self._bias = bias
 
     @abstractmethod
     def point(self, t: float) -> Vector:
-        """Computes the point on the curve associated to the paramater t."""
+        """Computes the point on the curve associated to the paramater t.
+
+        Args:
+            t: The parameter value.
+
+        Returns:
+            The point on the curve associated to the paramater t.
+        """
         pass
 
     @abstractmethod
     def tangent(self, t: float, normalise=False) -> Vector:
-        """Computes the tangent of the curve associated to the paramater t."""
+        """Computes the tangent of the curve associated to the paramater t.
+
+        Args:
+            t: The parameter value.
+            normalise: Whether to normalise the tangent.
+
+        Returns:
+            The tangent of the curve associated to the paramater t.
+        """
         pass
 
     @abstractmethod
     def normal(self, t: float, normalise=False) -> Vector:
-        """Computes the normal of the curve associated to the paramater t."""
+        """Computes the normal of the curve associated to the paramater t.
+
+        Args:
+            t: The parameter value.
+            normalise: Whether to normalise the normal.
+
+        Returns:
+            The normal of the curve associated to the paramater t.
+        """
         pass
 
     def binormal(self, t: float, normalise=False) -> Vector:
-        """Computes the binormal of the curve associated to the paramater t."""
+        """Computes the binormal of the curve associated to the paramater t.
+
+        Args:
+            t: The parameter value.
+            normalise: Whether to normalise the binormal.
+
+        Returns:
+            The binormal of the curve associated to the paramater t.
+        """
         tang = self.tangent(t, normalise)
         norm = self.normal(t, normalise)
         return tang.cross(norm)
 
     @abstractmethod
     def length(self, t: float = 1.0) -> float:
-        """Computes the length along the curve up to the paramater t."""
+        """Computes the length along the curve up to the paramater t.
+
+        Args:
+            t: The parameter value.
+
+        Returns:
+            The length along the curve up to the paramater t.
+        """
         pass
 
     def curvature(self, t: float) -> float:
-        """Computes the curvature of the curve at the paramater t."""
+        """Computes the curvature of the curve at the paramater t.
+
+        Args:
+            t: The parameter value.
+
+        Returns:
+            The curvature of the curve at the paramater t.
+        """
         raise Exception(f"Cannot yet compute curvature for curve {self.name}.")
 
     # Property getters/setters ----------------------------------------------------------------------------- #
 
     @property
     def width(self) -> float:
-        """Get the curve's width."""
+        """Get the curve's width.
+
+        Returns:
+            The curve's width.
+        """
         return self._width
 
     @width.setter
     def width(self, w: float):
-        """Set the curve's width."""
+        """Set the curve's width.
+
+        Args:
+            w: The curve's width.
+        """
         self.set_width(w)
 
     @property
     def bias(self) -> float:
-        """Get the curve's bias."""
+        """Get the curve's bias.
+
+        Returns:
+            The curve's bias.
+        """
         return self._bias
 
     @bias.setter
     def bias(self, b: float):
-        """Set the curve's bias."""
+        """Set the curve's bias.
+
+        Args:
+            b: The curve's bias.
+        """
         assert -1.0 <= b <= 1.0, "The bias must be in the range [-1, 1]."
         self.set_bias(b)
 
     @property
     def param_0(self) -> float:
-        """Get the curve's param_0."""
+        """Get the curve's param_0.
+
+        Returns:
+            The curve's param_0.
+        """
         return self._param_0
 
     @param_0.setter
     def param_0(self, param: float):
-        """Set the curve's param_0."""
+        """Set the curve's param_0.
+
+        Args:
+            param: The curve's param_0.
+        """
         self.set_param_0(param)
 
     @property
     def param_1(self) -> float:
-        """Get the curve's param_1."""
+        """Get the curve's param_1.
+
+        Returns:
+            The curve's param_1.
+        """
         return self._param_1
 
     @param_1.setter
     def param_1(self, param: float):
-        """Set the curve's param_1."""
+        """Set the curve's param_1.
+
+        Args:
+            param: The curve's param_1.
+        """
         self.set_param_1(param)
 
     @property
     def attachment_0(self) -> float:
-        """Get the curve's attachment_0."""
+        """Get the curve's attachment_0.
+
+        Returns:
+            The curve's attachment_0.
+        """
         return self._attachment_0
 
     @attachment_0.setter
     def attachment_0(self, attmnt: type[Attachment]):
-        """Set the curve's attachment_0."""
+        """Set the curve's attachment_0.
+
+        Args:
+            attmnt: The curve's attachment_0.
+        """
         self.set_attachment_0(attmnt)
 
     @property
     def attachment_1(self) -> float:
-        """Get the curve's attachment_1."""
+        """Get the curve's attachment_1.
+
+        Returns:
+            The curve's attachment_1.
+        """
         return self._attachment_1
 
     @attachment_1.setter
     def attachment_1(self, attmnt: type[Attachment]):
-        """Set the curve's attachment_1."""
+        """Set the curve's attachment_1.
+
+        Args:
+            attmnt: The curve's attachment_1.
+        """
         self.set_attachment_1(attmnt)
 
     # Private methods -------------------------------------------------------------------------------------- #
 
     @abstractmethod
     def _set_param(self, param: float, end_idx: int):
+        """Set the parameter value for the start or end of the curve.
+
+        Args:
+            param: The parameter value.
+            end_idx: The index of the end of the curve.
+        """
         assert end_idx in {0, 1}, "The end index must be either 0 or 1."
         setattr(self, f"_param_{end_idx}", param)
         self._update_attachment(end_idx)
 
     def _set_both_params(self, param: float):
+        """Set the same parameter value for both ends of the curve.
+
+        Args:
+            param: The parameter value.
+        """
         self.set_param_0(param)
         self.set_param_1(param)
 
     def _update_param_0(self):
+        """Update the parameter value for the start of the curve."""
         self.set_param_0(self._param_0)
 
     def _update_param_1(self):
+        """Update the parameter value for the end of the curve."""
         self.set_param_1(self._param_1)
 
     def _set_attachment(self, attmnt: type[Attachment], end_idx: int):
+        """Set the attachment for the start or end of the curve.
+
+        Args:
+            attmnt: The attachment.
+            end_idx: The index of the end of the curve.
+        """
         setattr(self, f"_attachment_{end_idx}", attmnt)
         getattr(self, f"_update_param_{end_idx}")()
         from .endcaps import Endcap
@@ -214,33 +379,68 @@ class Curve(Object):
 
     @abstractmethod
     def _update_attachment(self, end_idx: int):
+        """Update the attachment at the specified end of the curve.
+
+        Args:
+            end_idx: The index of the end of the curve.
+        """
         pass
 
     def _attachments(self):
+        """Get the attachments at both ends of the curve.
+
+        Returns:
+            The attachments at both ends of the curve.
+        """
         return [self._attachment_0, self._attachment_1]
 
     def _update_attachment_0(self):
+        """Update the attachment at the start of the curve."""
         self._update_attachment(0)
 
     def _update_attachment_1(self):
+        """Update the attachment at the end of the curve."""
         self._update_attachment(1)
 
     def _update_attachments(self):
+        """Update the attachments at both ends of the curve."""
         self._update_attachment_0()
         self._update_attachment_1()
 
     def _compute_end_offset(self, end_idx: int, is_distance=False):
+        """Compute the offset of the attachment at the specified end of the curve.
+
+        Args:
+            end_idx: The index of the end of the curve.
+            is_distance: Whether to return the offset as a distance or a parameter.
+        """
         attmt = getattr(self, f"_attachment_{end_idx}")
         mult = self._length_inverse if not is_distance else 1
         return mult * attmt.offset_distance() if attmt is not None else 0.0
 
     def _compute_end_offset_0(self, is_distance=False) -> float:
+        """Compute the offset of the attachment at the start of the curve.
+
+        Args:
+            is_distance: Whether to return the offset as a distance or a parameter.
+        """
         return self._compute_end_offset(0, is_distance)
 
     def _compute_end_offset_1(self, is_distance=False) -> float:
+        """Compute the offset of the attachment at the end of the curve.
+
+        Args:
+            is_distance: Whether to return the offset as a distance or a parameter.
+        """
         return self._compute_end_offset(1, is_distance)
 
     def _compute_offset_param(self, param: float, end_idx: int) -> float:
+        """Compute the offset parameter for the specified end of the curve.
+
+        Args:
+            param: The parameter value.
+            end_idx: The index of the end of the curve.
+        """
         # Compute end offsets.
         attmt = getattr(self, f"_attachment_{end_idx}")
         offs_0 = self._compute_end_offset(0, is_distance=False)
@@ -255,11 +455,22 @@ class Curve(Object):
         return min(param + offs_0, 1.0 - offs_1) if end_idx == 0 else max(param - offs_1, offs_0)
 
     def _compute_offset_param_0(self, param: float) -> float:
+        """Compute the offset parameter for the start of the curve.
+
+        Args:
+            param: The parameter value.
+        """
         return self._compute_offset_param(param, 0)
 
     def _compute_offset_param_1(self, param: float) -> float:
+        """Compute the offset parameter for the end of the curve.
+
+        Args:
+            param: The parameter value.
+        """
         return self._compute_offset_param(param, 1)
 
     def _update_length(self):
+        """Update the length and inverse length of the curve."""
         self._length = self.length()
         self._length_inverse = reciprocal(self._length)
