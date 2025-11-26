@@ -43,12 +43,13 @@ def test_text_to_glyphs():
     # \end{align}
     # """
     # text = '$E = mc^2$'
-    text = r"$E^2 = (\mathit{mc}^2)^2 + (pc)^2$"
+    # text = r"$E^2 = (\mathit{mc}^2)^2 + (pc)^2$"
     # text = r'$E = \mathit{mc}^2$'
     # text = 'C'
-    # text = '8'
+    # text = "B"
+    text = "o08AaB"  # Test glyphs with holes
     # text = 'O{\Huge 8}'
-    # text = 'O'
+    # text = "O"
     # text = r'$s = ut + \frac{1}{2}at^2$'
     # text = r'$\frac{x^2 - 1}{x^2 + 1}$'
 

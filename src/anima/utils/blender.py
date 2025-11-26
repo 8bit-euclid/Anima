@@ -76,9 +76,10 @@ class BlenderProcess:
 @functools.lru_cache(maxsize=1)
 def get_blender_root_path() -> Path:
     """Get the root path of the Blender executable from pyproject.toml.
-    Constructs the full path dynamically from install-dir and version.
+
     Returns:
         Path: The root path of the Blender executable.
+
     Raises:
         FileNotFoundError: If Blender path does not exist.
     """
@@ -103,8 +104,10 @@ def get_blender_root_path() -> Path:
 @functools.lru_cache(maxsize=1)
 def get_blender_executable_path() -> Path:
     """Get Blender executable path from project config.
+
     Returns:
         Path: The path to the Blender executable.
+
     Raises:
         FileNotFoundError: If Blender path does not exist.
     """
@@ -115,10 +118,52 @@ def get_blender_executable_path() -> Path:
 
 
 @functools.lru_cache(maxsize=1)
+def get_blender_python_path() -> Path:
+    """Get the path to Blender's Python executable.
+
+    Returns:
+        Path: The path to Blender's Python executable.
+
+    Raises:
+        FileNotFoundError: If the Python executable path does not exist.
+    """
+    bl_path = get_blender_root_path()
+    bl_version = blender_version(major_minor=True)
+    python_path = bl_path / bl_version / "python" / "bin" / "python3.11"
+
+    if not python_path.exists():
+        raise FileNotFoundError(f"Blender Python executable does not exist: {python_path}")
+
+    return python_path
+
+
+@functools.lru_cache(maxsize=1)
+def get_blender_site_packages_path() -> Path:
+    """Get the site-packages path for Blender's Python installation.
+
+    Returns:
+        Path: The path to Blender's site-packages directory.
+
+    Raises:
+        FileNotFoundError: If the site-packages path does not exist.
+    """
+    bl_path = get_blender_root_path()
+    bl_version = blender_version(major_minor=True)
+    site_packages_path = bl_path / bl_version / "python" / "lib" / "python3.11" / "site-packages"
+
+    if not site_packages_path.exists():
+        raise FileNotFoundError(f"Blender site-packages path does not exist: {site_packages_path}")
+
+    return site_packages_path
+
+
+@functools.lru_cache(maxsize=1)
 def blender_version(major_minor: bool = False) -> str:
     """Get the Blender version from pyproject.toml configuration.
+
     Args:
         major_minor (bool): If True, return only the major.minor version (e.g., "4.5").
+
     Returns:
         str: The Blender version (e.g., "4.5.1" or "4.5").
     """
