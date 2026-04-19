@@ -138,11 +138,11 @@ class TeXDocumentProcessor:
         svg_file = self._tex_path / f"{self._tex_name}.svg"
         if not svg_file.exists():
             raise RuntimeError(
-                f"SVG file '{svg_file}' not found. " "Ensure that the DVI to SVG conversion was successful."
+                f"SVG file '{svg_file}' not found. Ensure that the DVI to SVG conversion was successful."
             )
         # Print contents of the SVG file for debugging
-        with open(svg_file, "r", encoding="utf-8") as f:
-            logger.trace(format_output(f"SVG file content", f.read()))
+        with open(svg_file, encoding="utf-8") as f:
+            logger.trace(format_output("SVG file content", f.read()))
         return svg_file
 
     def _extract_glyph_data(self) -> tuple[GlyphPathsType, GlyphPositionsType]:

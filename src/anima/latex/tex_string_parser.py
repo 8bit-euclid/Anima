@@ -1,9 +1,6 @@
-import re
-
 from plasTeX.TeX import TeX
 
 from anima.diagnostics import format_output, logger
-from anima.latex.tex_object import TeXObject
 
 SPACING_COMMANDS = {
     "!",

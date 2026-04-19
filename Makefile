@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help all install install-dev install-debug install-release update install-blender-deps run test test-verbose test-ignored bench format format-check lint clean clean-all
+.PHONY: help all install install-dev install-debug install-release update install-blender-deps run test test-verbose test-ignored bench format format-check lint lint-fix precommit-install precommit clean clean-all
 
 
 # Default target
@@ -66,21 +66,26 @@ bench: ## Run benchmarks (if any)
 
 # Code quality targets
 format-check: ## Check if code is formatted correctly
-	@uv tool run black --check .
-	@uv tool run isort --check-only .
+	@uv run ruff format --check .
 
-format: ## Format the code using black and isort
+format: ## Format the code using ruff
 	@echo "Formatting the code..."
-	@uv tool run black .
-	@uv tool run isort .
+	@uv run ruff format .
 
-lint: ## Lint the project using pylint and flake8 (temporarily suppressed)
-	@echo "Linting the project (temporarily suppressed)..."
-	@echo "pylint... (suppressed)"
-	@uv tool run pylint . > /dev/null 2>&1 || true
-	@echo "flake8... (suppressed)"
-	@uv tool run flake8 . > /dev/null 2>&1 || true
-	@echo "Linting completed (all warnings and errors suppressed)"
+lint: ## Lint the project using ruff
+	@echo "Linting the project..."
+	@uv run ruff check .
+
+lint-fix: ## Lint and auto-fix issues
+	@echo "Linting and auto-fixing..."
+	@uv run ruff check --fix .
+
+precommit-install: ## Install pre-commit hooks
+	@echo "Installing pre-commit hooks..."
+	@uv run pre-commit install
+
+precommit: ## Run pre-commit on all files
+	@uv run pre-commit run --all-files
 
 
 # Maintenance targets

@@ -21,7 +21,7 @@ def create_rect_path(x=0, y=0, width=10, height=10):
         svgpathtools.Path: A closed rectangular path.
     """
     # Rectangle: bottom-left -> bottom-right -> top-right -> top-left -> close
-    d = f"M {x},{y} L {x+width},{y} L {x+width},{y+height} L {x},{y+height} Z"
+    d = f"M {x},{y} L {x + width},{y} L {x + width},{y + height} L {x},{y + height} Z"
     return svgtools.parse_path(d)
 
 
@@ -176,6 +176,6 @@ def assert_length_valid(curve, expected_total: float = None, places: int = 6):
     assert curve.length(0) == 0.0, "length(0) should be 0"
     if expected_total is not None:
         actual = curve.length(1)
-        assert actual == pytest.approx(
-            expected_total, rel=10 ** (-places)
-        ), f"length(1) = {actual}, expected {expected_total}"
+        assert actual == pytest.approx(expected_total, rel=10 ** (-places)), (
+            f"length(1) = {actual}, expected {expected_total}"
+        )

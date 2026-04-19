@@ -24,6 +24,6 @@ def receive_data(socket_stub: socket.socket) -> bytes:
             data.append(packet)
             if len(packet) < PACKET_SIZE:
                 break
-        except socket.timeout:
+        except TimeoutError:
             break
     return b"".join(data)

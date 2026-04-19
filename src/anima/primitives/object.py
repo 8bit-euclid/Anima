@@ -1,7 +1,7 @@
 import math
 from abc import ABC
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any
 
 import bpy
 
@@ -36,19 +36,20 @@ class Object(ABC):
         _write_logs: A boolean flag indicating whether to write logs for this object.
     """
 
-    def __init__(self, *, bl_object=None, name="Object", **kwargs):
+    def __init__(self, *, bl_object=None, name="Object", parent: "Object" = None, **kwargs):
         """Initialises the object.
 
         Args:
             bl_object (bpy.types.Object, optional): The Blender object to wrap. Defaults to None.
             name (str, optional): The name of the object. Defaults to 'Object'.
+            parent (Object, optional): The parent object. Defaults to None.
             **kwargs: Additional keyword arguments for cooperative inheritance.
         """
         # There should be no additional keyword arguments (assuming cooperative inheritance).
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {kwargs}")
 
-        self.parent: type[Object] = None
+        self._parent: type[Object] = None
         self.children: list[type[Object]] = []
 
         if bl_object is None:
@@ -57,6 +58,10 @@ class Object(ABC):
         self._bl_object = bl_object
         self.shape_keys = []
         self._write_logs = False
+
+        # Set parent after bl_object is initialized (required for Blender parenting)
+        if parent is not None:
+            self._set_parent(parent)
 
     def add_subobject(self, object):
         """Adds a sub-object (of type BaseObject) as a child and sets current object as its parent.
@@ -103,7 +108,7 @@ class Object(ABC):
 
         Args:
             handler (function): The handler function to add"""
-        pass
+        raise NotImplementedError("Subclasses should implement add_handler if needed")
 
     def create_shape_key(self, name):
         """Create and return a shape key for this object.
@@ -469,6 +474,28 @@ class Object(ABC):
         """Get the underlying Blender object."""
         return self._bl_object
 
+    @property
+    def parent(self) -> "Object":
+        """Get the object's parent.
+
+        Returns:
+            Object: The parent object, or None if no parent is set.
+        """
+        return self._parent
+
+    @parent.setter
+    def parent(self, value: "Object"):
+        """Set the object's parent.
+
+        Args:
+            value (Object): The parent object to set, or None to clear the parent.
+        """
+        if value is not None:
+            self._set_parent(value)
+        else:
+            self._parent = None
+            self._bl_object.parent = None
+
     # Debugging tools -------------------------------------------------------------------------------------- #
 
     def debug(self) -> bool:
@@ -506,7 +533,7 @@ class Object(ABC):
             value (Any): The value to set for the custom property."""
         self._bl_object[attr_name] = value
 
-    def __deepcopy__(self, memo: Optional[dict[int, Any]] = None):
+    def __deepcopy__(self, memo: dict[int, Any] | None = None):
         """Deepcopy all contents of the object except those in _deepcopy_excluded_attrs().
 
         Args:
@@ -549,7 +576,7 @@ class Object(ABC):
         Returns:
             set[str]: A set of attribute names to exclude from deep copying."""
         assert len(self.shape_keys) == 0, "Cannot deepcopy objects with shape keys yet."
-        return {"_bl_object", "shape_keys", "parent"}
+        return {"_bl_object", "shape_keys", "_parent"}
 
     # Private methods -------------------------------------------------------------------------------------- #
 
@@ -573,7 +600,7 @@ class Object(ABC):
         Raises:
             AssertionError: If the parent is not of type BaseObject."""
         assert is_animable(parent), "Can only set a parent of type BaseObject."
-        self.parent = parent
+        self._parent = parent
         self._bl_object.parent = parent._bl_object
 
     def _set_visibility(self, val: bool):

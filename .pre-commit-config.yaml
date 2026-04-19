@@ -1,0 +1,13 @@
+# Pre-commit hooks for code quality
+# Install: make precommit-install (or: uv run pre-commit install)
+# Run manually: make precommit (or: uv run pre-commit run --all-files)
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.0
+    hooks:
+      - id: ruff
+        name: ruff (lint + fix)
+        args: [--fix]
+      - id: ruff-format
+        name: ruff (format)

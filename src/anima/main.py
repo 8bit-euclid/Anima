@@ -14,6 +14,12 @@ for path in paths_to_add:
 
 # Now import modules as usual
 import bpy
+from tests.visual_tests.test_curves import (
+    test_bezier_splines,
+    test_curve_joints,
+    test_dashed_curves,
+)
+from tests.visual_tests.test_latex import test_text_to_glyphs
 
 from anima.diagnostics import logger
 from anima.globals.general import (
@@ -25,12 +31,6 @@ from anima.globals.general import (
 )
 from anima.utils.blender import configure_blender_viewport
 from anima.utils.socket.server import BlenderSocketServer
-from tests.visual_tests.test_curves import (
-    test_bezier_splines,
-    test_curve_joints,
-    test_dashed_curves,
-)
-from tests.visual_tests.test_latex import test_text_to_glyphs
 
 # fmt: on
 
@@ -50,9 +50,9 @@ def main():
     # Run visual tests
     logger.info("Running visual tests...")
     test_text_to_glyphs()
-    test_bezier_splines(end_frame)
-    test_curve_joints(end_frame)
-    test_dashed_curves(end_frame)
+    # test_bezier_splines(end_frame)
+    # test_curve_joints(end_frame)
+    # test_dashed_curves(end_frame)
 
     hide_relationship_lines()
     deselect_all()

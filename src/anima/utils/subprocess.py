@@ -1,5 +1,4 @@
 import subprocess
-from pathlib import Path
 
 from anima.diagnostics import logger
 from anima.utils.project import get_main_file_path

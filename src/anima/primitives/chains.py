@@ -13,6 +13,7 @@ class CurveChain(Curve):
         curves: list[type[Curve]],
         width: float = DEFAULT_LINE_WIDTH,
         bias: float = 0.0,
+        create_joints: bool = True,
         name: str = "CurveChain",
     ):
         """Initialise a CurveChain with a list of curves.
@@ -21,6 +22,8 @@ class CurveChain(Curve):
             curves: A list of curves to be chained together.
             width: The width of the curve chain.
             bias: The bias of the curve chain.
+            create_joints: Whether to create joints between curves. Defaults to False
+                as joints are visually subtle but computationally expensive.
             name: The name of the curve chain.
         """
         for c in curves:
@@ -31,13 +34,14 @@ class CurveChain(Curve):
         self._curve_0_idx: int = None
         self._curve_1_idx: int = None
 
-        # Initialise joints.
+        # Validate curve connectivity and optionally create joints.
         for curve_1, curve_2 in zip(curves, curves[1:]):
-            assert are_vectors_close(
-                curve_1.point(1), curve_2.point(0)
-            ), f"The end-point of the first curve must be the start-point for the second."
-            joint = RoundJoint(curve_1, curve_2)
-            self._joints.append(joint)
+            assert are_vectors_close(curve_1.point(1), curve_2.point(0)), (
+                "The end-point of the first curve must be the start-point for the second."
+            )
+            if create_joints:
+                joint = RoundJoint(curve_1, curve_2)
+                self._joints.append(joint)
 
         # Set indices of curves 0 and 1.
         self._curve_0_idx = 0
@@ -123,6 +127,15 @@ class CurveChain(Curve):
         assert 0.0 <= t <= 1.0, f"Parameter must be in range [0, 1]. Got: {t:.3f}"
         return t * self._length
 
+    @property
+    def curves(self) -> list[type[Curve]]:
+        """Get the list of curves in the curve chain (excluding joints).
+
+        Returns:
+            list[type[Curve]]: A list of curves in the curve chain.
+        """
+        return self._curves
+
     # Private methods -------------------------------------------------------------------------------------- #
     @property
     def _all_entities(self) -> list[type[Curve]]:
@@ -133,6 +146,8 @@ class CurveChain(Curve):
         """
         curves = self._curves
         joints = self._joints
+        if not joints:
+            return curves
         return [crv for pair in zip(curves, joints) for crv in pair] + curves[-1:]
 
     def _set_param(self, param: float, end_idx: int):
@@ -218,8 +233,112 @@ class CurveChain(Curve):
 
         # Need to override super()._update_length() to avoid a cycle. This is because the latter invokes
         # self.length(), which requires self._length to have already been set.
-        assert math.isclose(
-            cumu_len, true_len, abs_tol=1e-6
-        ), f"Inconsistent total length. Abs Error: {abs(cumu_len - true_len)}"
+        assert math.isclose(cumu_len, true_len, abs_tol=1e-6), (
+            f"Inconsistent total length. Abs Error: {abs(cumu_len - true_len)}"
+        )
         self._length = cumu_len
         self._length_inverse = reciprocal(cumu_len)
+
+    @classmethod
+    def from_svg_path(
+        cls,
+        path,
+        create_joints: bool = False,
+        name: str = "CurveChain",
+        **kwargs,
+    ):
+        """Create a CurveChain from an SVG path.
+
+        Args:
+            path: An svgpathtools.Path object.
+            create_joints: Whether to create joints between curves.
+            name: The name of the curve chain.
+            **kwargs: Additional keyword arguments passed to the constructor.
+
+        Returns:
+            A new CurveChain instance.
+        """
+        from anima.primitives.svg_utils import svg_path_to_curves
+
+        curves = svg_path_to_curves(path, reverse=False)
+        return cls(curves=curves, create_joints=create_joints, name=name, **kwargs)
+
+
+class CurveLoop(CurveChain):
+    """A closed curve chain where the last curve connects back to the first.
+
+    Used for representing closed paths like glyph subpath borders. Inherits all
+    functionality from CurveChain but validates closure and optionally adds a
+    closing joint between the last and first curves.
+    """
+
+    def __init__(
+        self,
+        curves: list[type[Curve]],
+        width: float = DEFAULT_LINE_WIDTH,
+        bias: float = 0.0,
+        create_joints: bool = False,
+        name: str = "CurveLoop",
+    ):
+        """Initialise a CurveLoop with a list of curves forming a closed loop.
+
+        Args:
+            curves: A list of curves to be chained together in a closed loop.
+            width: The width of the curve loop.
+            bias: The bias of the curve loop.
+            create_joints: Whether to create joints between curves. Defaults to False.
+            name: The name of the curve loop.
+
+        Raises:
+            AssertionError: If the curves do not form a closed loop.
+        """
+        # Validate closure: last endpoint must match first startpoint
+        if curves:
+            assert are_vectors_close(curves[-1].point(1), curves[0].point(0)), (
+                "CurveLoop must be closed: last curve endpoint must match first curve startpoint"
+            )
+
+        super().__init__(
+            curves=curves,
+            width=width,
+            bias=bias,
+            create_joints=create_joints,
+            name=name,
+        )
+
+        # Add closing joint between last and first curve if requested
+        if create_joints and len(curves) > 1:
+            closing_joint = RoundJoint(curves[-1], curves[0])
+            self._joints.append(closing_joint)
+            self.add_subobject(closing_joint)
+
+    @property
+    def closed(self) -> bool:
+        """Returns True since CurveLoop is always closed."""
+        return True
+
+    @classmethod
+    def from_svg_path(
+        cls,
+        path,
+        create_joints: bool = False,
+        name: str = "CurveLoop",
+        **kwargs,
+    ):
+        """Create a CurveLoop from an SVG path.
+
+        Args:
+            path: A closed svgpathtools.Path object.
+            create_joints: Whether to create joints between curves.
+            name: The name of the curve loop.
+            **kwargs: Additional keyword arguments passed to the constructor.
+
+        Returns:
+            A new CurveLoop instance.
+
+        Raises:
+            AssertionError: If the path is not closed.
+        """
+        assert path.isclosed(), "Path must be closed to create a CurveLoop"
+        # Use parent's from_svg_path but with the CurveLoop class
+        return super().from_svg_path(path, create_joints=create_joints, name=name, **kwargs)

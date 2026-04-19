@@ -12,17 +12,18 @@ from anima.utils.geometry import compute_signed_area
 
 
 class GlyphBody(Mesh):
-    def __init__(self, border: GlyphBorder):
+    def __init__(self, border: GlyphBorder, name: str = "GlyphBody"):
         """Initialize a GlyphBody with a given GlyphBorder object.
 
         Args:
             border: A GlyphBorder object representing the border of the glyph.
+            name: Name for this GlyphBody object.
         """
         self._border: GlyphBorder = border
         self._vertices: list[Vector] = []  # 2D vertices
         self._faces: list[tuple[int, int, int]] = []  # Triangular faces
 
-        super().__init__()
+        super().__init__(name=name)
 
         self._construct()
 
@@ -54,8 +55,7 @@ class GlyphBody(Mesh):
         logger.trace(f"PyTriWild triangulation: {len(V_out)} vertices, {len(F_out)} faces")
 
         # Store results - convert 2D vertices to 3D (z=0)
-        # Negate y-coordinates to match the reflection applied to border curves
-        self._vertices = [Vector((v[0], -v[1], 0.0)) for v in V_out]
+        self._vertices = [Vector((v[0], v[1], 0.0)) for v in V_out]
         self._faces = [tuple(f) for f in F_out]
 
         # Update mesh

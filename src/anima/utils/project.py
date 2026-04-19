@@ -64,7 +64,7 @@ def get_pyproject_config() -> dict:
         return {}
 
 
-@functools.lru_cache()
+@functools.lru_cache
 def get_pyproject_config_entry(key_path: str, default=None):
     """Retrieve a value from pyproject.toml using a dotted key path.
     Args:
@@ -95,7 +95,7 @@ def validate_project_configuration():
     errors = []
     path = get_blender_config().get("install-dir", "")
     if not path:
-        errors.append(f"Blender path is not set in pyproject.toml")
+        errors.append("Blender path is not set in pyproject.toml")
     elif not Path(path).expanduser().exists():
         errors.append(f"Blender path does not exist: {Path(path).expanduser()}")
 

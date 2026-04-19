@@ -1,6 +1,5 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections import namedtuple
-from enum import Enum
 
 Interval = namedtuple("Interval", ["start", "stop"])
 

@@ -1,6 +1,3 @@
-import os
-from pathlib import Path
-
 DEFAULT_FONT = "TeX Gyre Termes"
 DEFAULT_FONT_SIZE = 10  # Font size in points (LaTeX default is 10pt)
 
@@ -60,7 +57,7 @@ class TeXDocument:
             self.add_package("fontspec")
         disable_ligatures = "Ligatures=NoCommon"
         self.add_to_preamble(rf"\setmainfont{{{name}}}[{disable_ligatures}]")
-        self.add_to_preamble(rf"\fontsize{{{font_size}}}{{{1.2*float(font_size)}}}\selectfont")
+        self.add_to_preamble(rf"\fontsize{{{font_size}}}{{{1.2 * float(font_size)}}}\selectfont")
         return self
 
     def add_package(self, name: str, options: str | list[str] | None = None):
@@ -126,7 +123,7 @@ class TeXDocument:
         if font:
             parts.append(rf"\fontspec{{{font}}}")
         if font_size:
-            parts.append(rf"\fontsize{{{font_size}}}{{{1.2*font_size}}}\selectfont")
+            parts.append(rf"\fontsize{{{font_size}}}{{{1.2 * font_size}}}\selectfont")
         if parts:
             text = f"{{{' '.join(parts)} {text}}}"
         self._body.append(text)

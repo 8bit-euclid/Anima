@@ -1,7 +1,7 @@
 import functools
 import socket
 import time
-from typing import Callable
+from collections.abc import Callable
 
 import dill
 
@@ -55,9 +55,9 @@ class BlenderSocketClient:
         m = max_tries
         for i in range(m):
             if BlenderSocketClient._is_server_ready():
-                logger.debug(f"Socket server ready after {i+1} attempts")
+                logger.debug(f"Socket server ready after {i + 1} attempts")
                 return True
-            logger.trace(f"Socket server not ready: attempt {i+1}/{m}")
+            logger.trace(f"Socket server not ready: attempt {i + 1}/{m}")
             time.sleep(retry_in)
 
         logger.warning(f"Socket server not ready after {m} attempts")
@@ -76,7 +76,7 @@ class BlenderSocketClient:
                 s.settimeout(timeout)
                 s.connect((TCP_HOST, TCP_PORT))
                 return True
-        except (socket.timeout, ConnectionRefusedError, OSError):
+        except (TimeoutError, ConnectionRefusedError, OSError):
             return False
 
     @staticmethod
@@ -99,11 +99,11 @@ class BlenderSocketClient:
                 stub.connect((TCP_HOST, TCP_PORT))
 
                 # Construct the full command
-                logger.debug(f"Sending server request...")
+                logger.debug("Sending server request...")
                 stub.sendall(data)
                 BlenderSocketClient._handle_response(stub)
                 return True
-        except socket.timeout:
+        except TimeoutError:
             logger.error(f"Connection to {TCP_HOST}:{TCP_PORT} timed out")
             return False
         except ConnectionRefusedError:

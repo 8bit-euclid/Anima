@@ -454,7 +454,7 @@ class TestBezier:
     def test_normal(self):
         # Add enpoint params and generate random intermediate params.
         params = [0, 1]
-        for i in range(100):
+        for _ in range(100):
             params.append(random.random())
 
         # Test orthogonality of normal and tangent at each param.

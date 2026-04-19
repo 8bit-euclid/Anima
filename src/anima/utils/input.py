@@ -131,7 +131,7 @@ class BlenderInputMonitor:
             # List all windows with their PIDs using wmctrl
             out = subprocess.check_output(["wmctrl", "-lp"]).decode()
         except FileNotFoundError:
-            raise RuntimeError("wmctrl not found")
+            raise RuntimeError("wmctrl not found") from None
 
         for line in out.splitlines():
             parts = line.split()
