@@ -7,10 +7,8 @@ from pathlib import Path
 import svgpathtools as svgtools
 
 from anima.diagnostics import format_output, logger
-from anima.latex.tex_document import DEFAULT_FONT_SIZE, TeXDocument
+from anima.latex.tex_document import TeXDocument
 
-TEX_POINT_TO_BL_UNIT = 0.005  # Length (in Blender units) of 1pt (in LaTeX)
-SAMPLING_LENGTH = 0.01 * DEFAULT_FONT_SIZE * TEX_POINT_TO_BL_UNIT  # For points along glyph curves
 TEX_DEBUG_MODE = True  # Print LaTeX and DVI logs to console
 SVG_NAMESPACE = {"svg": "http://www.w3.org/2000/svg"}  # Namespace for SVG elements in XML
 

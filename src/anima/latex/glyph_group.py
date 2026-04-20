@@ -1,6 +1,6 @@
 from anima.latex.glyph import Glyph
 from anima.latex.tex_document import TeXDocument
-from anima.latex.tex_document_processor import TEX_POINT_TO_BL_UNIT, TeXDocumentProcessor
+from anima.latex.tex_document_processor import TeXDocumentProcessor
 from anima.primitives.object import Object
 
 
@@ -51,7 +51,7 @@ class GlyphGroup(Object):
         with TeXDocumentProcessor(content) as (glyph_paths, positions):
             for gid, (x, y) in positions:
                 glyph = Glyph(glyph_paths[gid], name=gid)
-                glyph.location = (x * TEX_POINT_TO_BL_UNIT, y * TEX_POINT_TO_BL_UNIT, 0)
+                glyph.location = (x, y, 0)
                 group.add_glyph(glyph)
 
         return group
