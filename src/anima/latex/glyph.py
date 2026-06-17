@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import svgpathtools as svgtools
 
-from anima.latex.glyph_body import GlyphBody
+from anima.latex.glyph_body import GlyphBody, MeshQuality
 from anima.latex.glyph_border import GlyphBorder
 from anima.primitives.object import Object
 
@@ -31,12 +31,19 @@ class Glyph(Object):
         body: The GlyphBody containing the filled mesh.
     """
 
-    def __init__(self, path: svgtools.Path, name: str = None):
+    def __init__(
+        self,
+        path: svgtools.Path,
+        name: str = None,
+        mesh_quality: MeshQuality | None = None,
+    ):
         """Initialize a Glyph from an SVG path.
 
         Args:
             path: The SVG path object representing the glyph.
             name: Optional name for this glyph (defaults to "Glyph").
+            mesh_quality: Triangulation density/quality for the glyph body.
+                Defaults to MeshQuality.minimal().
         """
         assert isinstance(path, svgtools.Path), "Path must be an instance of svgpathtools.Path"
 
@@ -56,7 +63,7 @@ class Glyph(Object):
         self.add_subobject(self._border)
 
         # Create body and add as child
-        self._body = GlyphBody(self._border, name=f"{name}_body")
+        self._body = GlyphBody(self._border, name=f"{name}_body", mesh_quality=mesh_quality)
         self.add_subobject(self._body)
 
     @property

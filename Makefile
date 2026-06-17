@@ -15,11 +15,11 @@ install: install-dev ## Default install target (dev mode)
 
 install-dev: ## Install the project with development dependencies
 	@echo "Installing with development dependencies..."
-	@uv sync --dev
+	@uv sync --extra dev
 
 install-debug: ## Install the project in debug mode with dev dependencies
 	@echo "Installing in debug mode..."
-	@uv sync --dev --verbose
+	@uv sync --extra dev --verbose
 
 install-release: ## Install the project in production mode
 	@echo "Installing in production mode..."

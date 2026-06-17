@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 ## Blender-specific configurations
 [tool.blender]
-version = "4.5.3" # NOTE: When updating, the bpy version below may need to be changed as well
+version = "5.1.2" # NOTE: When updating, the bpy version below may need to be changed as well
 install-dir = "~/Applications/blender/"
 
 ## Project configurations
@@ -13,9 +13,9 @@ install-dir = "~/Applications/blender/"
 name = "anima"
 dynamic = ["version"]
 dependencies = [ 
-   "bpy==4.5.3", # NOTE: See `pip index versions bpy` for versions and match with tool.blender.version
+   "bpy==5.1.2", # NOTE: See `pip index versions bpy` for versions and match with tool.blender.version
    "mathutils==3.3.0",
-   "numpy==1.26.4",
+   "numpy==2.3.4", # Match the numpy version bundled with Blender 5.1.2
    "scipy==1.15.3",
    "pytest==8.4.0",
    "dill==0.4.0",
@@ -23,7 +23,7 @@ dependencies = [
    "svgpathtools>=1.7.1",
    "pytriwild @ git+https://github.com/8bit-euclid/TriWild.git@master",
 ]
-requires-python = ">=3.11.4,<=3.11.13" # Ensure compatibility with Blender's Python version
+requires-python = ">=3.13,<3.14" # Ensure compatibility with Blender's Python version (Blender 5.1.2 bundles CPython 3.13)
 description = "Anima is a Python framework for Blender focused on mathematical visualizations, procedural animations, and educational content."
 readme = "README.md"
 authors = [

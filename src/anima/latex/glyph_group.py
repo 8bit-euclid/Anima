@@ -1,4 +1,5 @@
 from anima.latex.glyph import Glyph
+from anima.latex.glyph_body import MeshQuality
 from anima.latex.tex_document import TeXDocument
 from anima.latex.tex_document_processor import TeXDocumentProcessor
 from anima.primitives.object import Object
@@ -30,7 +31,12 @@ class GlyphGroup(Object):
                 self.add_glyph(glyph)
 
     @classmethod
-    def from_tex_string(cls, text: str, name: str = "GlyphGroup") -> "GlyphGroup":
+    def from_tex_string(
+        cls,
+        text: str,
+        name: str = "GlyphGroup",
+        mesh_quality: MeshQuality | None = None,
+    ) -> "GlyphGroup":
         """Create a GlyphGroup from a LaTeX string, with glyphs correctly positioned.
 
         Compiles the LaTeX string to SVG via dvisvgm, extracts glyph paths and
@@ -40,6 +46,8 @@ class GlyphGroup(Object):
         Args:
             text: A LaTeX string (plain text or math mode).
             name: Name for the resulting GlyphGroup object.
+            mesh_quality: Triangulation density/quality applied to every glyph
+                body in the group. Defaults to MeshQuality.minimal().
 
         Returns:
             A GlyphGroup containing all positioned Glyph instances.
@@ -50,7 +58,7 @@ class GlyphGroup(Object):
 
         with TeXDocumentProcessor(content) as (glyph_paths, positions):
             for gid, (x, y) in positions:
-                glyph = Glyph(glyph_paths[gid], name=gid)
+                glyph = Glyph(glyph_paths[gid], name=gid, mesh_quality=mesh_quality)
                 glyph.location = (x, y, 0)
                 group.add_glyph(glyph)
 
