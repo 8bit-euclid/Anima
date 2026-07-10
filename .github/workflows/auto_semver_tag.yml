@@ -35,5 +35,9 @@ jobs:
         env:
           TAG: v${{ steps.version.outputs.version }}
         run: |
-          git tag $TAG
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git $TAG
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists on remote; nothing to do."
+            exit 0
+          fi
+          git tag "$TAG"
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git "$TAG"
