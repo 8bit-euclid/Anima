@@ -108,11 +108,18 @@ def validate_project_configuration():
 
 
 def configure_project_reload():
-    """Configure the script to auto-reload modules when changes are made."""
+    """Configure the script to auto-reload modules when code changes are detected."""
 
-    # Delete all project-related modules from sys.modules
+    proj_name = get_project_name()
+    # CRITICAL: The socket server singleton must survive reloads. Evicting its module would
+    # make main.py create a fresh server that fights the live one over the TCP port.
+    preserved = (f"{proj_name}.utils.socket",)
+
+    # Delete all project-related modules (except the preserved ones) from sys.modules to force reloads.
     modules_to_delete = [
-        name for name in sys.modules.keys() if name.startswith(get_project_name()) or name.startswith("tests")
+        name
+        for name in sys.modules.keys()
+        if (name.startswith(proj_name) or name.startswith("tests")) and not name.startswith(preserved)
     ]
     for name in modules_to_delete:
         del sys.modules[name]

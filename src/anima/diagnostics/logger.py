@@ -3,7 +3,8 @@ import sys
 
 from loguru import logger
 
-LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
+LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "TRACE")
+# LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
 SHOW_FUNCTION = os.getenv("ANIMA_LOG_SHOW_FUNCTION", "0") == "1"
 SHOW_PROCESS = os.getenv("ANIMA_LOG_SHOW_PROCESS", "0") == "1"
 
