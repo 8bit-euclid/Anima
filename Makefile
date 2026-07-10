@@ -1,5 +1,8 @@
 SHELL := /bin/bash
-.PHONY: help all install install-dev install-debug install-release update install-blender-deps run test test-verbose test-ignored bench format format-check lint clean clean-all
+.PHONY: help all install install-dev install-debug install-release update install-blender-deps check-system-deps install-system-deps run test test-verbose test-ignored bench format format-check lint lint-fix precommit-install precommit clean clean-all
+
+# Required system (non-Python) binaries, checked before running
+SYSTEM_DEPS := wmctrl
 
 
 # Default target
@@ -11,15 +14,15 @@ help: ## Show this help message
 # Project targets
 all: clean format lint install test ## Run clean, format, lint, install, and test
 
-install: install-dev ## Default install target (dev mode)
+install: install-system-deps install-dev ## Default install target (dev mode)
 
 install-dev: ## Install the project with development dependencies
 	@echo "Installing with development dependencies..."
-	@uv sync --dev
+	@uv sync --extra dev
 
 install-debug: ## Install the project in debug mode with dev dependencies
 	@echo "Installing in debug mode..."
-	@uv sync --dev --verbose
+	@uv sync --extra dev --verbose
 
 install-release: ## Install the project in production mode
 	@echo "Installing in production mode..."
@@ -30,6 +33,21 @@ install-blender-deps: ## Install Blender dependencies
 	@uv run python scripts/install_blender_dependencies.py
 	@echo "Blender dependencies successfully installed."
 
+check-system-deps: ## Verify required system binaries are installed
+	@missing=""; \
+	for dep in $(SYSTEM_DEPS); do \
+		command -v $$dep >/dev/null 2>&1 || missing="$$missing $$dep"; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		echo "Missing system dependencies:$$missing"; \
+		echo "Install them with: make install-system-deps"; \
+		exit 1; \
+	fi
+
+install-system-deps: ## Install required system binaries (requires sudo)
+	@echo "Installing system dependencies: $(SYSTEM_DEPS)..."
+	@sudo apt update && sudo apt install -y $(SYSTEM_DEPS)
+
 update: ## Update dependencies
 	@echo "Updating dependencies..."
 	@uv sync --upgrade
@@ -39,7 +57,7 @@ reinstall: clean-all install ## Clean and reinstall the project
 
 
 # Run targets
-run: ## Run the project
+run: check-system-deps ## Run the project
 	@uv run python run.py
 
 
@@ -66,21 +84,26 @@ bench: ## Run benchmarks (if any)
 
 # Code quality targets
 format-check: ## Check if code is formatted correctly
-	@uv tool run black --check .
-	@uv tool run isort --check-only .
+	@uv run ruff format --check .
 
-format: ## Format the code using black and isort
+format: ## Format the code using ruff
 	@echo "Formatting the code..."
-	@uv tool run black .
-	@uv tool run isort .
+	@uv run ruff format .
 
-lint: ## Lint the project using pylint and flake8 (temporarily suppressed)
-	@echo "Linting the project (temporarily suppressed)..."
-	@echo "pylint... (suppressed)"
-	@uv tool run pylint . > /dev/null 2>&1 || true
-	@echo "flake8... (suppressed)"
-	@uv tool run flake8 . > /dev/null 2>&1 || true
-	@echo "Linting completed (all warnings and errors suppressed)"
+lint: ## Lint the project using ruff
+	@echo "Linting the project..."
+	@uv run ruff check .
+
+lint-fix: ## Lint and auto-fix issues
+	@echo "Linting and auto-fixing..."
+	@uv run ruff check --fix .
+
+precommit-install: ## Install pre-commit hooks
+	@echo "Installing pre-commit hooks..."
+	@uv run pre-commit install
+
+precommit: ## Run pre-commit on all files
+	@uv run pre-commit run --all-files
 
 
 # Maintenance targets

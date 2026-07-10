@@ -15,12 +15,10 @@ class Empty(Object):
 
     def __init__(self, location=(0, 0, 0), parent=None, name="Empty"):
         mesh = create_mesh(f"{name}_mesh", verts=[(0, 0, 0)], faces=[])
-        obj = add_object(name, mesh, parent=parent)
+        obj = add_object(name, mesh)
 
-        super().__init__(bl_object=obj, name=name)
+        super().__init__(bl_object=obj, name=name, parent=parent)
         self.location = location
-        if parent is not None:
-            self.parent = parent
 
 
 class Point(Object):
@@ -29,6 +27,9 @@ class Point(Object):
     """
 
     def __init__(self, location=(0, 0, 0), radius=DEFAULT_POINT_RADIUS, parent=None, name="Point"):
+        # Normalize location to 3D (required for Blender's primitive_circle_add)
+        location = make_3d_vector(location)
+
         # Add a filled circle
         bpy.ops.mesh.primitive_circle_add(
             radius=radius,
@@ -39,7 +40,5 @@ class Point(Object):
         circle = bpy.context.object
         circle.name = name
 
-        super().__init__(bl_object=circle, name=name)
+        super().__init__(bl_object=circle, name=name, parent=parent)
         self.location = location
-        if parent is not None:
-            self.parent = parent

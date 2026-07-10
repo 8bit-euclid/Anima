@@ -3,7 +3,8 @@ import sys
 
 from loguru import logger
 
-LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
+LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "TRACE")
+# LOG_LEVEL = os.getenv("ANIMA_LOG_LEVEL", "DEBUG")
 SHOW_FUNCTION = os.getenv("ANIMA_LOG_SHOW_FUNCTION", "0") == "1"
 SHOW_PROCESS = os.getenv("ANIMA_LOG_SHOW_PROCESS", "0") == "1"
 
@@ -23,7 +24,7 @@ level = "<level>{level: <7}</level>"
 proc_id = "<light-blue>{process.id: >5}</light-blue>"
 thread_id = "<light-blue>{extra[thread_id_short]: >5}</light-blue>"
 func_name = "<light-blue>{function: >26}</light-blue>" if SHOW_FUNCTION else ""
-file_name = "<green>{file.name: >17}</green>"
+file_name = "<green>{file.name: >25}</green>"
 line_number = "<light-green>{line: <3}</light-green>"
 message = "<level>{message}</level>"
 

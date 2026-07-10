@@ -1,6 +1,6 @@
 import math
 from array import array
-from typing import Any, Optional
+from typing import Any
 
 import bpy
 import numpy as np
@@ -45,8 +45,8 @@ class BezierSpline(Curve):
             name: The name of the spline object.
             kwargs: Additional keyword arguments for the Curve base class.
         """
-        self._spl_params: "np.ndarray"[float] = None
-        self._len_params: "np.ndarray"[float] = None
+        self._spl_params: np.ndarray[float] = None
+        self._len_params: np.ndarray[float] = None
         self._cumu_bzr_lens: array[float] = None
         self._num_lookup_pts = kwargs.pop("num_lookup_pts", NUM_PARAM_LOOKUP_PTS)
 
@@ -62,7 +62,7 @@ class BezierSpline(Curve):
 
         # Set the bezier points and handle types to 'auto'.
         for i, pt in enumerate(spline_points):
-            assert isinstance(pt, (Vector, tuple)), "Expected a 2D/3D vector."
+            assert isinstance(pt, Vector | tuple), "Expected a 2D/3D vector."
             bpt = spline.bezier_points[i]
             bpt.co = make_3d_vector(pt)
             bpt.handle_left_type = "AUTO"
@@ -201,7 +201,7 @@ class BezierSpline(Curve):
         """Set the curve's resolution."""
         self.set_resolution(res)
 
-    def __deepcopy__(self, memo: Optional[dict[int, Any]] = None):
+    def __deepcopy__(self, memo: dict[int, Any] | None = None):
         """Create a deep copy of the BezierSpline object.
         Args:
             memo: Optional dictionary to keep track of already copied objects.

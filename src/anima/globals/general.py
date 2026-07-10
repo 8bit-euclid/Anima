@@ -1,13 +1,13 @@
 import inspect
 import math
 import sys
+from collections.abc import Iterable
 from copy import deepcopy
 from datetime import timedelta
 from pathlib import Path
-from typing import Iterable
 
 import bpy
-from mathutils import Euler, Matrix, Vector
+from mathutils import Euler as Euler, Matrix, Vector
 
 import anima.globals.easybpy as ebpy
 from anima.utils.project import get_project_root_path
@@ -19,9 +19,9 @@ DEFAULT_RELATIVE_SMALL = 1e-8
 
 
 def clip(val: int | float, min_val: int | float, max_val: int | float):
-    assert (
-        min_val <= max_val
-    ), f"Minimum value must be less than or equal to maximum value. {val} [{min_val}, {max_val}]"
+    assert min_val <= max_val, (
+        f"Minimum value must be less than or equal to maximum value. {val} [{min_val}, {max_val}]"
+    )
     return min(max(val, min_val), max_val)
 
 

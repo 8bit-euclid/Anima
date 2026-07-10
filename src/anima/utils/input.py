@@ -3,6 +3,7 @@ import subprocess
 import sys
 import termios
 import threading
+import time
 import tty
 
 import bpy
@@ -59,6 +60,11 @@ class BlenderInputMonitor:
             logger.info("Clearing existing handlers...")
             bpy.app.handlers.frame_change_pre.clear()
             bpy.app.handlers.frame_change_post.clear()
+
+            # Evict cached project modules so the reload picks up latest code changes from disk
+            from anima.utils.project import configure_project_reload
+
+            configure_project_reload()
 
             # Execute the script as __main__ so entrypoints run and __file__ is set
             try:
@@ -121,27 +127,36 @@ class BlenderInputMonitor:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_attrs)
 
-    def _blender_to_front(self):
-        """Bring the Blender window to the front (Linux only)."""
+    def _blender_to_front(self, retry_in: float = 0.1, timeout: float = 10.0):
+        """Bring the Blender window to the front, giving it keyboard focus (Linux only).
+        Args:
+            retry_in (float): Time interval between polling attempts, in seconds.
+            timeout (float): How long to keep polling for the window to appear, in seconds.
+                On a fresh launch the window only exists once Blender has finished starting up.
+        """
         if not sys.platform.startswith("linux"):
             raise RuntimeError("Only supported on Linux.")
 
         process = self._subproc_manager.subprocess
-        try:
-            # List all windows with their PIDs using wmctrl
-            out = subprocess.check_output(["wmctrl", "-lp"]).decode()
-        except FileNotFoundError:
-            raise RuntimeError("wmctrl not found")
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                # List all windows with their PIDs using wmctrl
+                out = subprocess.check_output(["wmctrl", "-lp"]).decode()
+            except FileNotFoundError:
+                raise RuntimeError("wmctrl not found") from None
 
-        for line in out.splitlines():
-            parts = line.split()
-            if len(parts) >= 4 and parts[2] == str(process.pid) and "Blender" in line:
-                wid = parts[0]
-                # Bring the Blender window to the front
-                subprocess.run(["wmctrl", "-ia", wid])
-                return
+            for line in out.splitlines():
+                parts = line.split()
+                if len(parts) >= 4 and parts[2] == str(process.pid) and "Blender" in line:
+                    wid = parts[0]
+                    # Bring the Blender window to the front
+                    subprocess.run(["wmctrl", "-ia", wid])
+                    return
 
-        raise RuntimeError(f"No Blender window found for PID {process.pid}")
+            if time.monotonic() >= deadline:
+                raise RuntimeError(f"No Blender window found for PID {process.pid}")
+            time.sleep(retry_in)
 
     def _stop_socket_server(self):
         """Stop the Blender socket server."""

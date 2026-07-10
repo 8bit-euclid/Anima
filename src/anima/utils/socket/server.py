@@ -107,9 +107,9 @@ class BlenderSocketServer:
                 stub, addr = sock.accept()
                 if not self._handle_connection(stub, addr):
                     break  # Stop signal received
-            except socket.timeout:
+            except TimeoutError:
                 continue
-            except socket.error as e:
+            except OSError as e:
                 logger.error(f"Socket server error: {e}")
             except Exception as e:
                 logger.error(f"Unexpected error in socket server: {e}")

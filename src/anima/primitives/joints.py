@@ -8,7 +8,6 @@ from anima.primitives.mesh import Mesh
 from .attachments import Attachment
 from .bezier_spline import BezierSpline
 from .curves import DEFAULT_LINE_WIDTH, Curve
-from .points import Point
 
 DEFAULT_FILLET_FACTOR = 0.0
 DEFAULT_RADIUS_FACTOR = 0.5
@@ -67,6 +66,9 @@ class Joint(Attachment, Curve, Mesh):
 
         # Now that the path is set, we can initialise super().
         super().__init__(connections=[curve_1, curve_2], width=width, bias=bias, name=name)
+
+        # Add path as a child for proper composite pattern hierarchy.
+        self.add_subobject(self._path)
 
         assert 0 <= fillet_factor <= 1, "Currently, only a fillet factor in [0, 1] is supported."
         self._fillet_factor = fillet_factor
@@ -154,7 +156,7 @@ class Joint(Attachment, Curve, Mesh):
             v = n2.copy()
 
             verts.extend([p1, p2, p3])
-            for i in range(n_subdiv - 1):
+            for _ in range(n_subdiv - 1):
                 v.rotate(eul)
                 p = c + r * v
                 verts.append(p)
@@ -209,9 +211,9 @@ class Joint(Attachment, Curve, Mesh):
         curve_1 = self.connections[1]
 
         p0 = curve_0.point(1)  # End of curve 1
-        assert are_vectors_close(
-            p0, curve_1.point(0)
-        ), f"The curves must coincide at the joint. {p0} --- {(p0 - curve_1.point(0)).magnitude:.3e}"
+        assert are_vectors_close(p0, curve_1.point(0)), (
+            f"The curves must coincide at the joint. {p0} --- {(p0 - curve_1.point(0)).magnitude:.3e}"
+        )
 
         t0 = curve_0.tangent(1, normalise=True)
         t1 = curve_1.tangent(0, normalise=True)

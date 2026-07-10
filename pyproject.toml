@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 ## Blender-specific configurations
 [tool.blender]
-version = "4.5.3" # NOTE: When updating, the bpy version below may need to be changed as well
+version = "5.1.2" # NOTE: When updating, the bpy version below may need to be changed as well
 install-dir = "~/Applications/blender/"
 
 ## Project configurations
@@ -13,17 +13,17 @@ install-dir = "~/Applications/blender/"
 name = "anima"
 dynamic = ["version"]
 dependencies = [ 
-   "bpy==4.5.3", # NOTE: See `pip index versions bpy` for versions and match with tool.blender.version
+   "bpy==5.1.2", # NOTE: See `pip index versions bpy` for versions and match with tool.blender.version
    "mathutils==3.3.0",
-   "numpy==1.26.4",
+   "numpy==2.3.4", # Match the numpy version bundled with Blender 5.1.2
    "scipy==1.15.3",
    "pytest==8.4.0",
-   "plastex==3.1",
    "dill==0.4.0",
    "loguru==0.7.3",
    "svgpathtools>=1.7.1",
+   "pytriwild @ git+https://github.com/8bit-euclid/TriWild.git@master",
 ]
-requires-python = ">=3.11.4,<=3.11.13" # Ensure compatibility with Blender's Python version
+requires-python = ">=3.13,<3.14" # Ensure compatibility with Blender's Python version (Blender 5.1.2 bundles CPython 3.13)
 description = "Anima is a Python framework for Blender focused on mathematical visualizations, procedural animations, and educational content."
 readme = "README.md"
 authors = [
@@ -35,9 +35,8 @@ urls = { homepage = "https://github.com/8bit-euclid/Anima" }
 ## Development dependencies
 [project.optional-dependencies]
 dev = [
-   "black>=23.0.0",
-   "isort>=5.12.0",
-   "pylint>=2.17.0",
+   "ruff>=0.9.0",
+   "pre-commit>=4.0.0",
 ]
 
 ## Setuptools configurations
@@ -59,31 +58,54 @@ addopts = [
     "--ignore=tests/visual_tests/",
 ]
 
-## Formatter and linter configurations
-[tool.black]
+## Ruff linter and formatter configurations
+[tool.ruff]
 line-length = 120
-target-version = ['py311']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
+target-version = "py311"
+src = ["src"]
 
-[tool.isort]
-profile = "black"
-line_length = 120
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "*.egg-info",
+    "src/anima/globals/easybpy.py",
+    "src/anima/.ideas",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # bugbear
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E402",   # module level import not at top
+    "E501",   # line too long (handled by formatter)
+    "E741",   # ambiguous variable name
+    "B024",   # abstract base class without abstract methods
+    "B905",   # zip() without strict= (can enable later for stricter checks)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]  # Re-exports and star imports in package inits
+"tests/*" = ["F401"]
+"tests/visual_tests/*" = ["F841"]
+"src/anima/main.py" = ["E402", "F401"]
+"src/anima/primitives/points.py" = ["F403", "F405"]
+"src/anima/primitives/polytopes.py" = ["F403", "F405"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-single-line = false
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

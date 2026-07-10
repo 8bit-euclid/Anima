@@ -12,8 +12,10 @@ class TeXObject(Object):
 
     def add_subobject(self, object):
         """Adds a sub-object (of type TeXObject) as a child and sets current object as its parent.
+
         Args:
             object (TeXObject): The sub-object to add.
+
         Raises:
             TypeError: If the object is not a TeXObject instance.
         """

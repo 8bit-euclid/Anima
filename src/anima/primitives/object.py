@@ -1,7 +1,7 @@
 import math
 from abc import ABC
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any
 
 import bpy
 
@@ -27,14 +27,29 @@ class Object(ABC):
     All subclasses should use cooperative inheritance (i.e., call super()) to maintain the correct
     method resolution order (MRO), especially in multiple inheritance scenarios.
     See: https://docs.python.org/3/library/functions.html#super for more details.
+
+    Attributes:
+        parent: The parent object (of type BaseObject).
+        children: A list of child objects (of type BaseObject).
+        shape_keys: A list of shape keys for the object.
+        _bl_object: The underlying Blender object.
+        _write_logs: A boolean flag indicating whether to write logs for this object.
     """
 
-    def __init__(self, *, bl_object=None, name="Object", **kwargs):
+    def __init__(self, *, bl_object=None, name="Object", parent: "Object" = None, **kwargs):
+        """Initialises the object.
+
+        Args:
+            bl_object (bpy.types.Object, optional): The Blender object to wrap. Defaults to None.
+            name (str, optional): The name of the object. Defaults to 'Object'.
+            parent (Object, optional): The parent object. Defaults to None.
+            **kwargs: Additional keyword arguments for cooperative inheritance.
+        """
         # There should be no additional keyword arguments (assuming cooperative inheritance).
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {kwargs}")
 
-        self.parent: type[Object] = None
+        self._parent: type[Object] = None
         self.children: list[type[Object]] = []
 
         if bl_object is None:
@@ -44,10 +59,16 @@ class Object(ABC):
         self.shape_keys = []
         self._write_logs = False
 
+        # Set parent after bl_object is initialized (required for Blender parenting)
+        if parent is not None:
+            self._set_parent(parent)
+
     def add_subobject(self, object):
         """Adds a sub-object (of type BaseObject) as a child and sets current object as its parent.
+
         Args:
             object (BaseObject): The sub-object to add.
+
         Raises:
             AssertionError: If the object is not animable.
         """
@@ -63,11 +84,13 @@ class Object(ABC):
         is_custom: bool = False,
     ):
         """Add a keyframe for the specified object property at the given frame.
+
         Args:
             bl_data_path (str): The Blender data path to the property to keyframe.
             index (int, optional): The index of the property to keyframe. Defaults to -1.
             frame (int, optional): The frame at which to insert the keyframe. Defaults to the current frame.
             is_custom (bool, optional): Whether the keyframe is for a custom property. Defaults to False.
+
         Raises:
             AssertionError: If the frame is not specified or if the data path is invalid.
         """
@@ -82,14 +105,17 @@ class Object(ABC):
 
     def add_handler(self, handler):
         """Add a handler for the specified object property.
+
         Args:
             handler (function): The handler function to add"""
-        pass
+        raise NotImplementedError("Subclasses should implement add_handler if needed")
 
     def create_shape_key(self, name):
         """Create and return a shape key for this object.
+
         Args:
             name (str): The name of the shape key to create.
+
         Returns:
             bpy.types.ShapeKey: The created shape key.
         """
@@ -125,11 +151,13 @@ class Object(ABC):
 
     def set_location(self, x=None, y=None, z=None, apply=False):
         """Sets the object's location in world space.
+
         Args:
             x (float, optional): The x-coordinate of the location. Defaults to None.
             y (float, optional): The y-coordinate of the location. Defaults to None.
             z (float, optional): The z-coordinate of the location. Defaults to None.
             apply (bool, optional): If True, permanently apply the location to the object. Defaults to False.
+
         Raises:
             AssertionError: If no location dimension is specified (x, y, or z).
         """
@@ -155,6 +183,7 @@ class Object(ABC):
         apply: bool = False,
     ):
         """Translates the object in world/local space (defaults to world).
+
         Args:
             x (float, optional): The translation in the x dimension. Defaults to 0.
             y (float, optional): The translation in the y dimension. Defaults to 0.
@@ -171,6 +200,7 @@ class Object(ABC):
     @property
     def location(self):
         """Get the object's location.
+
         Returns:
             tuple: A 3D Vector representing the location in x, y, z dimensions."""
         return self._bl_object.location
@@ -178,6 +208,7 @@ class Object(ABC):
     @location.setter
     def location(self, loc):
         """Set the object's location.
+
         Args:
             loc (tuple or list): A tuple or list of 3 floats representing the location in x, y, z dimensions.
         """
@@ -187,11 +218,13 @@ class Object(ABC):
 
     def set_rotation(self, x=None, y=None, z=None, apply=False):
         """Sets the object's rotation (Euler angles in radians) in world space.
+
         Args:
             x (float, optional): The rotation angle around the x-axis in radians. Defaults to None.
             y (float, optional): The rotation angle around the y-axis in radians. Defaults to None.
             z (float, optional): The rotation angle around the z-axis in radians. Defaults to None.
             apply (bool, optional): If True, permanently apply the rotation to the object. Defaults to False.
+
         Raises:
             AssertionError: If no rotation dimension is specified (x, y, or z).
         """
@@ -219,6 +252,7 @@ class Object(ABC):
         apply: bool = False,
     ):
         """Rotates the object by the given Euler angles (x, y, z) in world/local space (defaults to world).
+
         Args:
             x (float, optional): The rotation angle around the x-axis in radians. Defaults to 0.
             y (float, optional): The rotation angle around the y-axis in radians. Defaults to 0.
@@ -231,19 +265,22 @@ class Object(ABC):
             self._bl_object.rotation_euler.rotate(rotation)
         else:
             rotation_matrix = rotation.to_matrix().to_4x4()
-            self.object.matrix_world = rotation_matrix @ self.world_matrix
+            self.world_matrix = rotation_matrix @ self.world_matrix
 
         if apply:
             ebpy.apply_rotation(ref=self.object)
 
     def rotate_about(
         self,
+        angle: float,
         axis: tuple | list[float] | Vector,
         local: bool = False,
         apply: bool = False,
     ):
         """Rotates the object about a given axis.
+
         Args:
+            angle: The angle of rotation in radians.
             axis: The axis of rotation, specified as a tuple/list/Vector of 2/3 floats or a Vector.
             local (bool, optional): If True, rotates in local space; otherwise, rotates in world space. Defaults to False.
             apply (bool, optional): If True, permanently apply the rotation to the object. Defaults to False.
@@ -259,10 +296,12 @@ class Object(ABC):
         apply: bool = False,
     ):
         """Sets the object's orientation based on two orthogonal axes.
+
         Args:
             x_axis: A tuple/list/Vector of 2/3 floats representing the x-axis direction.
             y_axis: A tuple/list/Vector of 2/3 floats representing the y-axis direction.
             apply (bool, optional): If True, permanently apply the rotation to the object. Defaults to False.
+
         Raises:
             AssertionError: If the axes are not orthogonal.
         """
@@ -285,6 +324,7 @@ class Object(ABC):
     @property
     def rotation(self):
         """Get the object's rotation (Euler angles).
+
         Returns:
             tuple: A 3D Vector representing the rotation in Euler angles."""
         return self._bl_object.rotation_euler
@@ -292,6 +332,7 @@ class Object(ABC):
     @rotation.setter
     def rotation(self, rot):
         """Set the object's rotation (Euler angles).
+
         Args:
             rot (tuple or list): A tuple or list of 3 floats representing the rotation in Euler angles.
         """
@@ -300,6 +341,7 @@ class Object(ABC):
     @property
     def local_matrix(self):
         """Get the local matrix.
+
         Returns:
             Matrix: The local matrix of the object."""
         return self._bl_object.matrix_local
@@ -307,6 +349,7 @@ class Object(ABC):
     @local_matrix.setter
     def local_matrix(self, matrix):
         """Set the local matrix.
+
         Args:
             matrix (Matrix): The new local matrix to set for the object."""
         self._bl_object.matrix_local = matrix
@@ -314,6 +357,7 @@ class Object(ABC):
     @property
     def world_matrix(self):
         """Get the world matrix.
+
         Returns:
             Matrix: The world matrix of the object."""
         return self._bl_object.matrix_world
@@ -321,6 +365,7 @@ class Object(ABC):
     @world_matrix.setter
     def world_matrix(self, matrix):
         """Set the world matrix.
+
         Args:
             matrix (Matrix): The new world matrix to set for the object."""
         self._bl_object.matrix_world = matrix
@@ -329,11 +374,13 @@ class Object(ABC):
 
     def set_scale(self, x: float = None, y: float = None, z: float = None, apply: bool = False):
         """Sets the object's scale.
+
         Args:
             x (float, optional): The scale in the x dimension. Defaults to None.
             y (float, optional): The scale in the y dimension. Defaults to None.
             z (float, optional): The scale in the z dimension. Defaults to None.
             apply (bool, optional): If True, permanently apply the scale to the object. Defaults to False.
+
         Raises:
             AssertionError: If no scale dimension is specified (x, y, or z).
         """
@@ -358,6 +405,7 @@ class Object(ABC):
         apply: bool = False,
     ):
         """Scale the object by the given factors.
+
         Args:
             x_fact (float, optional): The factor by which to scale in the x dimension. Defaults to 1.0.
             y_fact (float, optional): The factor by which to scale in the y dimension. Defaults to 1.0.
@@ -371,6 +419,7 @@ class Object(ABC):
     @property
     def scale(self):
         """Get the object's scale.
+
         Returns:
             tuple: A tuple of 3 floats representing the scale in x, y, z dimensions."""
         return self._bl_object.scale
@@ -378,6 +427,7 @@ class Object(ABC):
     @scale.setter
     def scale(self, scale):
         """Set the object's scale.
+
         Args:
             scale (tuple or list): A tuple or list of 3 floats representing the scale in x, y, z dimensions
         """
@@ -406,6 +456,7 @@ class Object(ABC):
     @property
     def name(self):
         """Get the object's name.
+
         Returns:
             str: The name of the object."""
         return self._bl_object.name
@@ -413,6 +464,7 @@ class Object(ABC):
     @name.setter
     def name(self, name):
         """Set the object's name.
+
         Args:
             name (str): The new name for the object."""
         self._bl_object.name = name
@@ -422,10 +474,33 @@ class Object(ABC):
         """Get the underlying Blender object."""
         return self._bl_object
 
+    @property
+    def parent(self) -> "Object":
+        """Get the object's parent.
+
+        Returns:
+            Object: The parent object, or None if no parent is set.
+        """
+        return self._parent
+
+    @parent.setter
+    def parent(self, value: "Object"):
+        """Set the object's parent.
+
+        Args:
+            value (Object): The parent object to set, or None to clear the parent.
+        """
+        if value is not None:
+            self._set_parent(value)
+        else:
+            self._parent = None
+            self._bl_object.parent = None
+
     # Debugging tools -------------------------------------------------------------------------------------- #
 
     def debug(self) -> bool:
         """Check if debugging is enabled for this object.
+
         Returns:
             bool: True if debugging is enabled, else False."""
         return self._write_logs
@@ -442,24 +517,29 @@ class Object(ABC):
 
     def __getitem__(self, attr_name):
         """Get a custom property using the [] operator.
+
         Args:
             attr_name (str): The name of the custom property to get.
+
         Returns:
             Any: The value of the custom property."""
         return self._bl_object[attr_name]
 
     def __setitem__(self, attr_name, value):
         """Set a custom property using the [] operator.
+
         Args:
             attr_name (str): The name of the custom property to set.
             value (Any): The value to set for the custom property."""
         self._bl_object[attr_name] = value
 
-    def __deepcopy__(self, memo: Optional[dict[int, Any]] = None):
+    def __deepcopy__(self, memo: dict[int, Any] | None = None):
         """Deepcopy all contents of the object except those in _deepcopy_excluded_attrs().
+
         Args:
             memo (dict[int, Any], optional): A memo dictionary to keep track of already copied objects.
                 Defaults to None.
+
         Returns:
             BaseObject: A new instance of the object with all attributes copied, except those specified in
                 `_deepcopy_excluded_attrs()`.
@@ -492,17 +572,20 @@ class Object(ABC):
 
     def _deepcopy_excluded_attrs(self) -> set[str]:
         """Attributes to exclude from deep copying.
+
         Returns:
             set[str]: A set of attribute names to exclude from deep copying."""
         assert len(self.shape_keys) == 0, "Cannot deepcopy objects with shape keys yet."
-        return {"_bl_object", "shape_keys", "parent"}
+        return {"_bl_object", "shape_keys", "_parent"}
 
     # Private methods -------------------------------------------------------------------------------------- #
 
     def _has_data(self):
         """Does the Blender object have data?
+
         Returns:
             bool: True if the Blender object has data, else False.
+
         Raises:
             AssertionError: If the Blender object is not set."""
         assert self._bl_object is not None, "The Blender object is not set. Cannot check for data."
@@ -510,16 +593,19 @@ class Object(ABC):
 
     def _set_parent(self, parent: type["Object"]):
         """Sets the parent (of type BaseObject) of the current object.
+
         Args:
             parent (BaseObject): The parent object to set.
+
         Raises:
             AssertionError: If the parent is not of type BaseObject."""
         assert is_animable(parent), "Can only set a parent of type BaseObject."
-        self.parent = parent
+        self._parent = parent
         self._bl_object.parent = parent._bl_object
 
     def _set_visibility(self, val: bool):
         """Sets the object's visibility in both the viewport and render.
+
         Args:
             val (bool): True if the object should be visible, else False."""
         self._set_viewport_visibility(val)
@@ -527,6 +613,7 @@ class Object(ABC):
 
     def _set_viewport_visibility(self, val: bool):
         """Sets the object's visibility in the viewport.
+
         Args:
             val (bool): True if the object should be visible in the viewport, else False.
         """
@@ -534,6 +621,7 @@ class Object(ABC):
 
     def _set_render_visibility(self, val: bool):
         """Sets the object's visibility in the render.
+
         Args:
             val (bool): True if the object should be visible in the render, else False.
         """
@@ -541,6 +629,7 @@ class Object(ABC):
 
     def _log_info(self, visitor: callable):
         """Logs information about the object using the provided visitor function.
+
         Args:
             visitor (callable): A function that takes the object as an argument and logs its information.
         """

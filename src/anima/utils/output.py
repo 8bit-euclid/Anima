@@ -1,4 +1,3 @@
-import subprocess
 import threading
 
 from anima.diagnostics import logger
@@ -59,5 +58,5 @@ class BlenderOutputMonitor:
         finally:
             try:
                 stream.close()
-            except:
+            except Exception:
                 pass

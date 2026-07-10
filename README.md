@@ -18,6 +18,7 @@ ANIMA
 - [GNU Make](https://www.gnu.org/software/make/) (for building, testing, and running)
 - [Python 3.11+](https://www.python.org/downloads/) (specifically 3.11.4 - 3.11.13 for Blender compatibility)
 - [Blender](https://www.blender.org/download/) (4.0+ recommended)
+- [wmctrl](https://linux.die.net/man/1/wmctrl) (Linux only; used to focus the Blender window on hot reload).
 - [Visual Studio Code](https://code.visualstudio.com/) (optional, but recommended for development)
 
 ## Installation
@@ -63,6 +64,7 @@ The project includes several make targets for common development tasks. Run `mak
 | `make install` | Install the project and its dependencies |
 | `make install-dev` | Install the project in development mode |
 | `make install-blender-deps` | Install Blender-specific dependencies |
+| `make install-system-deps` | Install required system packages (e.g. wmctrl) |
 | `make run` | Run the project |
 | `make test` | Run all tests |
 | `make format` | Format code using black and isort |
