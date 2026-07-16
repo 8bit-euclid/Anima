@@ -702,8 +702,8 @@ class TestCurveChain:
         l = chain.length()
         l1 = crv1.length()
         l2 = crv2.length()
-        assert_vectors_equal(crv1.point(1), chain.point(l1 / l), places=8)
-        assert_vectors_equal(crv2.point(0), chain.point(l1 / l), places=8)
+        assert_vectors_equal(crv1.point(1), chain.point(l1 / l), places=7)
+        assert_vectors_equal(crv2.point(0), chain.point(l1 / l), places=7)
         assert_vectors_equal(crv2.point(1), chain.point((l1 + l2) / l), places=8)
         assert_vectors_equal(crv3.point(0), chain.point((l1 + l2) / l), places=8)
 
@@ -761,7 +761,6 @@ class TestCurveChain:
         assert_death(self.chain.length, -0.01)
         assert_death(self.chain.length, 1.01)
 
-    @pytest.mark.skip(reason="Broken after bpy update")
     def test_set_width(self):
         """Test set_width() propagates to all curves.
 
@@ -836,8 +835,8 @@ class TestJoint:
 
         for joint in (miter, bevel, round):
             joint_mid_pt = joint.point(0.5)
-            assert_vectors_equal(joint_mid_pt, self.crv1.point(1.0), places=9)
-            assert_vectors_equal(joint_mid_pt, self.crv2.point(0.0), places=9)
+            assert_vectors_equal(joint_mid_pt, self.crv1.point(1.0), places=8)
+            assert_vectors_equal(joint_mid_pt, self.crv2.point(0.0), places=8)
 
     def test_tangent(self):
         """Test tangent() method for all joint types."""

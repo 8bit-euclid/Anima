@@ -23,11 +23,13 @@ from .endcaps import Endcap
 
 DEFAULT_RESOLUTION = 100
 RELATIVE_LENGTH_ERR = 1.0e-3  # 0.1% of the length
+MIN_ABSOLUTE_LENGTH_ERR = 1.0e-5
 NUM_PARAM_LOOKUP_PTS = 40
 
 
 class BezierSpline(Curve):
-    """A Bezier spline is a curve defined by a series of spline points and each connected segment is represented by a Bezier curve. We only support cubic Bezier curves, currently."""
+    """A Bezier spline is a curve defined by a series of spline points and each connected segment is
+    represented by a Bezier curve. We only support cubic Bezier curves, currently."""
 
     def __init__(
         self,
@@ -326,12 +328,14 @@ class BezierSpline(Curve):
         return -3 * (1 - t) ** 2 * p0 + 3 * (1 - 4 * t + 3 * t_sq) * h0 + 3 * (2 * t - 3 * t_sq) * h1 + 3 * t_sq * p1
 
     def _bezier_length(self, bzr_index: int, param: float = 1.0) -> float:
+        # To compute the arc length over [0, param], the integrand is |dX/dt|, which is the magnitude of the
+        # tangent vector.
         def integrand(t):
             return self._bezier_tangent(bzr_index, t).magnitude
 
         disable_print()  # Disable output regarding round-off errors
-        l = self._length
-        eps = RELATIVE_LENGTH_ERR * l if l > 0 else 1e-5
+        # Floor the tolerance so that near-zero-length curves don't demand accuracy below round-off.
+        eps = max(RELATIVE_LENGTH_ERR * self._length, MIN_ABSOLUTE_LENGTH_ERR)
         arc_len, err = integrate.quad(integrand, 0.0, param, epsabs=eps)
         enable_print()
 
@@ -351,11 +355,11 @@ class BezierSpline(Curve):
             len_params[i] = self.length(u)
 
         # Compute the extra parameters at spline points.
-        n_bzr_crv = len(self._spline_points()) - 1
-        num_bzr_pts = n_bzr_crv - 1  # Only the intermediate points are inserted
+        num_bzr_crvs = len(self._spline_points()) - 1
+        num_bzr_pts = num_bzr_crvs - 1  # Only the intermediate points are inserted
         extra_spl_params = [-1.0] * num_bzr_pts
         extra_len_params = [-1.0] * num_bzr_pts
-        du = 1 / n_bzr_crv
+        du = 1 / num_bzr_crvs
         for i in range(num_bzr_pts):
             u = (i + 1) * du
             extra_spl_params[i] = u
