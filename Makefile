@@ -57,8 +57,8 @@ reinstall: clean-all install ## Clean and reinstall the project
 
 
 # Run targets
-run: check-system-deps ## Run the project
-	@uv run python run.py
+run: check-system-deps ## Run the project (default demo, or set SCRIPT=path/to/lesson.py)
+	@ANIMA_SCRIPT="$(SCRIPT)" uv run python run.py
 
 
 # Testing targets

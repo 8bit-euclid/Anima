@@ -13,55 +13,29 @@ for path in paths_to_add:
         sys.path.insert(0, path)
 
 # Now import modules as usual
-import bpy
 from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
 from tests.visual_tests.test_latex import test_text_to_glyphs
 
-from anima.diagnostics import logger
-from anima.globals.general import clear_scene, deselect_all, ebpy, hide_relationship_lines, to_frame
-from anima.utils.blender import configure_blender_panes, configure_blender_viewport, frame_scene_in_viewport
-from anima.utils.socket.server import BlenderSocketServer
+from anima.globals.general import to_frame
+from anima.runtime import run_lesson
 
 # fmt: on
 
 
-def main():
-    logger.info("Running main script in Blender")
+def build_scene(start_time: str, end_time: str):
+    """Build the default demo scene. Used when `ANIMA_SCRIPT` is not set.
 
-    BlenderSocketServer().start()
-
-    configure_blender_viewport()
-    configure_blender_panes()
-
-    clear_scene()
-    ebpy.set_render_fps(60)
-
-    end_frame = to_frame("00:06")
-
-    # Run visual tests
-    logger.info("Running visual tests...")
+    See `anima.runtime.run_lesson` for the shared bootstrap this relies on, and
+    duplicate `<course>/lessons/_lesson_template.py` (in the sibling Courses/
+    repo, not tracked here) to author actual lesson content instead of editing
+    this file.
+    """
     # test_text_to_glyphs()
-    # test_bezier_splines(end_frame)
+    end_frame = to_frame(end_time)
+    test_bezier_splines(end_frame)
     test_curve_joints(end_frame)
-    # test_dashed_curves(end_frame)
-
-    hide_relationship_lines()
-    deselect_all()
-
-    # Set end frame
-    ebpy.set_end_frame(end_frame + 50)
-
-    # Preset viewpoint
-    bpy.context.preferences.view.show_splash = False
-
-    # Stop any running animations first (when reloading)
-    bpy.ops.screen.animation_cancel(restore_frame=False)
-
-    # Reset to frame one, frame the scene, zoom in, and play
-    bpy.context.scene.frame_current = 1
-    frame_scene_in_viewport(zoom_delta=2)
-    bpy.ops.screen.animation_play()
+    test_dashed_curves(end_frame)
 
 
 if __name__ == "__main__":
-    main()
+    run_lesson(build_scene, end_time="00:06")
