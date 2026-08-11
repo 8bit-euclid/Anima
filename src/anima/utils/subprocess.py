@@ -1,7 +1,8 @@
+import os
 import subprocess
 
 from anima.diagnostics import logger
-from anima.utils.project import get_main_file_path
+from anima.utils.project import get_project_root_path, get_script_path
 
 
 class SubprocessManager:
@@ -19,17 +20,24 @@ class SubprocessManager:
             from anima.utils.blender import get_blender_executable_path
 
             bl_path = get_blender_executable_path()
-            main_path = get_main_file_path()
+            script_path = get_script_path()
+
+            # Set up the environment for the subprocess
+            env = os.environ.copy()
+            src_dir = str(get_project_root_path() / "src")
+            script_dir = str(script_path.parent)  # so sibling modules next to the script are importable
+            env["PYTHONPATH"] = os.pathsep.join(filter(None, [script_dir, src_dir, env.get("PYTHONPATH")]))
 
             logger.info(f"Starting Blender from: {bl_path}")
-            logger.info(f"Running main script from: {main_path}")
+            logger.info(f"Running main script from: {script_path}")
             self._subprocess = subprocess.Popen(
                 [
                     str(bl_path),
                     "--window-maximized",
                     "--factory-startup",
+                    "--python-use-system-env",  # Required for Blender to honor PYTHONPATH
                     "--python",
-                    str(main_path),
+                    str(script_path),
                 ],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
@@ -37,6 +45,7 @@ class SubprocessManager:
                 text=True,
                 bufsize=1,
                 start_new_session=True,  # isolate Blender from parent
+                env=env,  # so any script, in or out of this repo, can `import anima`
             )
 
             logger.info(f"Blender started (pid: {self.subprocess.pid})")

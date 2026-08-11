@@ -29,6 +29,10 @@ def build_scene(start_time: str, end_time: str):
     duplicate `<course>/lessons/_lesson_template.py` (in the sibling Courses/
     repo, not tracked here) to author actual lesson content instead of editing
     this file.
+
+    Args:
+        start_time (str): The time at which the lesson's animation starts.
+        end_time (str): The time at which the lesson's animation ends.
     """
     # test_text_to_glyphs()
     end_frame = to_frame(end_time)
