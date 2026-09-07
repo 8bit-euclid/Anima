@@ -3674,8 +3674,8 @@ def fluid_view_grid_color(stop, encoding, r, g, b, al):
     bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.color_mode = encoding.upper()
     stopint = int(stop)
     red = float(r)
-    green = float(b)
-    blue = float(g)
+    green = float(g)
+    blue = float(b)
     alpha = float(al)
     bpy.context.active_object.modifiers["Fluid"].domain_settings.color_ramp.elements[stopint].color = (
         red,
