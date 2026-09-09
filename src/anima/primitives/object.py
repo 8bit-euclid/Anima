@@ -18,6 +18,7 @@ from anima.globals.general import (
     make_active,
     outer_product,
 )
+from anima.materials.material import create_color_material, get_material_color, to_rgba
 
 
 class Object(ABC):
@@ -450,6 +451,52 @@ class Object(ABC):
 
         # Apply transformation
         self.world_matrix = refl_matrix @ self.world_matrix
+
+    # Color-related methods ---------------------------------------------------------------------------------- #
+
+    def set_color(self, color: tuple[float, float, float] | tuple[float, float, float, float]):
+        """Sets the object's color by assigning it a material set to the given color.
+
+        Args:
+            color (tuple): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
+                Alpha defaults to 1.0 if omitted.
+
+        Raises:
+            AssertionError: If the object has no data to which a material can be assigned.
+        """
+        assert self._has_data(), f"The object {self.name} has no data to color."
+        color = to_rgba(color)
+        mat = create_color_material(f"{self.name}_material", color)
+        materials = self._bl_object.data.materials
+        if materials:
+            materials[0] = mat
+        else:
+            materials.append(mat)
+        for child in self.children:
+            child.color = color
+        return self
+
+    @property
+    def color(self) -> tuple[float, float, float, float] | None:
+        """Get the object's color.
+
+        Returns:
+            tuple: The (r, g, b, a) color of the object's first assigned material, or None if it has no
+                material.
+        """
+        if not self._has_data() or not self._bl_object.data.materials:
+            return None
+        return get_material_color(self._bl_object.data.materials[0])
+
+    @color.setter
+    def color(self, color: tuple[float, float, float] | tuple[float, float, float, float]):
+        """Set the object's color.
+
+        Args:
+            color (tuple): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
+                Alpha defaults to 1.0 if omitted.
+        """
+        self.set_color(color)
 
     # Property getters/setters for underlying blender object attributes ------------------------------------ #
 
