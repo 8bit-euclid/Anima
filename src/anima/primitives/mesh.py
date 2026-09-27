@@ -28,8 +28,13 @@ class Mesh(Object):
         if edges is None:
             edges = []
 
+        # Preserve any materials assigned to the old mesh data, since it is about to be replaced.
+        old_materials = list(self.object.data.materials) if self._has_data() else []
+
         # Create mesh and create/update object.
         mesh = create_mesh(self.name + "_mesh", verts, faces, edges)
+        for mat in old_materials:
+            mesh.materials.append(mat)
         self.object.data = mesh
 
     def update_mesh(self, verts, faces, edges=None):

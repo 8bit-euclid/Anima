@@ -9,7 +9,7 @@ import tty
 import bpy
 
 from anima.diagnostics import logger
-from anima.utils.project import get_main_file_path as main_path
+from anima.utils.project import get_script_path
 from anima.utils.socket.client import BlenderSocketClient
 from anima.utils.subprocess import SubprocessManager
 
@@ -54,7 +54,7 @@ class BlenderInputMonitor:
         self._blender_to_front()
 
         def call():
-            script_path = main_path()
+            script_path = get_script_path()
 
             # Clear existing handlers to avoid duplicates
             logger.info("Clearing existing handlers...")

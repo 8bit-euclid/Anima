@@ -1,4 +1,6 @@
 import functools
+import importlib
+import os
 import sys
 import tomllib
 from pathlib import Path
@@ -33,19 +35,79 @@ def get_project_root_path(marker: str = ".git") -> Path:
 
 
 @functools.lru_cache(maxsize=1)
-def get_main_file_path() -> Path:
-    """Get the main.py file path from the project.
+def get_script_path() -> Path:
+    """Get the path to the script Blender needs to run.
+
+    Resolution order:
+      1. `ANIMA_SCRIPT` env var (path to a lesson script), if set and non-empty.
+      2. Fallback to the framework's default demo scene: src/anima/main.py.
+
     Returns:
-        Path: The path to the main.py file.
+        Path: The resolved script path.
     Raises:
-        FileNotFoundError: If main.py does not exist in the expected location.
+        FileNotFoundError: If the resolved path does not exist.
     """
+    override = os.environ.get("ANIMA_SCRIPT", "").strip()
+    if override:
+        script_path = Path(override).expanduser().resolve()
+        if not script_path.exists():
+            raise FileNotFoundError(f"ANIMA_SCRIPT points to a non-existent file: {script_path}")
+        logger.trace(f"Using script from ANIMA_SCRIPT: {script_path}")
+        return script_path
+
     proj_root = get_project_root_path()
     main_path = proj_root / "src" / "anima" / "main.py"
     if not main_path.exists():
         raise FileNotFoundError(f"Main file not found: {main_path}")
     logger.trace(f"Main file path: {main_path}")
     return main_path
+
+
+def get_course_root() -> Path:
+    """Get the course root directory for the currently running lesson script.
+
+    Assumes the standard layout: <course_root>/lessons/<lesson_script>.py
+
+    Returns:
+        Path: The course root directory.
+    """
+    return get_script_path().parent.parent
+
+
+def import_course_module(module_name: str):
+    """Import a module from the current lesson's course package.
+
+    Adds the course's parent directory to `sys.path` (once) so the course folder
+    itself is importable as a package, then imports `<course_pkg>.<module_name>`.
+
+    Args:
+        module_name (str): Dotted path relative to the course root, e.g. "common.styles".
+    Returns:
+        module: The imported module.
+    """
+    course_root = get_course_root()
+    courses_root = course_root.parent
+    if str(courses_root) not in sys.path:
+        sys.path.insert(0, str(courses_root))
+
+    return importlib.import_module(f"{course_root.name}.{module_name}")
+
+
+def import_shared_module(module_name: str):
+    """Import a module from the shared `common/` package at the Courses root.
+
+    Adds the Courses root to `sys.path` (once) so the `common/` package is importable, then imports
+    `common.<module_name>`.
+
+    Args:
+        module_name (str): Dotted path relative to the `common/` package, e.g. "utils.helpers".
+    Returns:
+        module: The imported module.
+    """
+    courses_root = get_course_root().parent
+    if str(courses_root) not in sys.path:
+        sys.path.insert(0, str(courses_root))
+    return importlib.import_module(f"common.{module_name}")
 
 
 @functools.lru_cache(maxsize=1)
@@ -121,6 +183,15 @@ def configure_project_reload():
         for name in sys.modules.keys()
         if (name.startswith(proj_name) or name.startswith("tests")) and not name.startswith(preserved)
     ]
+
+    # Also evict the current lesson's course package (common utilities, etc.) so hot
+    # reload picks up edits to course-shared code, not just the lesson script itself.
+    try:
+        course_pkg = get_course_root().name
+        modules_to_delete += [name for name in sys.modules if name == course_pkg or name.startswith(f"{course_pkg}.")]
+    except FileNotFoundError:
+        pass
+
     for name in modules_to_delete:
         del sys.modules[name]
 

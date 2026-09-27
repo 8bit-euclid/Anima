@@ -97,6 +97,7 @@ def test_curve_joints(end_frame: int):
 
     chain = CurveChain([c1, c2, c3])
     chain.width = DEFAULT_LINE_WIDTH * 30
+    chain.color = (1.0, 0.0, 0.0, 1.0)
 
     e = Empty()
     e["t"] = 0.0

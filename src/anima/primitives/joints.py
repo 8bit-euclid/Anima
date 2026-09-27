@@ -57,10 +57,13 @@ class Joint(Attachment, Curve, Mesh):
         name
         """
 
-        # Set the joint path.
+        # Set the joint path. All handles must be 'Vector' so that a degenerate path (coincident points at
+        # a zero-angle joint) has zero length; Blender places AUTO handles of coincident points arbitrarily,
+        # which would give the path a spurious length.
         path = BezierSpline([(0, 0, 0)] * 3)
-        path.set_both_handle_types(1, "Vector")
-        path.set_width(width / 50)
+        for i in range(3):
+            path.set_both_handle_types(i, "Vector")
+        path.set_width(width / 5)
         path.hide()
         self._path = path
 
