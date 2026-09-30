@@ -61,8 +61,9 @@ class TestGlyphBorder:
     def test_subpaths_are_children(self):
         """Test that subpaths are added as children of the border."""
         border = GlyphBorder(self.simple_path, name="TestBorder")
-        assert len(border.children) == 1
-        assert border.children[0] == border.subpaths[0]
+        subobjects = border.subobjects
+        assert len(subobjects) == 1
+        assert subobjects[0] == border.subpaths[0]
 
     def test_curves_property(self):
         """Test that the curves property returns all curves from all subpaths."""
@@ -107,9 +108,10 @@ class TestGlyph:
     def test_border_and_body_are_children(self):
         """Test that border and body are added as children."""
         glyph = Glyph(self.path, name="TestGlyph")
-        assert len(glyph.children) == 2
-        assert glyph.border in glyph.children
-        assert glyph.body in glyph.children
+        subobjects = glyph.subobjects
+        assert len(subobjects) == 2
+        assert glyph.border in subobjects
+        assert glyph.body in subobjects
 
     def test_bbox_y_inverted(self):
         """Test that bbox y-coordinates are inverted for Blender."""
@@ -198,9 +200,10 @@ class TestGlyphGroup:
     def test_glyphs_are_children(self):
         """Test that glyphs are added as children."""
         group = GlyphGroup([self.glyph1, self.glyph2], name="TestGroup")
-        assert len(group.children) == 2
-        assert self.glyph1 in group.children
-        assert self.glyph2 in group.children
+        subobjects = group.subobjects
+        assert len(subobjects) == 2
+        assert self.glyph1 in subobjects
+        assert self.glyph2 in subobjects
 
     def test_text_property(self):
         """Test that text property concatenates glyph texts."""
@@ -268,7 +271,7 @@ class TestTeXObject:
         parent = TeXObject(name="Parent")
         child = TeXObject(name="Child")
         parent.add_subobject(child)
-        assert child in parent.children
+        assert child in parent.subobjects
         assert child.parent is parent
 
     def test_add_subobject_type_error(self):

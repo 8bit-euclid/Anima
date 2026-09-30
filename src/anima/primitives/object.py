@@ -30,11 +30,11 @@ class Object(ABC):
     See: https://docs.python.org/3/library/functions.html#super for more details.
 
     Attributes:
-        parent: The parent object (of type BaseObject).
-        children: A list of child objects (of type BaseObject).
-        shape_keys: A list of shape keys for the object.
-        _bl_object: The underlying Blender object.
-        _write_logs: A boolean flag indicating whether to write logs for this object.
+        _parent (Object): The parent object (of type Object).
+        _children (list[Object]): A list of child objects (of type Object).
+        _shape_keys (list): A list of shape keys for the object.
+        _bl_object (bpy.types.Object): The underlying Blender object.
+        _write_logs (bool): A boolean flag indicating whether to write logs for this object.
     """
 
     def __init__(self, *, bl_object=None, name="Object", parent: "Object" = None, **kwargs):
@@ -50,14 +50,14 @@ class Object(ABC):
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {kwargs}")
 
-        self._parent: type[Object] = None
-        self.children: list[type[Object]] = []
+        self._parent: Object = None
+        self._children: list[Object] = []
 
         if bl_object is None:
             bl_object = add_object(name=name)
         bl_object.name = name
         self._bl_object = bl_object
-        self.shape_keys = []
+        self._shape_keys = []
         self._write_logs = False
 
         # Set parent after bl_object is initialized (required for Blender parenting)
@@ -65,17 +65,22 @@ class Object(ABC):
             self._set_parent(parent)
 
     def add_subobject(self, object):
-        """Adds a sub-object (of type BaseObject) as a child and sets current object as its parent.
+        """Adds a sub-object (of type Object) as a child and sets current object as its parent.
 
         Args:
-            object (BaseObject): The sub-object to add.
+            object (Object): The sub-object to add.
 
         Raises:
             AssertionError: If the object is not animable.
         """
         assert is_animable(object), "Can only add animable sub-objects."
         object._set_parent(self)
-        self.children.append(object)
+        self._children.append(object)
+
+    @property
+    def subobjects(self):
+        """Return the list of sub-objects (children) of this object."""
+        return self._children
 
     def add_keyframe(
         self,
@@ -121,7 +126,7 @@ class Object(ABC):
             bpy.types.ShapeKey: The created shape key.
         """
         shape_key = self._bl_object.shape_key_add(name)
-        self.shape_keys.append(shape_key)
+        self._shape_keys.append(shape_key)
         return shape_key
 
     def make_active(self):
@@ -135,13 +140,13 @@ class Object(ABC):
     def hide(self):
         """Hide this object and its children in both the viewport and the render."""
         self._set_visibility(False)
-        for child in self.children:
+        for child in self.subobjects:
             child.hide()
 
     def unhide(self):
         """Unhide this object and its children in both the viewport and the render."""
         self._set_visibility(True)
-        for child in self.children:
+        for child in self.subobjects:
             child.unhide()
 
     def copy(self):
@@ -437,7 +442,11 @@ class Object(ABC):
     # Other geometric operations --------------------------------------------------------------------------- #
 
     def reflect(self, plane_normal, plane_point=(0, 0, 0)):
-        """Reflects an object about an arbitrary plane."""
+        """Reflects an object about an arbitrary plane.
+        Args:
+            plane_normal (tuple or list): A 3-element tuple or list representing the normal vector of the plane.
+            plane_point (tuple or list, optional): A 3-element tuple or list representing a point on the plane. Defaults to (0, 0, 0).
+        """
         plane_normal = Vector(plane_normal).normalized()
         plane_point = Vector(plane_point)
 
@@ -472,7 +481,7 @@ class Object(ABC):
             materials[0] = mat
         else:
             materials.append(mat)
-        for child in self.children:
+        for child in self.subobjects:
             child.color = color
         return self
 
@@ -622,12 +631,15 @@ class Object(ABC):
 
         Returns:
             set[str]: A set of attribute names to exclude from deep copying."""
-        assert len(self.shape_keys) == 0, "Cannot deepcopy objects with shape keys yet."
-        return {"_bl_object", "shape_keys", "_parent"}
+        assert len(self._shape_keys) == 0, "Cannot deepcopy objects with shape keys yet."
+        excl_attrs = {"_bl_object", "_shape_keys", "_parent"}
+        for attr in excl_attrs:
+            assert hasattr(self, attr), f"Expected attribute '{attr}' to exist in the object."
+        return excl_attrs
 
     # Private methods -------------------------------------------------------------------------------------- #
 
-    def _has_data(self):
+    def _has_data(self) -> bool:
         """Does the Blender object have data?
 
         Returns:
@@ -639,14 +651,14 @@ class Object(ABC):
         return self._bl_object.data is not None
 
     def _set_parent(self, parent: type["Object"]):
-        """Sets the parent (of type BaseObject) of the current object.
+        """Sets the parent (of type Object) of the current object.
 
         Args:
-            parent (BaseObject): The parent object to set.
+            parent (Object): The parent object to set.
 
         Raises:
-            AssertionError: If the parent is not of type BaseObject."""
-        assert is_animable(parent), "Can only set a parent of type BaseObject."
+            AssertionError: If the parent is not of type Object."""
+        assert is_animable(parent), "Can only set a parent of type Object."
         self._parent = parent
         self._bl_object.parent = parent._bl_object
 
