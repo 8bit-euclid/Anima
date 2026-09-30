@@ -18,9 +18,9 @@ dependencies = [
    "numpy==2.3.4", # Match the numpy version bundled with Blender 5.1.2
    "scipy==1.15.3",
    "pytest==8.4.0",
-   "dill==0.4.0",
+   "dill==0.4.1",
    "loguru==0.7.3",
-   "svgpathtools>=1.7.1",
+   "svgpathtools>=1.8.0",
    "pytriwild @ git+https://github.com/8bit-euclid/TriWild.git@master",
 ]
 requires-python = ">=3.13,<3.14" # Ensure compatibility with Blender's Python version (Blender 5.1.2 bundles CPython 3.13)
@@ -35,8 +35,8 @@ urls = { homepage = "https://github.com/8bit-euclid/Anima" }
 ## Development dependencies
 [project.optional-dependencies]
 dev = [
-   "ruff>=0.9.0",
-   "pre-commit>=4.0.0",
+   "ruff>=0.16.9", # Match the version pinned in .pre-commit-config.yaml
+   "pre-commit>=4.6.2",
 ]
 
 ## Setuptools configurations

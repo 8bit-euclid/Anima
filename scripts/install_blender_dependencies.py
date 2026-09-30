@@ -5,7 +5,7 @@ import tomllib  # Python 3.11+ only
 from pathlib import Path
 
 from anima.globals.general import get_pyproject_path
-from anima.utils.blender import blender_version, get_blender_root_path
+from anima.utils.blender import get_blender_python_path, get_blender_site_packages_path
 from anima.utils.project import validate_project_configuration
 
 # Note: This script assumes that the blender Python path has been set in the pyproject.toml file
@@ -18,19 +18,8 @@ def main():
     with open(get_pyproject_path(), "rb") as f:
         pyproject = tomllib.load(f)
 
-    bl_path = get_blender_root_path()
-    bl_version = blender_version(major_minor=True)
-    bl_python_root = bl_path / bl_version / "python"
-
-    # Blender's bundled CPython minor version changes between Blender releases
-    # (e.g. Blender 4.5 ships python3.11, Blender 5.1 ships python3.13), so we
-    # discover it from the interpreter on disk rather than hardcoding it.
-    bl_python_candidates = sorted(bl_python_root.glob("bin/python3.*"))
-    if not bl_python_candidates:
-        raise FileNotFoundError(f"Could not find a bundled Python interpreter under {bl_python_root / 'bin'}")
-    bl_python = bl_python_candidates[0]
-    bl_python_minor = bl_python.name.removeprefix("python")  # e.g. "3.13"
-    bl_site_packages = bl_python_root / "lib" / f"python{bl_python_minor}" / "site-packages"
+    bl_python = get_blender_python_path()
+    bl_site_packages = get_blender_site_packages_path()
 
     # Ensure pip is installed and up to date
     subprocess.run([bl_python, "-m", "ensurepip", "--upgrade"], check=True)

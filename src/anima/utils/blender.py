@@ -134,14 +134,7 @@ def get_blender_python_path() -> Path:
     Raises:
         FileNotFoundError: If the Python executable path does not exist.
     """
-    bl_path = get_blender_root_path()
-    bl_version = blender_version(major_minor=True)
-    python_path = bl_path / bl_version / "python" / "bin" / "python3.11"
-
-    if not python_path.exists():
-        raise FileNotFoundError(f"Blender Python executable does not exist: {python_path}")
-
-    return python_path
+    return _find_blender_python()
 
 
 @functools.lru_cache(maxsize=1)
@@ -154,14 +147,38 @@ def get_blender_site_packages_path() -> Path:
     Raises:
         FileNotFoundError: If the site-packages path does not exist.
     """
-    bl_path = get_blender_root_path()
-    bl_version = blender_version(major_minor=True)
-    site_packages_path = bl_path / bl_version / "python" / "lib" / "python3.11" / "site-packages"
+    python_path = _find_blender_python()
+    python_minor = python_path.name.removeprefix("python")  # e.g. "3.13"
+    site_packages_path = python_path.parent.parent / "lib" / f"python{python_minor}" / "site-packages"
 
     if not site_packages_path.exists():
         raise FileNotFoundError(f"Blender site-packages path does not exist: {site_packages_path}")
 
     return site_packages_path
+
+
+def _find_blender_python() -> Path:
+    """Discover Blender's bundled Python interpreter on disk.
+
+    Blender's bundled CPython minor version changes between releases (e.g. Blender 4.5
+    ships python3.11, Blender 5.1 ships python3.13), so it is discovered dynamically
+    rather than hardcoded.
+
+    Returns:
+        Path: The path to Blender's Python executable.
+
+    Raises:
+        FileNotFoundError: If no bundled Python interpreter is found.
+    """
+    bl_path = get_blender_root_path()
+    bl_version = blender_version(major_minor=True)
+    bl_python_root = bl_path / bl_version / "python"
+
+    python_candidates = sorted(bl_python_root.glob("bin/python3.*"))
+    if not python_candidates:
+        raise FileNotFoundError(f"Could not find a bundled Python interpreter under {bl_python_root / 'bin'}")
+
+    return python_candidates[0]
 
 
 @functools.lru_cache(maxsize=1)

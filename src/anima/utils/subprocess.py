@@ -26,7 +26,11 @@ class SubprocessManager:
             env = os.environ.copy()
             src_dir = str(get_project_root_path() / "src")
             script_dir = str(script_path.parent)  # so sibling modules next to the script are importable
+            # Construct the PYTHONPATH for the subprocess
             env["PYTHONPATH"] = os.pathsep.join(filter(None, [script_dir, src_dir, env.get("PYTHONPATH")]))
+            # Prevent Blender's bundled Python from picking up a user-site numpy/scipy
+            # (e.g. ~/.local/lib/python3.13/site-packages) that can shadow the pinned versions
+            env["PYTHONNOUSERSITE"] = "1"
 
             logger.info(f"Starting Blender from: {bl_path}")
             logger.info(f"Running main script from: {script_path}")
