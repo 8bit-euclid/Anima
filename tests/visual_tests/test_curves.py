@@ -1,5 +1,6 @@
 from anima.animation.updater import Updater
 from anima.diagnostics import profiler
+from anima.materials.material import get_palette_color
 from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.bezier_spline import BezierSpline
 from anima.primitives.chains import CurveChain
@@ -97,7 +98,8 @@ def test_curve_joints(end_frame: int):
 
     chain = CurveChain([c1, c2, c3])
     chain.width = DEFAULT_LINE_WIDTH * 30
-    chain.color = (1.0, 0.0, 0.0, 1.0)
+    # chain.color = (1.0, 0.0, 0.0, 1.0)
+    chain.color = get_palette_color("byrne_euclid", "red1")
 
     e = Empty()
     e["t"] = 0.0
