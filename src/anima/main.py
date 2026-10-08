@@ -36,9 +36,9 @@ def build_scene(start_time: str, end_time: str):
     """
     # test_text_to_glyphs()
     end_frame = to_frame(end_time)
-    test_bezier_splines(end_frame, colour="red1")
-    test_curve_joints(end_frame, colour="yellow1")
-    test_dashed_curves(end_frame, colour="blue1")
+    test_bezier_splines(end_frame, color="red1")
+    test_curve_joints(end_frame, color="yellow1")
+    test_dashed_curves(end_frame, color="blue1")
 
 
 if __name__ == "__main__":
