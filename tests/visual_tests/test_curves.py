@@ -13,7 +13,7 @@ from anima.primitives.points import Empty, Point
 up = Updater()
 
 
-def test_bezier_splines(end_frame: int):
+def test_bezier_splines(end_frame: int, colour: str | None = None):
     bspline = BezierSpline([(0, 0), (3, 1), (7, -1)])
     # bspline = BezierSpline([(0, 0), (1, 0), (7, 0)])
     # bspline.set_width(THIN)
@@ -54,6 +54,9 @@ def test_bezier_splines(end_frame: int):
     # dr.set_expression('7*x')
 
     bspline.bias = -1
+    if colour is not None:
+        bspline.color = get_palette_color("byrne_euclid", colour)
+        bcurve.color = get_palette_color("byrne_euclid", colour)
 
     def update(scene):
         t1 = e["t"]
@@ -79,7 +82,7 @@ def test_bezier_splines(end_frame: int):
     up.add_function(update)
 
 
-def test_curve_joints(end_frame: int):
+def test_curve_joints(end_frame: int, colour: str | None = None):
     c1 = Segment((0.5, -1), (1, 0))
     # c1 = BezierCurve((0, -1), (1, 0))
     # c1.set_handle_0((1, 0))
@@ -97,9 +100,10 @@ def test_curve_joints(end_frame: int):
     # j2 = Joint(c2, c3, num_subdiv=50)
 
     chain = CurveChain([c1, c2, c3])
-    chain.width = DEFAULT_LINE_WIDTH * 30
+    chain.width = DEFAULT_LINE_WIDTH * 10
     # chain.color = (1.0, 0.0, 0.0, 1.0)
-    chain.color = get_palette_color("byrne_euclid", "red1")
+    if colour is not None:
+        chain.color = get_palette_color("byrne_euclid", colour)
 
     e = Empty()
     e["t"] = 0.0
@@ -166,7 +170,7 @@ def test_curve_joints(end_frame: int):
     up.add_function(update)
 
 
-def test_dashed_curves(end_frame: int):
+def test_dashed_curves(end_frame: int, colour: str | None = None):
     width = 1.5 * DEFAULT_LINE_WIDTH
 
     # c1 = Segment((0, -1), (0, 0))
@@ -180,6 +184,8 @@ def test_dashed_curves(end_frame: int):
     # dashed1 = DashedCurve(curve1, width=width)
     # dashed2 = DashedCurve(curve2, width=width)
     dashed2 = curve2.make_dashed()
+    if colour is not None:
+        dashed2.color = get_palette_color("byrne_euclid", colour)
 
     gap2 = dashed2._gap_len / dashed2._length
     dash2 = dashed2._dash_len / dashed2._length

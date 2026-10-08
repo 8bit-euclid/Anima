@@ -36,8 +36,10 @@ def cleanup_blender_materials_and_lights():
 
 
 def test_palette_lookup_returns_named_color():
-    assert get_palette_color("byrne_euclid", "red1") == pytest.approx((216 / 255, 66 / 255, 39 / 255))
-    assert get_palette_color("rougeux_euclid", "yellow") == pytest.approx((255 / 255, 192 / 255, 1 / 255))
+    assert get_palette_color("byrne_euclid", "red1") == pytest.approx(srgb_to_linear_rgba(hex_to_rgb("#D84227"))[:3])
+    assert get_palette_color("rougeux_euclid", "yellow") == pytest.approx(
+        srgb_to_linear_rgba(hex_to_rgb("#FFC001"))[:3]
+    )
 
 
 def test_palette_lookup_raises_for_missing_values():

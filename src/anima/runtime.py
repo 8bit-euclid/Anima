@@ -19,6 +19,7 @@ def run_lesson(
     start_time: str = "00:00",
     end_time: str | None = None,
     frame_rate: int = 60,
+    use_default_lighting: bool = True,
 ):
     """Bootstrap Blender, build a lesson's scene, then start playback.
 
@@ -38,6 +39,10 @@ def run_lesson(
 
     clear_scene()
     ebpy.set_render_fps(frame_rate)
+
+    # Set default lighting
+    if use_default_lighting:
+        bpy.ops.object.light_add(type="SUN")
 
     logger.info("Building scene...")
     build_scene(start_time, end_time)

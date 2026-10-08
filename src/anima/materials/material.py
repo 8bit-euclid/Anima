@@ -37,7 +37,8 @@ def get_palette_color(palette: str, color_name: str) -> RGB | RGBA:
         color_name: The color name within that palette.
 
     Returns:
-        The RGB or RGBA tuple assigned to the requested palette color.
+        The RGB or RGBA tuple assigned to the requested palette color. Hex colors are
+        converted from sRGB to scene-linear RGB; numeric tuples are returned unchanged.
 
     Raises:
         KeyError: If the palette or color name does not exist.
@@ -45,7 +46,7 @@ def get_palette_color(palette: str, color_name: str) -> RGB | RGBA:
     color = PALETTES[palette][color_name]
     if isinstance(color, str):
         if _is_hex_str(color):
-            color = hex_to_rgb(color)
+            color = srgb_to_linear_rgba(hex_to_rgb(color))[:3]
         else:
             raise TypeError("Expected a HEX color string")
     else:
