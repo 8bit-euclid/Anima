@@ -70,30 +70,123 @@ def list_palettes() -> dict[str, PALETTE]:
     return PALETTES
 
 
-def create_color_material(name: str, color: RGB | RGBA) -> bpy.types.Material:
-    """Get or create a material with the given name and set it to the given color.
+def create_color_material(
+    name: str,
+    color: RGB | RGBA,
+    *,
+    roughness: float | None = None,
+    metallic: float | None = None,
+    specular_ior_level: float | None = None,
+    ior: float | None = None,
+    coat_weight: float | None = None,
+    coat_roughness: float | None = None,
+    sheen_weight: float | None = None,
+    emission_strength: float | None = None,
+) -> bpy.types.Material:
+    """Get or create a material with the given name and set its color and shader properties.
+
+    Properties left as None keep their current values (or the matte defaults for a new material).
+    """
+    mat = get_or_create_material(name)
+    set_material_properties(
+        mat,
+        color=color,
+        roughness=roughness,
+        metallic=metallic,
+        specular_ior_level=specular_ior_level,
+        ior=ior,
+        coat_weight=coat_weight,
+        coat_roughness=coat_roughness,
+        sheen_weight=sheen_weight,
+        emission_strength=emission_strength,
+    )
+    return mat
+
+
+def get_or_create_material(name: str) -> bpy.types.Material:
+    """Get the named material, or create a matte, nonmetallic, non-emissive one if it doesn't exist.
 
     Args:
         name: The name of the material.
-        color: An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1]. Alpha defaults to 1.0 if omitted.
 
     Returns:
-        The material with the given name, set to the given color.
+        The node-based material with the given name.
     """
-    color = to_rgba(color)
     mat = bpy.data.materials.get(name)
+    is_new = mat is None or not mat.use_nodes
     if mat is None:
         mat = bpy.data.materials.new(name)
-        mat.use_nodes = True
-
     mat.use_nodes = True
-    mat.diffuse_color = color  # Used for solid shading in the viewport.
-    if mat.node_tree is not None:
-        bsdf = mat.node_tree.nodes.get("Principled BSDF")
-        if bsdf is not None and "Base Color" in bsdf.inputs:
-            bsdf.inputs["Base Color"].default_value = color
 
+    bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree is not None else None
+    if is_new and bsdf is not None:
+        defaults = {
+            "Base Color": mat.diffuse_color,
+            "Emission Color": mat.diffuse_color,
+            "Metallic": 0.0,
+            "Roughness": 1.0,
+            "IOR": 1.5,
+            "Specular IOR Level": 0.0,
+            "Coat Weight": 0.0,
+            "Coat Roughness": 0.03,
+            "Sheen Weight": 0.0,
+            "Emission Strength": 0.0,
+        }
+        for socket_name, value in defaults.items():
+            if socket_name in bsdf.inputs:
+                bsdf.inputs[socket_name].default_value = value
     return mat
+
+
+def set_material_properties(
+    mat: bpy.types.Material,
+    *,
+    color: RGB | RGBA | None = None,
+    roughness: float | None = None,
+    metallic: float | None = None,
+    specular_ior_level: float | None = None,
+    ior: float | None = None,
+    coat_weight: float | None = None,
+    coat_roughness: float | None = None,
+    sheen_weight: float | None = None,
+    emission_strength: float | None = None,
+):
+    """Update the given color and shader properties of a material, leaving those set to None unchanged.
+
+    Args:
+        mat: The material to update.
+        color: An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1]. Also sets the emission color.
+        roughness: Surface roughness, from 0.0 (smooth) to 1.0 (rough).
+        metallic: Metallic response, from 0.0 (dielectric) to 1.0 (metal).
+        specular_ior_level: Specular reflection strength, from 0.0 to 1.0.
+        ior: Index of refraction used for dielectric reflections.
+        coat_weight: Clear coat strength, from 0.0 to 1.0.
+        coat_roughness: Clear coat roughness, from 0.0 to 1.0.
+        sheen_weight: Sheen strength, from 0.0 to 1.0.
+        emission_strength: Strength of the (color-matched) emission.
+    """
+    if color is not None:
+        color = to_rgba(color)
+        mat.diffuse_color = color  # Used for solid shading in the viewport.
+
+    bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree is not None else None
+    if bsdf is None:
+        return
+    values = {
+        "Base Color": color,
+        "Emission Color": color,
+        "Roughness": roughness,
+        "Metallic": metallic,
+        "Specular IOR Level": specular_ior_level,
+        "IOR": ior,
+        "Coat Weight": coat_weight,
+        "Coat Roughness": coat_roughness,
+        "Sheen Weight": sheen_weight,
+        "Emission Strength": emission_strength,
+    }
+    for socket_name, value in values.items():
+        if value is not None and socket_name in bsdf.inputs:
+            bsdf.inputs[socket_name].default_value = value
 
 
 def get_material_color(mat: bpy.types.Material) -> RGBA:

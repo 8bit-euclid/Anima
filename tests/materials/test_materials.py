@@ -22,11 +22,16 @@ from anima.materials.material import (
     srgb_to_linear_rgba,
     to_rgba,
 )
+from anima.primitives.chains import CurveChain
+from anima.primitives.lines import Segment
 
 
 @pytest.fixture(autouse=True)
 def cleanup_blender_materials_and_lights():
     yield
+    for obj in list(bpy.data.objects):
+        if obj.name.startswith("pytest_"):
+            bpy.data.objects.remove(obj, do_unlink=True)
     for material in list(bpy.data.materials):
         if material.name.startswith("pytest_"):
             bpy.data.materials.remove(material, do_unlink=True)
@@ -110,6 +115,9 @@ def test_create_color_material_sets_blender_material_and_node_value():
     bsdf = material.node_tree.nodes.get("Principled BSDF")
     assert bsdf is not None
     assert tuple(bsdf.inputs["Base Color"].default_value) == pytest.approx((0.25, 0.5, 0.75, 0.8))
+    assert bsdf.inputs["Roughness"].default_value == pytest.approx(1.0)
+    assert bsdf.inputs["Metallic"].default_value == pytest.approx(0.0)
+    assert bsdf.inputs["Specular IOR Level"].default_value == pytest.approx(0.0)
 
     legacy_name = "pytest_material_legacy"
     legacy_material = bpy.data.materials.new(legacy_name)
@@ -117,6 +125,64 @@ def test_create_color_material_sets_blender_material_and_node_value():
     recreated = create_color_material(legacy_name, (0.1, 0.2, 0.3))
     assert recreated is legacy_material
     assert get_material_color(recreated) == pytest.approx((0.1, 0.2, 0.3, 1.0))
+
+
+def test_create_color_material_applies_scalar_shader_options():
+    material = create_color_material(
+        "pytest_material_options",
+        (0.25, 0.5, 0.75),
+        roughness=0.4,
+        metallic=0.2,
+        specular_ior_level=0.3,
+        ior=1.3,
+        coat_weight=0.1,
+        coat_roughness=0.6,
+        sheen_weight=0.2,
+        emission_strength=0.5,
+    )
+
+    bsdf = material.node_tree.nodes.get("Principled BSDF")
+    assert bsdf is not None
+    assert bsdf.inputs["Roughness"].default_value == pytest.approx(0.4)
+    assert bsdf.inputs["Metallic"].default_value == pytest.approx(0.2)
+    assert bsdf.inputs["Specular IOR Level"].default_value == pytest.approx(0.3)
+    assert bsdf.inputs["IOR"].default_value == pytest.approx(1.3)
+    assert bsdf.inputs["Coat Weight"].default_value == pytest.approx(0.1)
+    assert bsdf.inputs["Coat Roughness"].default_value == pytest.approx(0.6)
+    assert bsdf.inputs["Sheen Weight"].default_value == pytest.approx(0.2)
+    assert bsdf.inputs["Emission Strength"].default_value == pytest.approx(0.5)
+    assert tuple(bsdf.inputs["Emission Color"].default_value) == pytest.approx((0.25, 0.5, 0.75, 1.0))
+
+
+def test_set_color_preserves_material_properties_and_properties_propagate():
+    segment_0 = Segment((0, 0), (1, 0), name="pytest_segment_0")
+    segment_1 = Segment((1, 0), (2, 0), name="pytest_segment_1")
+    chain = CurveChain([segment_0, segment_1], create_joints=False, name="pytest_chain")
+    chain.set_material_properties(roughness=0.25, specular_ior_level=0.2)
+    chain.set_color((0.8, 0.4, 0.1))
+
+    for obj in [chain, *chain.curves]:
+        material = obj.object.data.materials[0]
+        bsdf = material.node_tree.nodes.get("Principled BSDF")
+        assert bsdf is not None
+        assert tuple(bsdf.inputs["Base Color"].default_value) == pytest.approx((0.8, 0.4, 0.1, 1.0))
+        assert bsdf.inputs["Roughness"].default_value == pytest.approx(0.25)
+        assert bsdf.inputs["Specular IOR Level"].default_value == pytest.approx(0.2)
+
+
+def test_set_color_updates_existing_custom_material_in_place():
+    segment = Segment((0, 0), (1, 0), name="pytest_segment_custom_material")
+    material = bpy.data.materials.new("pytest_custom_material")
+    material.use_nodes = True
+    material.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.35
+    segment.object.data.materials.append(material)
+
+    segment.set_color((0.2, 0.4, 0.6))
+
+    assert segment.object.data.materials[0] is material
+    bsdf = material.node_tree.nodes["Principled BSDF"]
+    assert tuple(bsdf.inputs["Base Color"].default_value) == pytest.approx((0.2, 0.4, 0.6, 1.0))
+    assert bsdf.inputs["Roughness"].default_value == pytest.approx(0.35)
 
 
 def test_create_area_light_sets_defaults():

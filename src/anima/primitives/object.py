@@ -18,7 +18,7 @@ from anima.globals.general import (
     make_active,
     outer_product,
 )
-from anima.materials.material import create_color_material, get_material_color, to_rgba
+from anima.materials.material import get_material_color, get_or_create_material, set_material_properties
 
 
 class Object(ABC):
@@ -461,29 +461,71 @@ class Object(ABC):
         # Apply transformation
         self.world_matrix = refl_matrix @ self.world_matrix
 
-    # Color-related methods ---------------------------------------------------------------------------------- #
+    # Material-related methods ---------------------------------------------------------------------------------- #
 
-    def set_color(self, color: tuple[float, float, float] | tuple[float, float, float, float]):
-        """Sets the object's color by assigning it a material set to the given color.
+    def set_material_properties(
+        self,
+        *,
+        color: tuple[float, float, float] | tuple[float, float, float, float] | str | None = None,
+        roughness: float | None = None,
+        metallic: float | None = None,
+        specular_ior_level: float | None = None,
+        ior: float | None = None,
+        coat_weight: float | None = None,
+        coat_roughness: float | None = None,
+        sheen_weight: float | None = None,
+        emission_strength: float | None = None,
+    ):
+        """Update the specified color and shader properties of the object's material.
+
+        Properties left as None retain their current values. If the object has no material,
+        a matte one is created first.
 
         Args:
-            color (tuple): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
-                Alpha defaults to 1.0 if omitted.
+            color (tuple | str, optional): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
+                Alpha defaults to 1.0 if omitted. Alternatively, a string representing the hex color (e.g. "#RRGGBB").
+            roughness (float, optional): The roughness of the material.
+            metallic (float, optional): The metallic property of the material.
+            specular_ior_level (float, optional): The specular IOR level of the material.
+            ior (float, optional): The index of refraction of the material.
+            coat_weight (float, optional): The coat weight of the material.
+            coat_roughness (float, optional): The coat roughness of the material.
+            sheen_weight (float, optional): The sheen weight of the material.
+            emission_strength (float, optional): The emission strength of the material.
 
         Raises:
             AssertionError: If the object has no data to which a material can be assigned.
         """
-        assert self._has_data(), f"The object {self.name} has no data to color."
-        color = to_rgba(color)
-        mat = create_color_material(f"{self.name}_material", color)
+        assert self._has_data(), f"The object {self.name} has no data to configure."
         materials = self._bl_object.data.materials
-        if materials:
-            materials[0] = mat
-        else:
+        if not materials:
+            mat = get_or_create_material(f"{self.name}_material")
             materials.append(mat)
+
+        material_options = {
+            "color": color,
+            "roughness": roughness,
+            "metallic": metallic,
+            "specular_ior_level": specular_ior_level,
+            "ior": ior,
+            "coat_weight": coat_weight,
+            "coat_roughness": coat_roughness,
+            "sheen_weight": sheen_weight,
+            "emission_strength": emission_strength,
+        }
+        set_material_properties(materials[0], **material_options)
         for child in self.subobjects:
-            child.color = color
+            child.set_material_properties(**material_options)
         return self
+
+    def set_color(self, color: tuple[float, float, float] | tuple[float, float, float, float] | str):
+        """Set only the object's material color. Convenience wrapper around set_material_properties().
+
+        Args:
+            color (tuple | str): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
+                Alpha defaults to 1.0 if omitted. Alternatively, a string representing the hex color (e.g. "#RRGGBB").
+        """
+        return self.set_material_properties(color=color)
 
     @property
     def color(self) -> tuple[float, float, float, float] | None:
@@ -498,12 +540,12 @@ class Object(ABC):
         return get_material_color(self._bl_object.data.materials[0])
 
     @color.setter
-    def color(self, color: tuple[float, float, float] | tuple[float, float, float, float]):
+    def color(self, color: tuple[float, float, float] | tuple[float, float, float, float] | str):
         """Set the object's color.
 
         Args:
-            color (tuple): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
-                Alpha defaults to 1.0 if omitted.
+            color (tuple | str): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color,
+                or a string representing the hex color (e.g. "#RRGGBB"). Alpha defaults to 1.0 if omitted.
         """
         self.set_color(color)
 
