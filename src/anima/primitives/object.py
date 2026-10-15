@@ -10,6 +10,7 @@ import bpy
 
 from anima.globals.easybpy import apply_scale
 from anima.globals.general import (
+    LAYER_SPACING,
     Euler,
     Matrix,
     Vector,
@@ -38,6 +39,7 @@ class Object(ABC):
         _shape_keys (list[bpy.types.ShapeKey]): A list of shape keys for the object.
         _bl_object (bpy.types.Object): The underlying Blender object.
         _write_logs (bool): A boolean flag indicating whether to write logs for this object.
+        _layer (int): The stacking layer of the object, relative to its parent. Higher layers sit above lower ones.
     """
 
     def __init__(
@@ -69,6 +71,7 @@ class Object(ABC):
         self._bl_object: bpy.types.Object = bl_object
         self._shape_keys: list[bpy.types.ShapeKey] = []
         self._write_logs: bool = False
+        self._layer: int = 0
 
         # Set parent after bl_object is initialized (required for Blender parenting)
         if parent is not None:
@@ -222,6 +225,29 @@ class Object(ABC):
         bpy.ops.transform.translate(value=(x, y, z), orient_type=ref_frame)
         if apply:
             ebpy.apply_location(ref=self.object)
+
+    @property
+    def layer(self) -> int:
+        """Get the object's stacking layer.
+
+        Returns:
+            int: The layer relative to the parent. Higher layers sit above lower ones.
+        """
+        return self._layer
+
+    @layer.setter
+    def layer(self, value: int) -> None:
+        """Set the object's stacking layer, used to prevent z-fighting between coplanar objects.
+
+        The layer is realised as a tiny z-offset stored in Blender's delta location, so it is independent of the
+        object's location (and its keyframes) and is added to the parent's offset for child objects.
+
+        Args:
+            value (int): The layer index. Higher layers sit above lower ones.
+        """
+        self._layer = value
+        delta = self._bl_object.delta_location
+        self._bl_object.delta_location = (delta.x, delta.y, value * LAYER_SPACING)
 
     @property
     def location(self) -> Vector:

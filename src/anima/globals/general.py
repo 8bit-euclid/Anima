@@ -13,7 +13,9 @@ import anima.globals.easybpy as ebpy
 from anima.utils.project import get_project_root_path
 
 UnitZ = Vector((0.0, 0.0, 1.0))
-SMALL_OFFSET = 0.00005
+# Z-spacing between consecutive layers. Small enough not to visibly alter shared height/displacement
+# textures, but large enough to avoid z-fighting between coplanar objects.
+LAYER_SPACING = 1e-4
 DEFAULT_ABSOLUTE_SMALL = 1e-7
 DEFAULT_RELATIVE_SMALL = 1e-8
 
@@ -185,14 +187,23 @@ def add_square(size: float = 1, location=(0, 0, 0)):
     return active_object()
 
 
-def add_cube(size: float = 1, location=(0, 0, 0)):
-    bpy.ops.mesh.primitive_cube_add(size=size, location=(0, 0, 0))
+def add_rectangle(length: float = 1, width: float = 1, location=(0, 0, 0)) -> bpy.types.Object:
+    add_square(size=1, location=location)
+    rect = active_object()
+    rect.scale = (length, width, 1)
+    ebpy.apply_scale(rect)
+    return rect
+
+
+def add_cube(size: float = 1, location=(0, 0, 0)) -> bpy.types.Object:
+    bpy.ops.mesh.primitive_cube_add(size=size, location=location)
     return active_object()
 
 
-def add_cuboid(length: float, width: float, height: float, location=(0, 0, 0)):
-    cube = add_cube()
+def add_cuboid(length: float, width: float, height: float, location=(0, 0, 0)) -> bpy.types.Object:
+    cube = add_cube(size=1, location=location)
     cube.scale = (length, width, height)
+    ebpy.apply_scale(cube)
     return cube
 
 
@@ -318,8 +329,8 @@ def get_blender_object(object):
 
 
 # Store the original stdout so we can restore it later
-original_stdout = sys.stdout
-original_stderr = sys.stderr
+ORIGINAL_STDOUT = sys.stdout
+ORIGINAL_STDERR = sys.stderr
 
 
 def disable_print():
@@ -330,8 +341,8 @@ def disable_print():
 
 def enable_print():
     """Enable printing by restoring sys.stdout to its original state."""
-    sys.stdout = original_stdout
-    sys.stderr = original_stderr
+    sys.stdout = ORIGINAL_STDOUT
+    sys.stderr = ORIGINAL_STDERR
 
 
 def has_instance_variable(obj, name):
