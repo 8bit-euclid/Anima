@@ -111,20 +111,13 @@ def test_create_color_material_sets_blender_material_and_node_value():
 
     assert material.name == material_name
     assert get_material_color(material) == pytest.approx((0.25, 0.5, 0.75, 0.8))
-    assert material.use_nodes is True
+    assert material.node_tree is not None
     bsdf = material.node_tree.nodes.get("Principled BSDF")
     assert bsdf is not None
     assert tuple(bsdf.inputs["Base Color"].default_value) == pytest.approx((0.25, 0.5, 0.75, 0.8))
     assert bsdf.inputs["Roughness"].default_value == pytest.approx(1.0)
     assert bsdf.inputs["Metallic"].default_value == pytest.approx(0.0)
     assert bsdf.inputs["Specular IOR Level"].default_value == pytest.approx(0.0)
-
-    legacy_name = "pytest_material_legacy"
-    legacy_material = bpy.data.materials.new(legacy_name)
-    legacy_material.use_nodes = False
-    recreated = create_color_material(legacy_name, (0.1, 0.2, 0.3))
-    assert recreated is legacy_material
-    assert get_material_color(recreated) == pytest.approx((0.1, 0.2, 0.3, 1.0))
 
 
 def test_create_color_material_applies_scalar_shader_options():
@@ -173,7 +166,6 @@ def test_set_color_preserves_material_properties_and_properties_propagate():
 def test_set_color_updates_existing_custom_material_in_place():
     segment = Segment((0, 0), (1, 0), name="pytest_segment_custom_material")
     material = bpy.data.materials.new("pytest_custom_material")
-    material.use_nodes = True
     material.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.35
     segment.object.data.materials.append(material)
 

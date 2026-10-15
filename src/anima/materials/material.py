@@ -113,10 +113,9 @@ def get_or_create_material(name: str) -> bpy.types.Material:
         The node-based material with the given name.
     """
     mat = bpy.data.materials.get(name)
-    is_new = mat is None or not mat.use_nodes
+    is_new = mat is None
     if mat is None:
         mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
 
     bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree is not None else None
     if is_new and bsdf is not None:
