@@ -22,7 +22,12 @@ from anima.globals.general import (
     make_active,
     outer_product,
 )
-from anima.materials.material import get_material_color, get_or_create_material, set_material_properties
+from anima.materials.material import (
+    get_material_color,
+    get_or_create_material,
+    get_palette_color,
+    set_material_properties,
+)
 
 
 class Object(ABC):
@@ -597,6 +602,23 @@ class Object(ABC):
                 Alpha defaults to 1.0 if omitted. Alternatively, a string representing the hex color (e.g. "#RRGGBB").
         """
         return self.set_material_properties(color=color)
+
+    def set_palette_color(
+        self,
+        palette_name: str,
+        color_name: str,
+    ) -> Object:
+        """Set the object's color from a palette.
+
+        Args:
+            palette_name (str): The name of the color palette.
+            color_name (str): The name of the color within the palette.
+
+        Returns:
+            Object: This object, after updating its color.
+        """
+        color = get_palette_color(palette_name, color_name)
+        return self.set_color(color)
 
     @property
     def color(self) -> tuple[float, float, float, float] | None:

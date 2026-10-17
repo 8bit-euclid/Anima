@@ -1,6 +1,5 @@
 from anima.animation.updater import Updater
 from anima.diagnostics import profiler
-from anima.materials.material import get_palette_color
 from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.bezier_spline import BezierSpline
 from anima.primitives.chains import CurveChain
@@ -48,6 +47,8 @@ def test_bezier_splines(end_frame: int, color: str | None = None):
 
     p1 = Point(name="Point1")
     p2 = Point(name="Point2")
+    p1.set_palette_color("byrne_euclid", "black")
+    p2.set_palette_color("byrne_euclid", "black")
     # p1['u'] = 0.0
     # dr = p1.create_driver('["u"]')
     # dr.add_input_variable('x', e, '["t"]')
@@ -55,8 +56,8 @@ def test_bezier_splines(end_frame: int, color: str | None = None):
 
     bspline.bias = -1
     if color is not None:
-        bspline.color = get_palette_color("byrne_euclid", color)
-        bcurve.color = get_palette_color("byrne_euclid", color)
+        bspline.set_palette_color("byrne_euclid", color)
+        bcurve.set_palette_color("byrne_euclid", color)
 
     def update(scene):
         t1 = e["t"]
@@ -103,7 +104,7 @@ def test_curve_joints(end_frame: int, color: str | None = None):
     chain.width = DEFAULT_LINE_WIDTH * 10
     # chain.color = (1.0, 0.0, 0.0, 1.0)
     if color is not None:
-        chain.color = get_palette_color("byrne_euclid", color)
+        chain.set_palette_color("byrne_euclid", color)
         chain.set_material_properties(
             roughness=0.95,
             metallic=0.0,
@@ -195,7 +196,7 @@ def test_dashed_curves(end_frame: int, color: str | None = None):
     dashed2 = curve2.make_dashed()
     dashed2.width = width
     if color is not None:
-        dashed2.color = get_palette_color("byrne_euclid", color)
+        dashed2.set_palette_color("byrne_euclid", color)
         dashed2.set_material_properties(
             roughness=0.95,
             metallic=0.0,
