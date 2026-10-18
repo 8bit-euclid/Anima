@@ -167,6 +167,9 @@ def set_material_properties(
     if color is not None:
         color = to_rgba(color)
         mat.diffuse_color = color  # Used for solid shading in the viewport.
+        from anima.materials.texture import set_native_color  # Deferred: texture imports this module.
+
+        set_native_color(mat, color)
 
     bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree is not None else None
     if bsdf is None:

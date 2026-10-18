@@ -28,6 +28,7 @@ from anima.materials.material import (
     get_palette_color,
     set_material_properties,
 )
+from anima.materials.texture import AlbedoMode, TextureSet, apply_texture_set
 
 
 class Object(ABC):
@@ -77,6 +78,8 @@ class Object(ABC):
         self._shape_keys: list[bpy.types.ShapeKey] = []
         self._write_logs: bool = False
         self._layer: int = 0
+        self._texture_set: TextureSet | None = None
+        self._texture_options: dict[str, Any] = {}
 
         # Set parent after bl_object is initialized (required for Blender parenting)
         if parent is not None:
@@ -590,6 +593,57 @@ class Object(ABC):
         for child in self.subobjects:
             child.set_material_properties(**material_options)
         return self
+
+    def set_textures(
+        self,
+        textures: TextureSet,
+        *,
+        albedo_mode: AlbedoMode = "replace",
+        **options: Any,
+    ) -> Object:
+        """Apply PBR texture maps to the object's material and those of its subobjects.
+
+        Textures are sampled in world XY coordinates, so overlapping objects line up with each other.
+
+        Args:
+            textures: The texture maps to apply.
+            albedo_mode: "replace", "multiply" or "ignore"; see `apply_texture_set`.
+            **options: Further keyword arguments for `apply_texture_set` (e.g. `bump_strength`).
+
+        Returns:
+            Object: This object.
+        """
+        self._texture_set = textures
+        self._texture_options = {"albedo_mode": albedo_mode, **options}
+        if self._has_data():
+            materials = self._bl_object.data.materials
+            if not materials:
+                materials.append(get_or_create_material(f"{self.name}_material"))
+            apply_texture_set(materials[0], textures, albedo_mode=albedo_mode, **options)
+        for child in self.subobjects:
+            child.set_textures(textures, albedo_mode=albedo_mode, **options)
+        return self
+
+    def inherit_textures_from(self, other: Object, *, albedo_mode: AlbedoMode = "multiply", **options: Any) -> Object:
+        """Apply the textures set on another object to this one, keeping this object's own color by default.
+
+        Args:
+            other: The object whose texture set to inherit (see `set_textures`).
+            albedo_mode: "multiply" (default) tints this object's color by the albedo luminance; "ignore"
+                keeps the color flat; "replace" copies the albedo.
+            **options: Overrides for the other object's `apply_texture_set` options.
+
+        Raises:
+            ValueError: If the other object has no textures.
+
+        Returns:
+            Object: This object.
+        """
+        textures = getattr(other, "_texture_set", None)
+        if textures is None:
+            raise ValueError(f"The object {other.name} has no textures to inherit.")
+        merged = {k: v for k, v in other._texture_options.items() if k != "albedo_mode"}
+        return self.set_textures(textures, albedo_mode=albedo_mode, **{**merged, **options})
 
     def set_color(
         self,
