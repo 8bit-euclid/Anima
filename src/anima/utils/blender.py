@@ -233,6 +233,19 @@ def configure_blender_viewport():
             logger.debug("Set 3D viewport to top view")
 
 
+def set_viewport_shading(shading: str = "MATERIAL") -> None:
+    """Set the 3D viewport's shading mode.
+
+    Args:
+        shading: One of "WIREFRAME", "SOLID", "MATERIAL" (material preview, EEVEE) or "RENDERED" (the scene's engine).
+    """
+    override = _get_viewport_override()
+    if override is None:
+        logger.warning("No 3D viewport found to set shading on")
+        return
+    override["space_data"].shading.type = shading
+
+
 def frame_scene_in_viewport(zoom_delta: float = 0):
     """Zoom the 3D viewport so that all visible scene objects fit in view.
     Args:

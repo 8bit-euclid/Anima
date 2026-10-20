@@ -115,7 +115,6 @@ def apply_texture_set(
     bump_strength: float = 0.2,
     bump_distance: float = 0.01,
     normal_strength: float = 1.0,
-    displacement_scale: float = 0.0,
 ) -> None:
     """Build the texture node graph on a material's Principled BSDF, replacing any earlier one.
 
@@ -131,8 +130,6 @@ def apply_texture_set(
         bump_strength: Strength of the height-map bump.
         bump_distance: Distance (scene units) a full-intensity height value represents for bump shading.
         normal_strength: Strength of the normal map.
-        displacement_scale: If non-zero, also displace geometry by the height map (in scene units). Needs
-            Cycles and a finely subdivided mesh.
     """
     remove_texture_nodes(mat)
     tree = mat.node_tree
@@ -229,16 +226,6 @@ def apply_texture_set(
     if normal_socket is not None:
         links.new(normal_socket, bsdf.inputs["Normal"])
 
-    if height is not None and displacement_scale:
-        output = next((n for n in nodes if n.type == "OUTPUT_MATERIAL" and n.is_active_output), None)
-        if output is not None:
-            disp = new("ShaderNodeDisplacement", "displacement", 400, -1500)
-            disp.inputs["Scale"].default_value = displacement_scale
-            disp.inputs["Midlevel"].default_value = 0.0
-            links.new(height.outputs["Color"], disp.inputs["Height"])
-            links.new(disp.outputs["Displacement"], output.inputs["Displacement"])
-            mat.displacement_method = "BOTH"
-
 
 def remove_texture_nodes(mat: bpy.types.Material) -> None:
     """Remove every node created by apply_texture_set() and restore the plain Principled BSDF links.
@@ -256,7 +243,6 @@ def remove_texture_nodes(mat: bpy.types.Material) -> None:
             bsdf.inputs["Base Color"].default_value = tuple(native.outputs[0].default_value)
     for node in [n for n in nodes if n.name.startswith(NODE_PREFIX)]:
         nodes.remove(node)
-    mat.displacement_method = "BUMP"
 
 
 def set_native_color(mat: bpy.types.Material, color: RGBA) -> None:

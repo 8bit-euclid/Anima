@@ -11,6 +11,7 @@ import bpy
 from anima.diagnostics import logger
 from anima.globals.general import clear_scene, deselect_all, ebpy, hide_relationship_lines, to_frame
 from anima.utils.blender import configure_blender_panes, configure_blender_viewport, frame_scene_in_viewport
+from anima.utils.render import RenderSettings, configure_render
 from anima.utils.socket.server import BlenderSocketServer
 
 
@@ -20,6 +21,7 @@ def run_lesson(
     end_time: str | None = None,
     frame_rate: int = 60,
     use_default_lighting: bool = True,
+    render_settings: RenderSettings | None = None,
 ):
     """Bootstrap Blender, build a lesson's scene, then start playback.
 
@@ -28,7 +30,9 @@ def run_lesson(
         start_time (str): The time at which the lesson's animation starts.
         end_time (str): The time at which the lesson's animation ends.
         frame_rate (int): Render frame rate.
-        zoom_delta (float): Extra viewport zoom steps applied after framing the scene.
+        use_default_lighting (bool): Add a default sun light.
+        render_settings (RenderSettings, optional): Render engine, samples and resolution to apply. Render the
+            result afterwards with `anima.utils.render.render_animation`.
     """
     logger.info("Running lesson script in Blender")
 
@@ -39,6 +43,8 @@ def run_lesson(
 
     clear_scene()
     ebpy.set_render_fps(frame_rate)
+    if render_settings is not None:
+        configure_render(render_settings)
 
     # Set default lighting
     if use_default_lighting:
