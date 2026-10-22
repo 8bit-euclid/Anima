@@ -9,7 +9,7 @@ from anima.primitives.object import Object
 class Group(Object):
     """A data-less container that applies Object operations to several objects at once.
 
-    Members become subobjects, so every `Object` method that recurses over subobjects (materials, textures,
+    Members become children, so every `Object` method that recurses over children (materials, textures,
     visibility, ...) works on the group without any forwarding code. The group is a Blender empty with no data,
     and members are parented to it, so keep its own transform at the identity unless you want to move them all.
     Its axes are hidden in the viewport; use `highlight()` to outline the members while debugging.
@@ -25,7 +25,7 @@ class Group(Object):
         """Initialise the group.
 
         Args:
-            objects: Objects to add as subobjects. Each can belong to only one parent.
+            objects: Objects to add as children. Each can belong to only one parent.
             name: The name of the group.
             parent: The parent object. Defaults to None.
         """
@@ -35,7 +35,7 @@ class Group(Object):
         self.add(*objects)
 
     def add(self, *objects: Object) -> Group:
-        """Add objects as subobjects of the group.
+        """Add objects as children of the group.
 
         Args:
             *objects: The objects to add.
@@ -44,8 +44,8 @@ class Group(Object):
             Group: This group.
 
         Raises:
-            ValueError: If an object already belongs to another parent; call `remove_subobject()` on its
+            ValueError: If an object already belongs to another parent; call `remove_child()` on its
                 current parent first.
         """
-        self.add_subobjects(*objects)
+        self.add_children(*objects)
         return self

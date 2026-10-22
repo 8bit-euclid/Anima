@@ -51,7 +51,7 @@ class CurveChain(Curve):
 
         # Add all entities (curves and joints) as children of this object.
         for c in self._all_entities:
-            self.add_subobject(c)
+            self.add_child(c)
 
         # Set the width and bias.
         self.set_width(width)
@@ -310,7 +310,7 @@ class CurveLoop(CurveChain):
         if create_joints and len(curves) > 1:
             closing_joint = RoundJoint(curves[-1], curves[0])
             self._joints.append(closing_joint)
-            self.add_subobject(closing_joint)
+            self.add_child(closing_joint)
 
     @property
     def closed(self) -> bool:

@@ -83,9 +83,9 @@ class Object(ABC):
 
         # Set parent after bl_object is initialized (required for Blender parenting)
         if parent is not None:
-            parent.add_subobject(self)
+            parent.add_child(self)
 
-    def add_subobject(self, object: Object) -> None:
+    def add_child(self, object: Object) -> None:
         """Adds a sub-object (of type Object) as a child and sets current object as its parent.
 
         Args:
@@ -101,13 +101,13 @@ class Object(ABC):
         if object._parent is not None:
             raise ValueError(
                 f"The object {object.name} already has the parent {object._parent.name}; "
-                f"call remove_subobject() on that parent first to move it to {self.name}."
+                f"call remove_child() on that parent first to move it to {self.name}."
             )
         self._children.append(object)
         object._parent = self
         object._bl_object.parent = self._bl_object
 
-    def add_subobjects(self, *objects: Object) -> None:
+    def add_children(self, *objects: Object) -> None:
         """Adds multiple sub-objects as children and sets current object as their parent.
 
         Args:
@@ -118,9 +118,9 @@ class Object(ABC):
             ValueError: If any of the objects already has a different parent; remove it from that parent first.
         """
         for obj in objects:
-            self.add_subobject(obj)
+            self.add_child(obj)
 
-    def remove_subobject(self, object: Object) -> None:
+    def remove_child(self, object: Object) -> None:
         """Removes a sub-object from this object's children and clears its parent.
 
         Args:
@@ -136,7 +136,7 @@ class Object(ABC):
         object._parent = None
         object._bl_object.parent = None
 
-    def remove_subobjects(self, *objects: Object) -> None:
+    def remove_children(self, *objects: Object) -> None:
         """Removes multiple sub-objects from this object's children and clears their parent.
 
         Args:
@@ -146,11 +146,15 @@ class Object(ABC):
             ValueError: If any of the objects is not a child of this object.
         """
         for obj in objects:
-            self.remove_subobject(obj)
+            self.remove_child(obj)
 
     @property
-    def subobjects(self) -> list[Object]:
-        """Return the list of sub-objects (children) of this object."""
+    def children(self) -> list[Object]:
+        """Return the list of sub-objects (children) of this object.
+
+        Returns:
+            list[Object]: The list of child objects.
+        """
         return self._children
 
     def add_keyframe(
@@ -211,13 +215,13 @@ class Object(ABC):
     def hide(self) -> None:
         """Hide this object and its children in both the viewport and the render."""
         self._set_visibility(False)
-        for child in self.subobjects:
+        for child in self.children:
             child.hide()
 
     def unhide(self) -> None:
         """Unhide this object and its children in both the viewport and the render."""
         self._set_visibility(True)
-        for child in self.subobjects:
+        for child in self.children:
             child.unhide()
 
     def copy(self) -> Object:
@@ -603,7 +607,7 @@ class Object(ABC):
 
         Properties left as None retain their current values. If the object has data but no material,
         a matte one is created first. Objects without data (e.g. a `Group`) only forward the properties to
-        their subobjects.
+        their children.
 
         Args:
             color (tuple | str, optional): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
@@ -636,7 +640,7 @@ class Object(ABC):
             if not materials:
                 materials.append(get_or_create_material(f"{self.name}_material"))
             set_material_properties(materials[0], **material_options)
-        for child in self.subobjects:
+        for child in self.children:
             child.set_material_properties(**material_options)
         return self
 
@@ -647,7 +651,7 @@ class Object(ABC):
         albedo_mode: AlbedoMode = "replace",
         **options: Any,
     ) -> Object:
-        """Apply PBR texture maps to the object's material and those of its subobjects.
+        """Apply PBR texture maps to the object's material and those of its children.
 
         Textures are sampled in world XY coordinates, so overlapping objects line up with each other.
 
@@ -666,7 +670,7 @@ class Object(ABC):
             if not materials:
                 materials.append(get_or_create_material(f"{self.name}_material"))
             apply_texture_set(materials[0], textures, albedo_mode=albedo_mode, **options)
-        for child in self.subobjects:
+        for child in self.children:
             child.set_textures(textures, albedo_mode=albedo_mode, **options)
         return self
 
@@ -789,13 +793,13 @@ class Object(ABC):
         if clear:
             deselect_all()
         self._bl_object.select_set(True)
-        for child in self.subobjects:
+        for child in self.children:
             child.highlight(clear=False)
 
     def unhighlight(self) -> None:
         """Deselect this object and all its descendants."""
         self._bl_object.select_set(False)
-        for child in self.subobjects:
+        for child in self.children:
             child.unhighlight()
 
     def debug(self) -> bool:

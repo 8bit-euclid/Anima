@@ -98,7 +98,7 @@ class BezierSpline(Curve):
             line_obj.parent = self.object
 
         # Set same width for all children that are curves.
-        for c in self.subobjects:
+        for c in self.children:
             if isinstance(c, Curve):
                 c.set_width(width)
 
@@ -109,7 +109,7 @@ class BezierSpline(Curve):
         self.object.data.offset = -bias * 0.5 * self._width
 
         # Set the same bias for all children that are curves.
-        for c in self.subobjects:
+        for c in self.children:
             if isinstance(c, Curve):
                 c.set_bias(bias)
 

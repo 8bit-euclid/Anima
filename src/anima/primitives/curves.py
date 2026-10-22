@@ -377,7 +377,7 @@ class Curve(Object):
             getattr(self, f"_update_attachment_{end_idx}")()
         # A joint belongs to the pair of curves, so it is parented to their common parent instead (see Joint).
         if not isinstance(attmnt, Joint):
-            self.add_subobject(attmnt)
+            self.add_child(attmnt)
         return self
 
     @abstractmethod

@@ -119,7 +119,7 @@ class Mesh(Object):
         hook.vertex_indices_set([vertex_index])
 
         # Add empty as a child and store hook ref.
-        self.add_subobject(empty)
+        self.add_child(empty)
         self._hooks.append(hook)
 
         # Todo - encapsulate hook in Hook class

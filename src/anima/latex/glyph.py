@@ -60,11 +60,11 @@ class Glyph(Object):
 
         # Create border and add as child
         self._border = GlyphBorder(path, name=f"{name}_border")
-        self.add_subobject(self._border)
+        self.add_child(self._border)
 
         # Create body and add as child
         self._body = GlyphBody(self._border, name=f"{name}_body", mesh_quality=mesh_quality)
-        self.add_subobject(self._body)
+        self.add_child(self._body)
 
     @property
     def border(self) -> GlyphBorder:

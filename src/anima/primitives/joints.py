@@ -75,7 +75,7 @@ class Joint(Attachment, Curve, Mesh):
         super().__init__(connections=[curve_1, curve_2], width=width, bias=bias, name=name)
 
         # Add path as a child for proper composite pattern hierarchy.
-        self.add_subobject(self._path)
+        self.add_child(self._path)
 
         assert 0 <= fillet_factor <= 1, "Currently, only a fillet factor in [0, 1] is supported."
         self._fillet_factor = fillet_factor
@@ -101,7 +101,7 @@ class Joint(Attachment, Curve, Mesh):
         # Adopt the common parent of the two curves, if they share one.
         shared_parent = curve_1.parent
         if shared_parent is not None and shared_parent is curve_2.parent:
-            shared_parent.add_subobject(self)
+            shared_parent.add_child(self)
 
     def set_width(self, width: float):
         self._width = width

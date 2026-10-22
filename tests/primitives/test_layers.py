@@ -45,7 +45,7 @@ def test_layer_is_copied_with_the_object():
 def test_child_layer_adds_to_parent_layer_in_world_space():
     parent = Object(name="pytest_layer_parent")
     child = Object(name="pytest_layer_child")
-    parent.add_subobject(child)
+    parent.add_child(child)
     parent.layer = 1
     child.layer = 2
     bpy.context.view_layer.update()

@@ -26,36 +26,36 @@ def test_group_is_dataless_with_hidden_axes():
     assert group.object.empty_display_size < 1e-3
 
 
-def test_add_subobject_is_idempotent_for_same_parent():
+def test_add_child_is_idempotent_for_same_parent():
     group = Group(name="pytest_group")
     a = _rect("a")
     group.add(a, a)
-    group.add_subobject(a)
-    assert group.subobjects == [a]
+    group.add_child(a)
+    assert group.children == [a]
 
 
 def test_adding_to_a_second_parent_raises():
     g1, g2 = Group(name="pytest_g1"), Group(name="pytest_g2")
     a = _rect("a")
     g1.add(a)
-    with pytest.raises(ValueError, match="remove_subobject"):
+    with pytest.raises(ValueError, match="remove_child"):
         g2.add(a)
     assert a.parent is g1
-    assert g2.subobjects == []
+    assert g2.children == []
 
 
 def test_moving_object_between_parents_updates_both_trees():
     g1, g2 = Group(name="pytest_g1"), Group(name="pytest_g2")
     a = _rect("a")
     g1.add(a)
-    g1.remove_subobject(a)
-    g2.add_subobject(a)
-    assert g1.subobjects == []
-    assert g2.subobjects == [a]
+    g1.remove_child(a)
+    g2.add_child(a)
+    assert g1.children == []
+    assert g2.children == [a]
     assert a.parent is g2
     assert a.object.parent is g2.object
-    g2.remove_subobject(a)
-    assert g2.subobjects == []
+    g2.remove_child(a)
+    assert g2.children == []
     assert a.parent is None
     assert a.object.parent is None
 
@@ -83,8 +83,8 @@ def test_joint_is_adopted_by_shared_parent_of_its_curves():
     group.add(c1, c2)
     joint = RoundJoint(c1, c2)
     assert joint.parent is group
-    assert joint in group.subobjects
-    assert joint not in c1.subobjects and joint not in c2.subobjects
+    assert joint in group.children
+    assert joint not in c1.children and joint not in c2.children
 
 
 def test_joint_without_shared_parent_stays_unparented():
@@ -96,14 +96,14 @@ def test_joint_without_shared_parent_stays_unparented():
     assert joint.parent is None
 
 
-def test_remove_subobject_detaches_child():
+def test_remove_child_detaches_child():
     group = Group(name="pytest_group")
     a, b = _rect("a"), _rect("b")
     group.add(a)
     with pytest.raises(ValueError):
-        group.remove_subobject(b)
-    group.remove_subobject(a)
-    assert group.subobjects == []
+        group.remove_child(b)
+    group.remove_child(a)
+    assert group.children == []
     assert a.parent is None
     assert a.object.parent is None
 
@@ -118,7 +118,7 @@ def test_parent_is_read_only():
 def test_constructor_parent_registers_child():
     group = Group(name="pytest_group")
     child = Rectangle(1, 1, name="pytest_child", parent=group)
-    assert group.subobjects == [child]
+    assert group.children == [child]
     assert child.object.parent is group.object
 
 
