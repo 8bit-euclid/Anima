@@ -83,7 +83,7 @@ class Object(ABC):
 
         # Set parent after bl_object is initialized (required for Blender parenting)
         if parent is not None:
-            self._set_parent(parent)
+            parent.add_subobject(self)
 
     def add_subobject(self, object: Object) -> None:
         """Adds a sub-object (of type Object) as a child and sets current object as its parent.
@@ -93,10 +93,60 @@ class Object(ABC):
 
         Raises:
             AssertionError: If the object is not animable.
+            ValueError: If the object already has a different parent; remove it from that parent first.
         """
         assert is_animable(object), "Can only add animable sub-objects."
-        object._set_parent(self)
+        if object._parent is self:  # Idempotent check: already a child of this parent
+            return
+        if object._parent is not None:
+            raise ValueError(
+                f"The object {object.name} already has the parent {object._parent.name}; "
+                f"call remove_subobject() on that parent first to move it to {self.name}."
+            )
         self._children.append(object)
+        object._parent = self
+        object._bl_object.parent = self._bl_object
+
+    def add_subobjects(self, *objects: Object) -> None:
+        """Adds multiple sub-objects as children and sets current object as their parent.
+
+        Args:
+            *objects (Object): The sub-objects to add.
+
+        Raises:
+            AssertionError: If any of the objects is not animable.
+            ValueError: If any of the objects already has a different parent; remove it from that parent first.
+        """
+        for obj in objects:
+            self.add_subobject(obj)
+
+    def remove_subobject(self, object: Object) -> None:
+        """Removes a sub-object from this object's children and clears its parent.
+
+        Args:
+            object (Object): The sub-object to remove.
+
+        Raises:
+            ValueError: If the object is not a child of this object.
+        """
+        if object._parent is not self:
+            raise ValueError(f"The object {object.name} is not a child of {self.name}.")
+        # Match by identity, not equality, so a future __eq__ on Object cannot remove the wrong child.
+        self._children[:] = [child for child in self._children if child is not object]
+        object._parent = None
+        object._bl_object.parent = None
+
+    def remove_subobjects(self, *objects: Object) -> None:
+        """Removes multiple sub-objects from this object's children and clears their parent.
+
+        Args:
+            *objects (Object): The sub-objects to remove.
+
+        Raises:
+            ValueError: If any of the objects is not a child of this object.
+        """
+        for obj in objects:
+            self.remove_subobject(obj)
 
     @property
     def subobjects(self) -> list[Object]:
@@ -551,8 +601,9 @@ class Object(ABC):
     ) -> Object:
         """Update the specified color and shader properties of the object's material.
 
-        Properties left as None retain their current values. If the object has no material,
-        a matte one is created first.
+        Properties left as None retain their current values. If the object has data but no material,
+        a matte one is created first. Objects without data (e.g. a `Group`) only forward the properties to
+        their subobjects.
 
         Args:
             color (tuple | str, optional): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
@@ -566,18 +617,9 @@ class Object(ABC):
             sheen_weight (float, optional): The sheen weight of the material.
             emission_strength (float, optional): The emission strength of the material.
 
-        Raises:
-            AssertionError: If the object has no data to which a material can be assigned.
-
         Returns:
             Object: This object, after updating its material properties.
         """
-        assert self._has_data(), f"The object {self.name} has no data to configure."
-        materials = self._bl_object.data.materials
-        if not materials:
-            mat = get_or_create_material(f"{self.name}_material")
-            materials.append(mat)
-
         material_options = {
             "color": color,
             "roughness": roughness,
@@ -589,7 +631,11 @@ class Object(ABC):
             "sheen_weight": sheen_weight,
             "emission_strength": emission_strength,
         }
-        set_material_properties(materials[0], **material_options)
+        if self._has_data():
+            materials = self._bl_object.data.materials
+            if not materials:
+                materials.append(get_or_create_material(f"{self.name}_material"))
+            set_material_properties(materials[0], **material_options)
         for child in self.subobjects:
             child.set_material_properties(**material_options)
         return self
@@ -732,21 +778,25 @@ class Object(ABC):
         """
         return self._parent
 
-    @parent.setter
-    def parent(self, value: Object | None) -> None:
-        """Set the object's parent.
+    # Debugging tools -------------------------------------------------------------------------------------- #
+
+    def highlight(self, *, clear: bool = True) -> None:
+        """Select this object and all its descendants so that they are outlined in the viewport.
 
         Args:
-            value (Object | None): The parent object to set, or None to clear the parent. If None, it is the
-                responsibility of the parent object to handle the removal of this object as a child.
+            clear (bool, optional): Deselect everything else first. Defaults to True.
         """
-        if value is not None:
-            self._set_parent(value)
-        else:
-            self._parent = None
-            self._bl_object.parent = None
+        if clear:
+            deselect_all()
+        self._bl_object.select_set(True)
+        for child in self.subobjects:
+            child.highlight(clear=False)
 
-    # Debugging tools -------------------------------------------------------------------------------------- #
+    def unhighlight(self) -> None:
+        """Deselect this object and all its descendants."""
+        self._bl_object.select_set(False)
+        for child in self.subobjects:
+            child.unhighlight()
 
     def debug(self) -> bool:
         """Check if debugging is enabled for this object.
@@ -844,18 +894,6 @@ class Object(ABC):
             AssertionError: If the Blender object is not set."""
         assert self._bl_object is not None, "The Blender object is not set. Cannot check for data."
         return self._bl_object.data is not None
-
-    def _set_parent(self, parent: Object) -> None:
-        """Sets the parent (of type Object) of the current object.
-
-        Args:
-            parent (Object): The parent object to set.
-
-        Raises:
-            AssertionError: If the parent is not of type Object."""
-        assert is_animable(parent), "Can only set a parent of type Object."
-        self._parent = parent
-        self._bl_object.parent = parent._bl_object
 
     def _set_visibility(self, val: bool) -> None:
         """Sets the object's visibility in both the viewport and render.

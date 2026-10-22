@@ -49,7 +49,7 @@ class CurveChain(Curve):
 
         super().__init__(width=width, bias=bias, name=name)
 
-        # Add all entities as children of this object.
+        # Add all entities (curves and joints) as children of this object.
         for c in self._all_entities:
             self.add_subobject(c)
 

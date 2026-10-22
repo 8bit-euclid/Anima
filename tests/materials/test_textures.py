@@ -104,3 +104,24 @@ def test_inherit_without_textures_raises():
     b = Rectangle(1, 1, name="pytest_b")
     with pytest.raises(ValueError):
         b.inherit_textures_from(a)
+
+
+def test_group_forwards_material_and_textures_without_data(texture_dir):
+    from anima.primitives.group import Group
+
+    a = Rectangle(1, 1, name="pytest_a")
+    b = Rectangle(1, 1, name="pytest_b")
+    paper = Rectangle(2, 1, name="pytest_paper")
+    paper.set_textures(TextureSet.from_directory(texture_dir))
+    group = Group([a, b], name="pytest_group")
+    assert group.object.data is None
+
+    group.set_color((0.0, 1.0, 0.0, 1.0))
+    group.inherit_textures_from(paper, albedo_mode="ignore")
+    for rect in (a, b):
+        mat = rect.object.data.materials[0]
+        assert tuple(mat.diffuse_color) == pytest.approx((0.0, 1.0, 0.0, 1.0))
+        assert _linked_from(mat, "Roughness") is not None
+        assert _linked_from(mat, "Base Color") is None
+    assert not group.object.parent
+    assert a.object.parent is group.object
