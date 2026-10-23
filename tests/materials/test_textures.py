@@ -3,7 +3,14 @@
 import bpy
 import pytest
 
-from anima.materials.texture import NODE_PREFIX, TextureSet, apply_texture_set, remove_texture_nodes
+from anima.materials.texture import (
+    NODE_PREFIX,
+    TextureSet,
+    _mean_ao,
+    _mean_luminance,
+    apply_texture_set,
+    remove_texture_nodes,
+)
 from anima.primitives.lines import Segment
 from anima.primitives.polytopes import Rectangle
 
@@ -84,6 +91,72 @@ def test_ignore_leaves_base_color_unlinked(texture_dir):
     mat = rect.object.data.materials[0]
     assert _linked_from(mat, "Base Color") is None
     assert _linked_from(mat, "Roughness") is not None
+
+
+@pytest.fixture
+def grey_albedo(tmp_path):
+    img = bpy.data.images.new("pytest_grey", 4, 4)
+    img.pixels = [0.5, 0.5, 0.5, 1.0] * 16
+    img.filepath_raw = str(tmp_path / "grey_Albedo.png")
+    img.file_format = "PNG"
+    img.save()
+    bpy.data.images.remove(img)
+    return tmp_path / "grey_Albedo.png"
+
+
+def test_mean_luminance_is_linear(grey_albedo):
+    # sRGB 0.5 decodes to about 0.214 in linear light.
+    assert _mean_luminance(grey_albedo) == pytest.approx(0.214, rel=0.02)
+
+
+def test_modulate_normalises_albedo_by_its_mean(grey_albedo):
+    rect = Rectangle(2, 1, name="pytest_paper")
+    rect.set_color((0.2, 0.4, 0.6, 1.0))
+    textures = TextureSet(albedo=grey_albedo)
+    rect.set_textures(textures, albedo_mode="modulate", mottling_strength=0.5, use_ao=True)
+    mat = rect.object.data.materials[0]
+    tint = _linked_from(mat, "Base Color")
+    assert tint.name == NODE_PREFIX + "tint"
+    assert tint.blend_type == "MULTIPLY"
+    variation = tint.inputs["B"].links[0].from_node
+    mean = _mean_luminance(grey_albedo)
+    assert variation.inputs[1].default_value == pytest.approx(0.5 / mean)
+    assert variation.inputs[2].default_value == pytest.approx(0.5)
+    # A pixel equal to the mean leaves the native color unchanged: mean * (k / mean) + (1 - k) == 1.
+    assert mean * variation.inputs[1].default_value + variation.inputs[2].default_value == pytest.approx(1.0)
+    assert tint.inputs["A"].links[0].from_node.name == NODE_PREFIX + "native_color"
+
+
+def test_modulate_normalises_ao_by_its_mean(grey_albedo, tmp_path):
+    ao = bpy.data.images.new("pytest_ao", 4, 4)
+    ao.colorspace_settings.name = "Non-Color"
+    ao.pixels = [0.8, 0.8, 0.8, 1.0] * 16
+    ao.filepath_raw = str(tmp_path / "grey_AO.png")
+    ao.file_format = "PNG"
+    ao.save()
+    bpy.data.images.remove(ao)
+
+    rect = Rectangle(2, 1, name="pytest_paper")
+    textures = TextureSet(albedo=grey_albedo, ao=tmp_path / "grey_AO.png")
+    rect.set_textures(textures, albedo_mode="modulate", ao_strength=0.5)
+    mat = rect.object.data.materials[0]
+
+    mean = _mean_ao(textures.ao)
+    assert mean == pytest.approx(0.8, abs=0.01)
+    ao_mul = mat.node_tree.nodes[NODE_PREFIX + "ao_multiply"]
+    variation = ao_mul.inputs["B"].links[0].from_node
+    assert variation.name == NODE_PREFIX + "ao_variation"
+    assert variation.inputs[1].default_value == pytest.approx(0.5 / mean)
+    assert mean * variation.inputs[1].default_value + variation.inputs[2].default_value == pytest.approx(1.0)
+    assert _linked_from(mat, "Base Color").name == NODE_PREFIX + "ao_multiply"
+
+
+def test_inherit_defaults_to_modulate(texture_dir):
+    paper = Rectangle(2, 1, name="pytest_paper")
+    paper.set_textures(TextureSet.from_directory(texture_dir))
+    rect = Rectangle(1, 1, name="pytest_a")
+    rect.inherit_textures_from(paper)
+    assert rect._texture_options["albedo_mode"] == "modulate"
 
 
 def test_reapply_and_remove_are_clean(texture_dir):

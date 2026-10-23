@@ -18,6 +18,7 @@ from tests.visual_tests.test_latex import test_text_to_glyphs
 from tests.visual_tests.test_textures import TEXTURE_DIR, render_gallery, test_paper_textures
 
 from anima.globals.general import to_frame
+from anima.materials.material import create_raking_sun
 from anima.materials.texture import TextureSet
 from anima.primitives.polytopes import Rectangle
 from anima.runtime import run_lesson
@@ -43,15 +44,18 @@ def build_scene(start_time: str, end_time: str):
     rect = Rectangle(length=20, width=10)
     rect.layer = -1
     rect.set_palette_color("byrne_euclid", "paper")
-    rect.set_textures(TextureSet.from_directory(TEXTURE_DIR, physical_size=10))
+    rect.set_textures(TextureSet.from_directory(TEXTURE_DIR, physical_size=10), bump_strength=1, bump_distance=0.5)
 
     test_bezier_splines(end_frame, color="red1", paper=rect)
     test_curve_joints(end_frame, color="yellow1", paper=rect)
     test_dashed_curves(end_frame, color="blue1", paper=rect)
+
+    # A low sun circling once over the lesson, to show the paper relief. Add fill_energy=... to compare with a fixed fill.
+    create_raking_sun(end_frame, elevation_deg=25, energy=4)
 
     # test_paper_textures()
     # render_gallery(output_dir="out", engines=("CYCLES", "EEVEE"))
 
 
 if __name__ == "__main__":
-    run_lesson(build_scene, end_time="00:06")
+    run_lesson(build_scene, end_time="00:06", use_default_lighting=False)

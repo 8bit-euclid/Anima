@@ -657,7 +657,7 @@ class Object(ABC):
 
         Args:
             textures: The texture maps to apply.
-            albedo_mode: "replace", "multiply" or "ignore"; see `apply_texture_set`.
+            albedo_mode: "replace", "multiply", "modulate" or "ignore"; see `apply_texture_set`.
             **options: Further keyword arguments for `apply_texture_set` (e.g. `bump_strength`).
 
         Returns:
@@ -674,13 +674,14 @@ class Object(ABC):
             child.set_textures(textures, albedo_mode=albedo_mode, **options)
         return self
 
-    def inherit_textures_from(self, other: Object, *, albedo_mode: AlbedoMode = "multiply", **options: Any) -> Object:
+    def inherit_textures_from(self, other: Object, *, albedo_mode: AlbedoMode = "modulate", **options: Any) -> Object:
         """Apply the textures set on another object to this one, keeping this object's own color by default.
 
         Args:
             other: The object whose texture set to inherit (see `set_textures`).
-            albedo_mode: "multiply" (default) tints this object's color by the albedo luminance; "ignore"
-                keeps the color flat; "replace" copies the albedo.
+            albedo_mode: "modulate" (default) applies only the albedo's local variation to this object's color,
+                leaving its overall color unchanged; "multiply" tints the color by the albedo luminance (which
+                darkens it); "ignore" keeps the color flat; "replace" copies the albedo.
             **options: Overrides for the other object's `apply_texture_set` options.
 
         Raises:

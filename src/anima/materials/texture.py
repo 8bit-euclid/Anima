@@ -8,14 +8,18 @@ UVs, and keeps doing so while it moves or animates. This assumes the textured su
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
+from functools import cache
 from pathlib import Path
 from typing import Literal
 
 import bpy
+import numpy as np
 
 from anima.materials.material import RGBA, to_rgba
 
-AlbedoMode = Literal["replace", "multiply", "ignore"]
+AlbedoMode = Literal["replace", "multiply", "modulate", "ignore"]
+
+_MEAN_SAMPLE_SIZE = 64  # Side length of the downscaled copy used to estimate the albedo mean.
 
 NODE_PREFIX = "anima_texture_"
 NATIVE_COLOR_NODE = NODE_PREFIX + "native_color"
@@ -110,6 +114,8 @@ def apply_texture_set(
     *,
     albedo_mode: AlbedoMode = "replace",
     albedo_strength: float = 1.0,
+    mottling_strength: float = 1.0,
+    ao_strength: float = 1.0,
     use_ao: bool = True,
     use_transmission: bool = False,
     bump_strength: float = 0.2,
@@ -122,9 +128,15 @@ def apply_texture_set(
         mat: The material to texture.
         textures: The texture maps to apply.
         albedo_mode: "replace" drives Base Color from the albedo map. "multiply" multiplies the material's own
-            color by the luminance of the albedo map, preserving its hue. "ignore" leaves Base Color alone.
-            The AO map, if used, is multiplied in for "replace" and "multiply".
+            color by the luminance of the albedo map, preserving its hue. "modulate" multiplies the material's own
+            color by the albedo luminance divided by its mean, so only the local variation (mottling, fibres)
+            is applied and the overall color is unchanged. "ignore" leaves Base Color alone.
+            The AO map, if used, is multiplied in for "replace" and "multiply"; for "modulate" it is normalised
+            by its mean in the same way, so it adds only local shading without darkening overall.
         albedo_strength: Blend factor (0-1) of the albedo luminance for "multiply".
+        mottling_strength: How much of the albedo's variation "modulate" applies; 0 is the same as "ignore" and
+            1 is the full variation. Values above 1 exaggerate it.
+        ao_strength: How much of the AO map's variation "modulate" applies; 0 ignores AO, 1 is the full variation.
         use_ao: Multiply the AO map into the base color.
         use_transmission: Drive Transmission Weight from the transmission map.
         bump_strength: Strength of the height-map bump.
@@ -165,7 +177,27 @@ def apply_texture_set(
     albedo = image("albedo", "sRGB", 900, 600) if albedo_mode != "ignore" else None
     if albedo is not None:
         color_out = albedo.outputs["Color"]
-        if albedo_mode == "multiply":
+        if albedo_mode == "modulate":
+            native = new("ShaderNodeRGB", "native_color", 900, 900)
+            native.outputs[0].default_value = tuple(mat.diffuse_color)
+            luminance = new("ShaderNodeRGBToBW", "luminance", 650, 600)
+            links.new(albedo.outputs["Color"], luminance.inputs["Color"])
+            # variation = 1 + k * (luminance / mean - 1), written as luminance * (k / mean) + (1 - k).
+            variation = new("ShaderNodeMath", "variation", 400, 600)
+            variation.operation = "MULTIPLY_ADD"
+            variation.use_clamp = False
+            variation.inputs[1].default_value = mottling_strength / _mean_luminance(textures.albedo)
+            variation.inputs[2].default_value = 1.0 - mottling_strength
+            links.new(luminance.outputs["Val"], variation.inputs[0])
+            tint = new("ShaderNodeMix", "tint", 200, 750)
+            tint.data_type = "RGBA"
+            tint.blend_type = "MULTIPLY"
+            tint.clamp_result = True
+            tint.inputs["Factor"].default_value = 1.0
+            links.new(native.outputs[0], tint.inputs["A"])
+            links.new(variation.outputs["Value"], tint.inputs["B"])
+            color_out = tint.outputs["Result"]
+        elif albedo_mode == "multiply":
             native = new("ShaderNodeRGB", "native_color", 900, 900)
             native.outputs[0].default_value = tuple(mat.diffuse_color)
             luminance = new("ShaderNodeRGBToBW", "luminance", 650, 600)
@@ -180,7 +212,7 @@ def apply_texture_set(
 
     ao = image("ao", "Non-Color", 900, 300) if use_ao and albedo_mode != "ignore" else None
     if ao is not None:
-        if color_out is None:  # "ignore" never reaches here, so the base color is the native one.
+        if color_out is None:  # Only reached when there is no albedo map, so the base color is the native one.
             native = new("ShaderNodeRGB", "native_color", 900, 900)
             native.outputs[0].default_value = tuple(mat.diffuse_color)
             color_out = native.outputs[0]
@@ -189,7 +221,19 @@ def apply_texture_set(
         ao_mul.blend_type = "MULTIPLY"
         ao_mul.inputs["Factor"].default_value = 1.0
         links.new(color_out, ao_mul.inputs["A"])
-        links.new(ao.outputs["Color"], ao_mul.inputs["B"])
+        if albedo_mode == "modulate":
+            ao_value = new("ShaderNodeRGBToBW", "ao_value", 650, 300)
+            links.new(ao.outputs["Color"], ao_value.inputs["Color"])
+            # variation = 1 + k * (ao / mean - 1), written as ao * (k / mean) + (1 - k).
+            ao_variation = new("ShaderNodeMath", "ao_variation", 400, 300)
+            ao_variation.operation = "MULTIPLY_ADD"
+            ao_variation.use_clamp = False
+            ao_variation.inputs[1].default_value = ao_strength / _mean_ao(textures.ao)
+            ao_variation.inputs[2].default_value = 1.0 - ao_strength
+            links.new(ao_value.outputs["Val"], ao_variation.inputs[0])
+            links.new(ao_variation.outputs["Value"], ao_mul.inputs["B"])
+        else:
+            links.new(ao.outputs["Color"], ao_mul.inputs["B"])
         color_out = ao_mul.outputs["Result"]
     if color_out is not None:
         links.new(color_out, bsdf.inputs["Base Color"])
@@ -257,6 +301,57 @@ def set_native_color(mat: bpy.types.Material, color: RGBA) -> None:
     native = mat.node_tree.nodes.get(NATIVE_COLOR_NODE)
     if native is not None:
         native.outputs[0].default_value = to_rgba(color)
+
+
+@cache
+def _mean_luminance(path: Path) -> float:
+    """Estimate the mean linear luminance of an sRGB image from a small downscaled copy.
+
+    Args:
+        path: The file path to the image.
+
+    Returns:
+        The mean luminance, floored at a small positive value so it can safely be divided by.
+    """
+    rgb = _downscaled_rgb(path, "sRGB")
+    # Image.pixels holds sRGB-encoded values, but the shader's luminance is computed on linear color.
+    linear = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
+    return max(float((linear @ np.array([0.2126, 0.7152, 0.0722])).mean()), 1e-4)
+
+
+@cache
+def _mean_ao(path: Path) -> float:
+    """Estimate the mean value of a non-color AO map from a small downscaled copy.
+
+    Args:
+        path: The file path to the image.
+
+    Returns:
+        The mean value, floored at a small positive value so it can safely be divided by.
+    """
+    rgb = _downscaled_rgb(path, "Non-Color")
+    return max(float((rgb @ np.array([0.2126, 0.7152, 0.0722])).mean()), 1e-4)
+
+
+def _downscaled_rgb(path: Path, colorspace: str) -> np.ndarray:
+    """Load an image and return the RGB pixels of a small downscaled copy as an (N, 3) float array.
+
+    Args:
+        path: The file path to the image.
+        colorspace: The colorspace to load the image in.
+
+    Returns:
+        The stored (not color-managed) pixel values.
+    """
+    image = _load_image(path, colorspace)
+    sample = image.copy()
+    try:
+        sample.scale(_MEAN_SAMPLE_SIZE, _MEAN_SAMPLE_SIZE)
+        pixels = np.empty(_MEAN_SAMPLE_SIZE * _MEAN_SAMPLE_SIZE * 4, dtype=np.float32)
+        sample.pixels.foreach_get(pixels)
+    finally:
+        bpy.data.images.remove(sample)
+    return pixels.reshape(-1, 4)[:, :3].astype(np.float64)
 
 
 def _load_image(path: Path, colorspace: str) -> bpy.types.Image:

@@ -61,7 +61,9 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
         bspline.set_palette_color("byrne_euclid", color)
         bcurve.set_palette_color("byrne_euclid", color)
     if paper is not None:
-        Group([bspline, bcurve, p1, p2], name="Overlays").inherit_textures_from(paper, albedo_mode="ignore")
+        Group([bspline, bcurve, p1, p2], name="Overlays").inherit_textures_from(
+            paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
+        )
 
     def update(scene):
         t1 = e["t"]
@@ -135,7 +137,9 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
     p = Point()
     # chain.bias = 1
     if paper is not None:
-        Group([chain, p], name="Overlays").inherit_textures_from(paper, albedo_mode="ignore")
+        Group([chain, p], name="Overlays").inherit_textures_from(
+            paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
+        )
 
     pf = profiler
 
@@ -214,7 +218,7 @@ def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangl
         )
 
     if paper is not None:
-        dashed2.inherit_textures_from(paper, albedo_mode="ignore")
+        dashed2.inherit_textures_from(paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1)
 
     gap2 = dashed2._gap_len / dashed2._length
     dash2 = dashed2._dash_len / dashed2._length

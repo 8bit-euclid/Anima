@@ -28,7 +28,7 @@ CURVE_COLORS = ("red1", "blue1", "yellow1")
 
 def test_paper_textures(
     end_frame: int = 0,
-    albedo_mode: str = "multiply",
+    albedo_mode: str = "modulate",
     bump_strength: float = 0.2,
     texture_dir: Path = TEXTURE_DIR,
 ) -> tuple[Rectangle, list[BezierSpline]]:
@@ -36,7 +36,7 @@ def test_paper_textures(
 
     Args:
         end_frame: Unused; accepted for consistency with the other visual tests.
-        albedo_mode: How curves treat the paper albedo: "multiply", "ignore" or "replace".
+        albedo_mode: How curves treat the paper albedo: "modulate", "multiply", "ignore" or "replace".
         bump_strength: Strength of the height-map bump.
         texture_dir: Folder holding the texture pack.
 
@@ -76,6 +76,7 @@ def _ensure_raking_light() -> None:
 
 # Name -> keyword arguments for test_paper_textures.
 VARIANTS: dict[str, dict] = {
+    "modulate": {"albedo_mode": "modulate"},
     "multiply": {"albedo_mode": "multiply"},
     "ignore": {"albedo_mode": "ignore"},
 }

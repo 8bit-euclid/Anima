@@ -1,3 +1,5 @@
+import math
+
 import bpy
 from mathutils import Color
 
@@ -222,6 +224,52 @@ def create_area_light(name: str = "Key Light"):
 
     light.location = (0, 0, 5)
     return light
+
+
+def create_raking_sun(
+    end_frame: int,
+    *,
+    elevation_deg: float = 25.0,
+    energy: float = 4.0,
+    fill_energy: float = 0.0,
+    name: str = "Raking Sun",
+) -> bpy.types.Object:
+    """Create a low sun that circles the scene once, so relief from bump and normal maps visibly shifts.
+
+    The sun's azimuth is keyframed with linear interpolation from frame 1 to `end_frame`, with a constant
+    elevation. A low elevation makes surface relief catch the light; a steep one flattens it.
+
+    Args:
+        end_frame: The frame at which the sun completes its circle.
+        elevation_deg: The sun's angle above the horizon, in degrees.
+        energy: The sun's strength.
+        fill_energy: If positive, also add a fixed overhead sun of this strength as a fill light. Placeholder
+            for comparing against the raking sun alone.
+        name: The name of the raking sun object.
+
+    Returns:
+        The animated sun object.
+    """
+    tilt = math.radians(90.0 - elevation_deg)
+    sun = bpy.data.objects.new(name, bpy.data.lights.new(name, "SUN"))
+    bpy.context.collection.objects.link(sun)
+    sun.data.energy = energy
+
+    prefs = bpy.context.preferences.edit
+    previous = prefs.keyframe_new_interpolation_type
+    prefs.keyframe_new_interpolation_type = "LINEAR"  # Constant angular speed instead of eased ends.
+    try:
+        for frame, azimuth in ((1, 0.0), (end_frame, 2 * math.pi)):
+            sun.rotation_euler = (tilt, 0.0, azimuth)
+            sun.keyframe_insert("rotation_euler", frame=frame)
+    finally:
+        prefs.keyframe_new_interpolation_type = previous
+
+    if fill_energy > 0:
+        fill = bpy.data.objects.new("Fill Light", bpy.data.lights.new("Fill Light", "SUN"))
+        bpy.context.collection.objects.link(fill)
+        fill.data.energy = fill_energy
+    return sun
 
 
 def to_rgba(color: RGB | RGBA | HEX) -> RGBA:

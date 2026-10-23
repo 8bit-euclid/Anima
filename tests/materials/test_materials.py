@@ -8,6 +8,7 @@ import anima.materials.material as material_module
 from anima.materials.material import (
     create_area_light,
     create_color_material,
+    create_raking_sun,
     get_material_color,
     get_palette_color,
     hex_to_rgb,
@@ -190,3 +191,22 @@ def test_create_area_light_sets_defaults():
     default_light = create_area_light()
     assert default_light.name == "Key Light"
     assert default_light.data.type == "AREA"
+
+
+def test_create_raking_sun_circles_once_with_constant_elevation():
+    import math
+
+    sun = create_raking_sun(121, elevation_deg=30, name="pytest_sun", fill_energy=1.0)
+    assert sun.data.type == "SUN"
+    bpy.context.scene.frame_set(1)
+    start = sun.rotation_euler.copy()
+    assert start.x == pytest.approx(math.radians(60))
+    assert start.z == pytest.approx(0.0)
+    bpy.context.scene.frame_set(61)  # Linear: frame 61 is halfway between 1 and 121.
+    assert sun.rotation_euler.z == pytest.approx(math.pi, abs=1e-3)
+    assert sun.rotation_euler.x == pytest.approx(math.radians(60))
+    bpy.context.scene.frame_set(121)
+    assert sun.rotation_euler.z == pytest.approx(2 * math.pi, abs=1e-3)
+    assert any(o.name.startswith("Fill Light") for o in bpy.data.objects)
+    for obj in [o for o in bpy.data.objects if o.name.startswith("Fill Light")]:
+        bpy.data.objects.remove(obj, do_unlink=True)
