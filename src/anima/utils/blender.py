@@ -219,6 +219,42 @@ def _get_viewport_override() -> dict | None:
     return None
 
 
+def capture_viewport_state() -> dict | None:
+    """Snapshot the 3D viewport's view so it can be restored after a reload.
+
+    Returns:
+        dict | None: The view state, or None if no viewport was found.
+    """
+    override = _get_viewport_override()
+    if override is None:
+        return None
+    region_3d = override["space_data"].region_3d
+    return {
+        "view_perspective": region_3d.view_perspective,
+        "view_location": region_3d.view_location.copy(),
+        "view_rotation": region_3d.view_rotation.copy(),
+        "view_distance": region_3d.view_distance,
+    }
+
+
+def restore_viewport_state(state: dict) -> None:
+    """Apply a view state captured by `capture_viewport_state`.
+
+    Args:
+        state (dict): The snapshot to restore.
+    """
+    override = _get_viewport_override()
+    if override is None:
+        logger.warning("No 3D viewport found to restore the view on")
+        return
+    region_3d = override["space_data"].region_3d
+    region_3d.view_perspective = state["view_perspective"]
+    region_3d.view_location = state["view_location"]
+    region_3d.view_rotation = state["view_rotation"]
+    region_3d.view_distance = state["view_distance"]
+    logger.debug("Restored the previous 3D viewport view")
+
+
 def configure_blender_viewport():
     """Configure the Blender 3D viewport to top view."""
     override = _get_viewport_override()

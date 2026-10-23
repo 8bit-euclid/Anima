@@ -10,9 +10,17 @@ import bpy
 
 from anima.diagnostics import logger
 from anima.globals.general import clear_scene, deselect_all, ebpy, hide_relationship_lines, to_frame
-from anima.utils.blender import configure_blender_panes, configure_blender_viewport, frame_scene_in_viewport
+from anima.utils.blender import (
+    capture_viewport_state,
+    configure_blender_panes,
+    configure_blender_viewport,
+    frame_scene_in_viewport,
+    restore_viewport_state,
+)
 from anima.utils.render import RenderSettings, configure_render
 from anima.utils.socket.server import BlenderSocketServer
+
+_INITIALIZED_KEY = "anima_lesson_initialized"
 
 
 def run_lesson(
@@ -38,7 +46,12 @@ def run_lesson(
 
     BlenderSocketServer().start()
 
-    configure_blender_viewport()
+    # The driver namespace survives the module eviction done on reload. Its presence marks a reload.
+    namespace = bpy.app.driver_namespace
+    saved_view = capture_viewport_state() if namespace.get(_INITIALIZED_KEY) else None
+
+    if saved_view is None:
+        configure_blender_viewport()
     configure_blender_panes()
 
     clear_scene()
@@ -68,7 +81,11 @@ def run_lesson(
     # Stop any running animations first (when reloading)
     bpy.ops.screen.animation_cancel(restore_frame=False)
 
-    # Reset to frame one, frame the scene, zoom in, and play
+    # Reset to frame one, frame the scene, zoom in, and play animation
     bpy.context.scene.frame_current = 1
-    frame_scene_in_viewport(zoom_delta=2.5)
+    if saved_view is None:
+        frame_scene_in_viewport(zoom_delta=2.5)
+    else:
+        restore_viewport_state(saved_view)
+    namespace[_INITIALIZED_KEY] = True
     bpy.ops.screen.animation_play()
