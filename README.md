@@ -110,6 +110,15 @@ To streamline step 5, you can assign a custom key binding (e.g., `Ctrl+Shift+B`)
 
 Now, you can quickly hot-reload recent changes in Blender using your chosen shortcut.
 
+## Rendering a 4K video
+
+`make render` renders the lesson headlessly with Cycles (OptiX GPU, 3840×2160, 60 fps) to PNG frames in `out/<name>_frames/`, then encodes `out/<name>.mp4` with ffmpeg (H.264, CRF 16, BT.709; requires `ffmpeg`).
+
+- Frames are resumable: after a crash, overheat or Ctrl+C, re-run the same command to continue. Use `RESTART=1` after changing the scene.
+- Between frames, rendering pauses while the GPU is above 83 °C and resumes at 72 °C. Per-frame time, ETA, GPU temperature and VRAM are logged.
+- Options: `SCRIPT=`, `OUTPUT=out/x.mp4`, `PREVIEW=1` (1080p EEVEE), `DEVICE=CPU`, `DEPTH=16` (16-bit PNG frames), `RESTART=1`.
+- `make render-frame FRAME=120` renders one test frame to check time and VRAM; `make encode FRAMES=<dir> OUTPUT=<file.mp4>` re-encodes existing frames.
+
 ## Logging
 
 Anima includes a built-in logging system powered by [loguru](https://loguru.readthedocs.io/) that provides structured, colorized output for debugging and monitoring.

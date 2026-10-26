@@ -15,9 +15,16 @@ ZOOM_STEP_FACTOR = 1.2  # Each zoom step scales the view by roughly 20%
 class BlenderProcess:
     """Main facade class that coordinates all Blender operations."""
 
-    def __init__(self):
+    def __init__(self, headless: bool = False):
+        """
+        Args:
+            headless (bool): Run Blender in the background without a UI, e.g. for renders. Disables the socket
+                configuration, window focusing and hotkeys, which all need the interactive UI.
+        """
         validate_project_configuration()
-        self._subproc_manager = SubprocessManager()
+        self._headless = headless
+        self._returncode: int | None = None
+        self._subproc_manager = SubprocessManager(headless)
         self._input_monitor = BlenderInputMonitor(self._subproc_manager)
         self._output_monitor = BlenderOutputMonitor(self._subproc_manager)
 
@@ -32,13 +39,14 @@ class BlenderProcess:
                 logger.info("Starting Blender subprocess...")
                 if not subproc_mgr.start():
                     raise RuntimeError("Failed to start Blender subprocess")
-                self._input_monitor._configure_blender()
-                # Focus the Blender window so keyboard shortcuts (e.g. spacebar to
-                # pause) work immediately after starting Blender.
-                try:
-                    self._input_monitor._blender_to_front()
-                except RuntimeError as e:
-                    logger.warning(f"Could not focus Blender window: {e}")
+                if not self._headless:
+                    self._input_monitor._configure_blender()
+                    # Focus the Blender window so keyboard shortcuts (e.g. spacebar to
+                    # pause) work immediately after starting Blender.
+                    try:
+                        self._input_monitor._blender_to_front()
+                    except RuntimeError as e:
+                        logger.warning(f"Could not focus Blender window: {e}")
 
         except Exception as e:
             logger.error(f"Error running script: {e}")
@@ -54,18 +62,20 @@ class BlenderProcess:
             return self
 
         # Start input/output monitoring
-        self._input_monitor.start()
+        if not self._headless:
+            self._input_monitor.start()
         self._output_monitor.start()
 
         try:
             # Wait for Blender process to end
             logger.info("Blender is running...")
-            subproc.wait()
+            self._returncode = subproc.wait()
             logger.info("Blender process has ended")
         except KeyboardInterrupt:
             logger.info("KeyboardInterrupt: Terminating Blender...")
         finally:
-            self._input_monitor.stop()
+            if not self._headless:
+                self._input_monitor.stop()
             self._output_monitor.stop()
             self._subproc_manager.cleanup()
         return self
@@ -78,6 +88,15 @@ class BlenderProcess:
     def quit(self):
         """Quit Blender gracefully."""
         self._input_monitor.quit_blender()
+
+    @property
+    def returncode(self) -> int | None:
+        """Get the return code of the Blender process.
+
+        Returns:
+            int | None: The return code if the process has ended, otherwise None.
+        """
+        return self._returncode
 
 
 @functools.lru_cache(maxsize=1)

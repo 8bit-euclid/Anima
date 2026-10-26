@@ -17,7 +17,8 @@ from anima.utils.blender import (
     frame_scene_in_viewport,
     restore_viewport_state,
 )
-from anima.utils.render import RenderSettings, configure_render
+from anima.utils.render import RenderSettings, configure_render, render_frame, render_sequence
+from anima.utils.render_request import RenderRequest
 from anima.utils.socket.server import BlenderSocketServer
 
 _INITIALIZED_KEY = "anima_lesson_initialized"
@@ -30,8 +31,9 @@ def run_lesson(
     frame_rate: int = 60,
     use_default_lighting: bool = True,
     render_settings: RenderSettings | None = None,
+    render_request: RenderRequest | None = None,
 ):
-    """Bootstrap Blender, build a lesson's scene, then start playback.
+    """Bootstrap Blender, build a lesson's scene, then start playback (or render it, if requested).
 
     Args:
         build_scene (Callable[[int], None]): Callable that populates the scene and returns the end frame.
@@ -39,20 +41,26 @@ def run_lesson(
         end_time (str): The time at which the lesson's animation ends.
         frame_rate (int): Render frame rate.
         use_default_lighting (bool): Add a default sun light.
-        render_settings (RenderSettings, optional): Render engine, samples and resolution to apply. Render the
-            result afterwards with `anima.utils.render.render_animation`.
+        render_settings (RenderSettings, optional): Render engine, samples and resolution to apply.
+        render_request (RenderRequest, optional): If given (with `render_settings`), render the PNG frame
+            sequence (or a single test frame) into the request's paths instead of starting viewport playback.
+            Encoding to video is done separately by `anima.utils.encode`. When Blender runs headless
+            (`bpy.app.background`), the socket server and all viewport/UI setup are skipped.
     """
     logger.info("Running lesson script in Blender")
 
-    BlenderSocketServer().start()
+    headless = bpy.app.background
+    if not headless:
+        BlenderSocketServer().start()
 
     # The driver namespace survives the module eviction done on reload. Its presence marks a reload.
     namespace = bpy.app.driver_namespace
     saved_view = capture_viewport_state() if namespace.get(_INITIALIZED_KEY) else None
 
-    if saved_view is None:
-        configure_blender_viewport()
-    configure_blender_panes()
+    if not headless:
+        if saved_view is None:
+            configure_blender_viewport()
+        configure_blender_panes()
 
     clear_scene()
     ebpy.set_render_fps(frame_rate)
@@ -75,6 +83,12 @@ def run_lesson(
     ebpy.set_start_frame(start_frame)
     ebpy.set_end_frame(end_frame + 50)
 
+    if render_request is not None:
+        _render(render_request, render_settings or RenderSettings())
+        return
+    if headless:
+        return
+
     # Preset viewpoint
     bpy.context.preferences.view.show_splash = False
 
@@ -89,3 +103,13 @@ def run_lesson(
         restore_viewport_state(saved_view)
     namespace[_INITIALIZED_KEY] = True
     bpy.ops.screen.animation_play()
+
+
+def _render(request: RenderRequest, settings: RenderSettings) -> None:
+    """Render a single test frame or the whole frame range, as described by `request`."""
+    if request.frame is not None:
+        logger.info(f"Rendering test frame {request.frame} to {request.still_path}")
+        render_frame(request.still_path, request.frame, request.bit_depth)
+        logger.info(f"Test frame written: {request.still_path}")
+        return
+    render_sequence(request.frames_dir, settings, request.bit_depth, request.restart, request.preview)
