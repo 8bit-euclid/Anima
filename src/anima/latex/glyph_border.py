@@ -37,7 +37,7 @@ class GlyphBorder(Object):
                 name=f"{name}_loop_{i}",
             )
             self._subpaths.append(loop)
-            self.add_subobject(loop)
+            self.add_child(loop)
 
     @property
     def subpaths(self) -> list[CurveLoop]:

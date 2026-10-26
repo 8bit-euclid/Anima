@@ -134,7 +134,7 @@ class DashedCurve(Curve):
         # Add all new dash curves as children of this object.
         if num_new > 0:
             for d in dashes[-num_new:]:
-                self.add_subobject(d.curve)
+                self.add_child(d.curve)
 
         # Todo - remove any extra dash curves.
 

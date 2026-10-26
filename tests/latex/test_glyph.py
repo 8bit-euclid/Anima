@@ -61,8 +61,9 @@ class TestGlyphBorder:
     def test_subpaths_are_children(self):
         """Test that subpaths are added as children of the border."""
         border = GlyphBorder(self.simple_path, name="TestBorder")
-        assert len(border.children) == 1
-        assert border.children[0] == border.subpaths[0]
+        children = border.children
+        assert len(children) == 1
+        assert children[0] == border.subpaths[0]
 
     def test_curves_property(self):
         """Test that the curves property returns all curves from all subpaths."""
@@ -107,9 +108,10 @@ class TestGlyph:
     def test_border_and_body_are_children(self):
         """Test that border and body are added as children."""
         glyph = Glyph(self.path, name="TestGlyph")
-        assert len(glyph.children) == 2
-        assert glyph.border in glyph.children
-        assert glyph.body in glyph.children
+        children = glyph.children
+        assert len(children) == 2
+        assert glyph.border in children
+        assert glyph.body in children
 
     def test_bbox_y_inverted(self):
         """Test that bbox y-coordinates are inverted for Blender."""
@@ -198,9 +200,10 @@ class TestGlyphGroup:
     def test_glyphs_are_children(self):
         """Test that glyphs are added as children."""
         group = GlyphGroup([self.glyph1, self.glyph2], name="TestGroup")
-        assert len(group.children) == 2
-        assert self.glyph1 in group.children
-        assert self.glyph2 in group.children
+        children = group.children
+        assert len(children) == 2
+        assert self.glyph1 in children
+        assert self.glyph2 in children
 
     def test_text_property(self):
         """Test that text property concatenates glyph texts."""
@@ -263,21 +266,21 @@ class TestTeXObject:
         tex_obj.rendered = False
         assert tex_obj.rendered is False
 
-    def test_add_subobject_valid(self):
-        """Test adding a valid TeXObject as a subobject."""
+    def test_add_child_valid(self):
+        """Test adding a valid TeXObject as a child."""
         parent = TeXObject(name="Parent")
         child = TeXObject(name="Child")
-        parent.add_subobject(child)
+        parent.add_child(child)
         assert child in parent.children
         assert child.parent is parent
 
-    def test_add_subobject_type_error(self):
+    def test_add_child_type_error(self):
         """Test that adding non-TeXObject raises TypeError."""
         tex_obj = TeXObject(name="TestTeXObject")
         with pytest.raises(TypeError):
-            tex_obj.add_subobject("not a TeXObject")
+            tex_obj.add_child("not a TeXObject")
         with pytest.raises(TypeError):
-            tex_obj.add_subobject(123)
+            tex_obj.add_child(123)
 
     def test_name_property(self):
         """Test that name is set correctly."""

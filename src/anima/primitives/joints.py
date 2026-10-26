@@ -16,7 +16,21 @@ DEFAULT_NUM_SUBDIV = 15
 
 class Joint(Attachment, Curve, Mesh):
     """
-    Todo
+    Represents a joint between two curves, which can be of different types such as MITER, ROUND, or BEVEL.
+
+    The joint is defined by the intersection of the two curves and can have different types such as MITER, ROUND, or BEVEL.
+    The diagram below illustrates the vertex layout for the joint:
+
+    4------3------2
+    |             |
+    |             |
+    5      .0     8 -----> C1
+    |             |
+    |             |
+    6------7------1
+           ^
+           |
+           |C0
     """
 
     class Type(Enum):
@@ -35,26 +49,16 @@ class Joint(Attachment, Curve, Mesh):
         num_subdiv: int = 0,
         name: str = "Joint",
     ):
-        """
-        4------3------2
-        |             |
-        |             |
-        5      .0     8 -----> C1
-        |             |
-        |             |
-        6------7------1
-               ^
-               |
-               |C0
+        """Initializes a joint between two curves.
 
-        Parameters:
-        curve_1
-        curve_2
-        width
-        bias
-        fillet_factor
-        num_subdiv
-        name
+        Args:
+            curve_1: The first curve to form the joint.
+            curve_2: The second curve to form the joint.
+            width: The width of the joint.
+            bias: The bias of the joint.
+            fillet_factor: The fillet factor for the joint.
+            num_subdiv: The number of subdivisions for the joint.
+            name: The name of the joint.
         """
 
         # Set the joint path. All handles must be 'Vector' so that a degenerate path (coincident points at
@@ -71,7 +75,7 @@ class Joint(Attachment, Curve, Mesh):
         super().__init__(connections=[curve_1, curve_2], width=width, bias=bias, name=name)
 
         # Add path as a child for proper composite pattern hierarchy.
-        self.add_subobject(self._path)
+        self.add_child(self._path)
 
         assert 0 <= fillet_factor <= 1, "Currently, only a fillet factor in [0, 1] is supported."
         self._fillet_factor = fillet_factor
@@ -93,6 +97,11 @@ class Joint(Attachment, Curve, Mesh):
         self._initialised = False
 
         self._update_geometry()
+
+        # Adopt the common parent of the two curves, if they share one.
+        shared_parent = curve_1.parent
+        if shared_parent is not None and shared_parent is curve_2.parent:
+            shared_parent.add_child(self)
 
     def set_width(self, width: float):
         self._width = width
@@ -321,24 +330,54 @@ class Joint(Attachment, Curve, Mesh):
         self.set_mesh(verts, faces)
 
     def _update_attachment(self, end_index: int):
-        pass
+        return  # Joints have no attachments to update
 
 
 class MiterJoint(Joint):
-    def __init__(self, curve_1, curve_2, width=DEFAULT_LINE_WIDTH, bias=0, name="MiterJoint"):
+    """Represents a miter joint between two curves."""
+
+    def __init__(
+        self,
+        curve_1: Curve,
+        curve_2: Curve,
+        width: float = DEFAULT_LINE_WIDTH,
+        bias: float = 0,
+        name: str = "MiterJoint",
+    ):
+        """Initialize a miter joint between two curves.
+
+        Args:
+            curve_1 (Curve): The first curve to join.
+            curve_2 (Curve): The second curve to join.
+            width (float, optional): The width of the joint. Defaults to DEFAULT_LINE_WIDTH.
+            bias (float, optional): The bias of the joint. Defaults to 0.
+            name (str, optional): The name of the joint. Defaults to "MiterJoint".
+        """
         super().__init__(curve_1, curve_2, width=width, bias=bias, name=name)
 
 
 class BevelJoint(Joint):
+    """Represents a bevel joint between two curves."""
+
     def __init__(
         self,
-        curve_1,
-        curve_2,
-        width=DEFAULT_LINE_WIDTH,
-        bias=0,
-        fillet_factor=DEFAULT_FILLET_FACTOR,
-        name="BevelJoint",
+        curve_1: Curve,
+        curve_2: Curve,
+        width: float = DEFAULT_LINE_WIDTH,
+        bias: float = 0,
+        fillet_factor: float = DEFAULT_FILLET_FACTOR,
+        name: str = "BevelJoint",
     ):
+        """Initialize a bevel joint between two curves.
+
+        Args:
+            curve_1 (Curve): The first curve to join.
+            curve_2 (Curve): The second curve to join.
+            width (float, optional): The width of the joint. Defaults to DEFAULT_LINE_WIDTH.
+            bias (float, optional): The bias of the joint. Defaults to 0.
+            fillet_factor (float, optional): The fillet factor of the joint. Defaults to DEFAULT_FILLET_FACTOR.
+            name (str, optional): The name of the joint. Defaults to "BevelJoint".
+        """
         super().__init__(
             curve_1,
             curve_2,
@@ -351,16 +390,29 @@ class BevelJoint(Joint):
 
 
 class RoundJoint(Joint):
+    """Represents a round joint between two curves."""
+
     def __init__(
         self,
-        curve_1,
-        curve_2,
-        width=DEFAULT_LINE_WIDTH,
-        bias=0,
-        radius_factor=DEFAULT_RADIUS_FACTOR,
-        num_subdiv=DEFAULT_NUM_SUBDIV,
-        name="RoundJoint",
+        curve_1: Curve,
+        curve_2: Curve,
+        width: float = DEFAULT_LINE_WIDTH,
+        bias: float = 0,
+        radius_factor: float = DEFAULT_RADIUS_FACTOR,
+        num_subdiv: int = DEFAULT_NUM_SUBDIV,
+        name: str = "RoundJoint",
     ):
+        """Initialize a round joint between two curves.
+
+        Args:
+            curve_1 (Curve): The first curve to join.
+            curve_2 (Curve): The second curve to join.
+            width (float, optional): The width of the joint. Defaults to DEFAULT_LINE_WIDTH.
+            bias (float, optional): The bias of the joint. Defaults to 0.
+            radius_factor (float, optional): The radius factor of the joint. Defaults to DEFAULT_RADIUS_FACTOR.
+            num_subdiv (int, optional): The number of subdivisions for the joint. Defaults to DEFAULT_NUM_SUBDIV.
+            name (str, optional): The name of the joint. Defaults to "RoundJoint".
+        """
         super().__init__(
             curve_1,
             curve_2,

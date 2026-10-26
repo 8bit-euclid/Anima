@@ -1,0 +1,212 @@
+"""Tests for reusable material color helpers."""
+
+import bpy
+import pytest
+from mathutils import Color
+
+import anima.materials.material as material_module
+from anima.materials.material import (
+    create_area_light,
+    create_color_material,
+    create_raking_sun,
+    get_material_color,
+    get_palette_color,
+    hex_to_rgb,
+    hex_to_rgb8,
+    list_palettes,
+    rgb8_to_hex,
+    rgb8_to_rgb,
+    rgb_to_hex,
+    rgb_to_rgb8,
+    rgba8_to_rgba,
+    rgba_to_rgba8,
+    srgb_to_linear_rgba,
+    to_rgba,
+)
+from anima.primitives.chains import CurveChain
+from anima.primitives.lines import Segment
+
+
+@pytest.fixture(autouse=True)
+def cleanup_blender_materials_and_lights():
+    yield
+    for obj in list(bpy.data.objects):
+        if obj.name.startswith("pytest_"):
+            bpy.data.objects.remove(obj, do_unlink=True)
+    for material in list(bpy.data.materials):
+        if material.name.startswith("pytest_"):
+            bpy.data.materials.remove(material, do_unlink=True)
+    for light in list(bpy.data.lights):
+        if light.name.startswith("pytest_"):
+            bpy.data.lights.remove(light, do_unlink=True)
+
+
+def test_palette_lookup_returns_named_color():
+    assert get_palette_color("byrne_euclid", "red1") == pytest.approx(srgb_to_linear_rgba(hex_to_rgb("#D84227"))[:3])
+    assert get_palette_color("rougeux_euclid", "yellow") == pytest.approx(
+        srgb_to_linear_rgba(hex_to_rgb("#FFC001"))[:3]
+    )
+
+
+def test_palette_lookup_raises_for_missing_values():
+    with pytest.raises(KeyError):
+        get_palette_color("missing", "coral")
+
+    with pytest.raises(KeyError):
+        get_palette_color("byrne_euclid", "missing")
+
+    material_module.PALETTES["pytest_palette"] = {"invalid": 123}
+    with pytest.raises(TypeError):
+        get_palette_color("pytest_palette", "invalid")
+
+
+def test_list_palettes_exposes_named_groups():
+    palettes = list_palettes()
+    assert "byrne_euclid" in palettes
+    assert "rougeux_euclid" in palettes
+    assert palettes["byrne_euclid"]["paper"] == "#FEF3D7"
+
+
+def test_to_rgba_still_normalizes_alpha():
+    assert to_rgba((0.1, 0.2, 0.3)) == (0.1, 0.2, 0.3, 1.0)
+    assert to_rgba((0.1, 0.2, 0.3, 0.4)) == (0.1, 0.2, 0.3, 0.4)
+
+    with pytest.raises(TypeError):
+        to_rgba((0.1, 0.2))
+    with pytest.raises(TypeError):
+        to_rgba(("0.1", "0.2", "0.3"))
+
+
+def test_srgb_to_linear_rgba_preserves_alpha():
+    expected = (*Color((0.5, 0.0, 1.0)).from_srgb_to_scene_linear(), 0.25)
+    assert srgb_to_linear_rgba((0.5, 0.0, 1.0, 0.25)) == pytest.approx(expected)
+
+    with pytest.raises(TypeError):
+        srgb_to_linear_rgba((0.5, 0.0))
+
+
+def test_hex_and_rgb_conversion_roundtrip_and_validation():
+    assert hex_to_rgb("#FF00AA") == pytest.approx((1.0, 0.0, 170 / 255))
+    assert hex_to_rgb("FF00AA") == pytest.approx((1.0, 0.0, 170 / 255))
+    assert rgb_to_hex((1.0, 0.0, 170 / 255)) == "#FF00AA"
+    assert rgb_to_rgb8((1.0, 0.0, 170 / 255)) == (255, 0, 170)
+    assert rgba_to_rgba8((1.0, 0.0, 170 / 255, 0.5)) == (255, 0, 170, 128)
+    assert rgb8_to_rgb((255, 0, 170)) == pytest.approx((1.0, 0.0, 170 / 255))
+    assert rgba8_to_rgba((255, 0, 170, 128)) == pytest.approx((1.0, 0.0, 170 / 255, 128 / 255))
+    assert hex_to_rgb8("#FF00AA") == (255, 0, 170)
+    assert rgb8_to_hex((255, 0, 170)) == "#FF00AA"
+
+    with pytest.raises(TypeError):
+        hex_to_rgb(123)
+    with pytest.raises(ValueError):
+        hex_to_rgb("#12345")
+    with pytest.raises(ValueError):
+        rgb_to_hex((256, 0, 0))
+    with pytest.raises(ValueError):
+        rgb_to_hex((1.0, 0.0))
+
+
+def test_create_color_material_sets_blender_material_and_node_value():
+    material_name = "pytest_material_node"
+    material = create_color_material(material_name, (0.25, 0.5, 0.75, 0.8))
+
+    assert material.name == material_name
+    assert get_material_color(material) == pytest.approx((0.25, 0.5, 0.75, 0.8))
+    assert material.node_tree is not None
+    bsdf = material.node_tree.nodes.get("Principled BSDF")
+    assert bsdf is not None
+    assert tuple(bsdf.inputs["Base Color"].default_value) == pytest.approx((0.25, 0.5, 0.75, 0.8))
+    assert bsdf.inputs["Roughness"].default_value == pytest.approx(1.0)
+    assert bsdf.inputs["Metallic"].default_value == pytest.approx(0.0)
+    assert bsdf.inputs["Specular IOR Level"].default_value == pytest.approx(0.0)
+
+
+def test_create_color_material_applies_scalar_shader_options():
+    material = create_color_material(
+        "pytest_material_options",
+        (0.25, 0.5, 0.75),
+        roughness=0.4,
+        metallic=0.2,
+        specular_ior_level=0.3,
+        ior=1.3,
+        coat_weight=0.1,
+        coat_roughness=0.6,
+        sheen_weight=0.2,
+        emission_strength=0.5,
+    )
+
+    bsdf = material.node_tree.nodes.get("Principled BSDF")
+    assert bsdf is not None
+    assert bsdf.inputs["Roughness"].default_value == pytest.approx(0.4)
+    assert bsdf.inputs["Metallic"].default_value == pytest.approx(0.2)
+    assert bsdf.inputs["Specular IOR Level"].default_value == pytest.approx(0.3)
+    assert bsdf.inputs["IOR"].default_value == pytest.approx(1.3)
+    assert bsdf.inputs["Coat Weight"].default_value == pytest.approx(0.1)
+    assert bsdf.inputs["Coat Roughness"].default_value == pytest.approx(0.6)
+    assert bsdf.inputs["Sheen Weight"].default_value == pytest.approx(0.2)
+    assert bsdf.inputs["Emission Strength"].default_value == pytest.approx(0.5)
+    assert tuple(bsdf.inputs["Emission Color"].default_value) == pytest.approx((0.25, 0.5, 0.75, 1.0))
+
+
+def test_set_color_preserves_material_properties_and_properties_propagate():
+    segment_0 = Segment((0, 0), (1, 0), name="pytest_segment_0")
+    segment_1 = Segment((1, 0), (2, 0), name="pytest_segment_1")
+    chain = CurveChain([segment_0, segment_1], create_joints=False, name="pytest_chain")
+    chain.set_material_properties(roughness=0.25, specular_ior_level=0.2)
+    chain.set_color((0.8, 0.4, 0.1))
+
+    for obj in [chain, *chain.curves]:
+        material = obj.object.data.materials[0]
+        bsdf = material.node_tree.nodes.get("Principled BSDF")
+        assert bsdf is not None
+        assert tuple(bsdf.inputs["Base Color"].default_value) == pytest.approx((0.8, 0.4, 0.1, 1.0))
+        assert bsdf.inputs["Roughness"].default_value == pytest.approx(0.25)
+        assert bsdf.inputs["Specular IOR Level"].default_value == pytest.approx(0.2)
+
+
+def test_set_color_updates_existing_custom_material_in_place():
+    segment = Segment((0, 0), (1, 0), name="pytest_segment_custom_material")
+    material = bpy.data.materials.new("pytest_custom_material")
+    material.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.35
+    segment.object.data.materials.append(material)
+
+    segment.set_color((0.2, 0.4, 0.6))
+
+    assert segment.object.data.materials[0] is material
+    bsdf = material.node_tree.nodes["Principled BSDF"]
+    assert tuple(bsdf.inputs["Base Color"].default_value) == pytest.approx((0.2, 0.4, 0.6, 1.0))
+    assert bsdf.inputs["Roughness"].default_value == pytest.approx(0.35)
+
+
+def test_create_area_light_sets_defaults():
+    light = create_area_light("pytest_light")
+
+    assert light.name == "pytest_light"
+    assert light.data.type == "AREA"
+    assert light.data.energy == 500
+    assert light.data.shape == "DISK"
+    assert light.data.size == 5
+    assert tuple(light.location) == pytest.approx((0.0, 0.0, 5.0))
+
+    default_light = create_area_light()
+    assert default_light.name == "Key Light"
+    assert default_light.data.type == "AREA"
+
+
+def test_create_raking_sun_circles_once_with_constant_elevation():
+    import math
+
+    sun = create_raking_sun(121, elevation_deg=30, name="pytest_sun", fill_energy=1.0)
+    assert sun.data.type == "SUN"
+    bpy.context.scene.frame_set(1)
+    start = sun.rotation_euler.copy()
+    assert start.x == pytest.approx(math.radians(60))
+    assert start.z == pytest.approx(0.0)
+    bpy.context.scene.frame_set(61)  # Linear: frame 61 is halfway between 1 and 121.
+    assert sun.rotation_euler.z == pytest.approx(math.pi, abs=1e-3)
+    assert sun.rotation_euler.x == pytest.approx(math.radians(60))
+    bpy.context.scene.frame_set(121)
+    assert sun.rotation_euler.z == pytest.approx(2 * math.pi, abs=1e-3)
+    assert any(o.name.startswith("Fill Light") for o in bpy.data.objects)
+    for obj in [o for o in bpy.data.objects if o.name.startswith("Fill Light")]:
+        bpy.data.objects.remove(obj, do_unlink=True)

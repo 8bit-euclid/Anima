@@ -6,13 +6,15 @@ from anima.primitives.chains import CurveChain
 from anima.primitives.curves import DEFAULT_LINE_WIDTH
 from anima.primitives.dashed_curves import DashedCurve
 from anima.primitives.endcaps import ArrowEndcap, PointEndcap, RoundEndcap
+from anima.primitives.group import Group
 from anima.primitives.lines import Segment
 from anima.primitives.points import Empty, Point
+from anima.primitives.polytopes import Rectangle
 
 up = Updater()
 
 
-def test_bezier_splines(end_frame: int):
+def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
     bspline = BezierSpline([(0, 0), (3, 1), (7, -1)])
     # bspline = BezierSpline([(0, 0), (1, 0), (7, 0)])
     # bspline.set_width(THIN)
@@ -47,12 +49,21 @@ def test_bezier_splines(end_frame: int):
 
     p1 = Point(name="Point1")
     p2 = Point(name="Point2")
+    p1.set_palette_color("byrne_euclid", "black")
+    p2.set_palette_color("byrne_euclid", "black")
     # p1['u'] = 0.0
     # dr = p1.create_driver('["u"]')
     # dr.add_input_variable('x', e, '["t"]')
     # dr.set_expression('7*x')
 
     bspline.bias = -1
+    if color is not None:
+        bspline.set_palette_color("byrne_euclid", color)
+        bcurve.set_palette_color("byrne_euclid", color)
+    if paper is not None:
+        Group([bspline, bcurve, p1, p2], name="Overlays").inherit_textures_from(
+            paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
+        )
 
     def update(scene):
         t1 = e["t"]
@@ -78,7 +89,7 @@ def test_bezier_splines(end_frame: int):
     up.add_function(update)
 
 
-def test_curve_joints(end_frame: int):
+def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
     c1 = Segment((0.5, -1), (1, 0))
     # c1 = BezierCurve((0, -1), (1, 0))
     # c1.set_handle_0((1, 0))
@@ -96,8 +107,19 @@ def test_curve_joints(end_frame: int):
     # j2 = Joint(c2, c3, num_subdiv=50)
 
     chain = CurveChain([c1, c2, c3])
-    chain.width = DEFAULT_LINE_WIDTH * 30
-    chain.color = (1.0, 0.0, 0.0, 1.0)
+    chain.width = DEFAULT_LINE_WIDTH * 10
+    # chain.color = (1.0, 0.0, 0.0, 1.0)
+    if color is not None:
+        chain.set_palette_color("byrne_euclid", color)
+        chain.set_material_properties(
+            roughness=0.95,
+            metallic=0.0,
+            specular_ior_level=0.05,
+            ior=1.5,
+            coat_weight=0.0,
+            sheen_weight=0.0,
+            emission_strength=0.0,
+        )
 
     e = Empty()
     e["t"] = 0.0
@@ -114,6 +136,10 @@ def test_curve_joints(end_frame: int):
 
     p = Point()
     # chain.bias = 1
+    if paper is not None:
+        Group([chain, p], name="Overlays").inherit_textures_from(
+            paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
+        )
 
     pf = profiler
 
@@ -164,8 +190,8 @@ def test_curve_joints(end_frame: int):
     up.add_function(update)
 
 
-def test_dashed_curves(end_frame: int):
-    width = 1.5 * DEFAULT_LINE_WIDTH
+def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
+    width = 1.6 * DEFAULT_LINE_WIDTH
 
     # c1 = Segment((0, -1), (0, 0))
     # c2 = Segment((0, 0), (0.5, 0))
@@ -178,6 +204,21 @@ def test_dashed_curves(end_frame: int):
     # dashed1 = DashedCurve(curve1, width=width)
     # dashed2 = DashedCurve(curve2, width=width)
     dashed2 = curve2.make_dashed()
+    dashed2.width = width
+    if color is not None:
+        dashed2.set_palette_color("byrne_euclid", color)
+        dashed2.set_material_properties(
+            roughness=0.95,
+            metallic=0.0,
+            specular_ior_level=0.05,
+            ior=1.5,
+            coat_weight=0.0,
+            sheen_weight=0.0,
+            emission_strength=0.0,
+        )
+
+    if paper is not None:
+        dashed2.inherit_textures_from(paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1)
 
     gap2 = dashed2._gap_len / dashed2._length
     dash2 = dashed2._dash_len / dashed2._length

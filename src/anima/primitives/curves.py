@@ -371,10 +371,13 @@ class Curve(Object):
         setattr(self, f"_attachment_{end_idx}", attmnt)
         getattr(self, f"_update_param_{end_idx}")()
         from .endcaps import Endcap
+        from .joints import Joint
 
         if isinstance(attmnt, Endcap):
             getattr(self, f"_update_attachment_{end_idx}")()
-        self.add_subobject(attmnt)
+        # A joint belongs to the pair of curves, so it is parented to their common parent instead (see Joint).
+        if not isinstance(attmnt, Joint):
+            self.add_child(attmnt)
         return self
 
     @abstractmethod

@@ -7,7 +7,6 @@ import numpy as np
 from scipy import integrate
 
 from anima.globals.general import (
-    SMALL_OFFSET,
     Vector,
     add_line_segment,
     add_object,
@@ -301,14 +300,13 @@ class BezierSpline(Curve):
         if isinstance(attmt, Endcap):
             # Set location
             pt = self.point(param)
-            pt.z += SMALL_OFFSET
             nm = self.normal(param_offs, normalise=True)
             bias_offs = -self._bias * 0.5 * self._width * nm
             attmt.location = pt + bias_offs
+            attmt.layer = self.layer + 1  # appear above the curve
 
             # Set orientation
             pt_offs = self.point(param_offs)
-            pt_offs.z += SMALL_OFFSET  # appear above the curve
             y_dir = pt - pt_offs
             sgn = 1 if end_idx == 1 else -1
             if math.isclose(param, param_offs, rel_tol=1e-4):

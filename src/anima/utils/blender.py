@@ -15,9 +15,16 @@ ZOOM_STEP_FACTOR = 1.2  # Each zoom step scales the view by roughly 20%
 class BlenderProcess:
     """Main facade class that coordinates all Blender operations."""
 
-    def __init__(self):
+    def __init__(self, headless: bool = False):
+        """
+        Args:
+            headless (bool): Run Blender in the background without a UI, e.g. for renders. Disables the socket
+                configuration, window focusing and hotkeys, which all need the interactive UI.
+        """
         validate_project_configuration()
-        self._subproc_manager = SubprocessManager()
+        self._headless = headless
+        self._returncode: int | None = None
+        self._subproc_manager = SubprocessManager(headless)
         self._input_monitor = BlenderInputMonitor(self._subproc_manager)
         self._output_monitor = BlenderOutputMonitor(self._subproc_manager)
 
@@ -32,13 +39,14 @@ class BlenderProcess:
                 logger.info("Starting Blender subprocess...")
                 if not subproc_mgr.start():
                     raise RuntimeError("Failed to start Blender subprocess")
-                self._input_monitor._configure_blender()
-                # Focus the Blender window so keyboard shortcuts (e.g. spacebar to
-                # pause) work immediately after starting Blender.
-                try:
-                    self._input_monitor._blender_to_front()
-                except RuntimeError as e:
-                    logger.warning(f"Could not focus Blender window: {e}")
+                if not self._headless:
+                    self._input_monitor._configure_blender()
+                    # Focus the Blender window so keyboard shortcuts (e.g. spacebar to
+                    # pause) work immediately after starting Blender.
+                    try:
+                        self._input_monitor._blender_to_front()
+                    except RuntimeError as e:
+                        logger.warning(f"Could not focus Blender window: {e}")
 
         except Exception as e:
             logger.error(f"Error running script: {e}")
@@ -54,18 +62,20 @@ class BlenderProcess:
             return self
 
         # Start input/output monitoring
-        self._input_monitor.start()
+        if not self._headless:
+            self._input_monitor.start()
         self._output_monitor.start()
 
         try:
             # Wait for Blender process to end
             logger.info("Blender is running...")
-            subproc.wait()
+            self._returncode = subproc.wait()
             logger.info("Blender process has ended")
         except KeyboardInterrupt:
             logger.info("KeyboardInterrupt: Terminating Blender...")
         finally:
-            self._input_monitor.stop()
+            if not self._headless:
+                self._input_monitor.stop()
             self._output_monitor.stop()
             self._subproc_manager.cleanup()
         return self
@@ -78,6 +88,15 @@ class BlenderProcess:
     def quit(self):
         """Quit Blender gracefully."""
         self._input_monitor.quit_blender()
+
+    @property
+    def returncode(self) -> int | None:
+        """Get the return code of the Blender process.
+
+        Returns:
+            int | None: The return code if the process has ended, otherwise None.
+        """
+        return self._returncode
 
 
 @functools.lru_cache(maxsize=1)
@@ -134,14 +153,7 @@ def get_blender_python_path() -> Path:
     Raises:
         FileNotFoundError: If the Python executable path does not exist.
     """
-    bl_path = get_blender_root_path()
-    bl_version = blender_version(major_minor=True)
-    python_path = bl_path / bl_version / "python" / "bin" / "python3.11"
-
-    if not python_path.exists():
-        raise FileNotFoundError(f"Blender Python executable does not exist: {python_path}")
-
-    return python_path
+    return _find_blender_python()
 
 
 @functools.lru_cache(maxsize=1)
@@ -154,14 +166,38 @@ def get_blender_site_packages_path() -> Path:
     Raises:
         FileNotFoundError: If the site-packages path does not exist.
     """
-    bl_path = get_blender_root_path()
-    bl_version = blender_version(major_minor=True)
-    site_packages_path = bl_path / bl_version / "python" / "lib" / "python3.11" / "site-packages"
+    python_path = _find_blender_python()
+    python_minor = python_path.name.removeprefix("python")  # e.g. "3.13"
+    site_packages_path = python_path.parent.parent / "lib" / f"python{python_minor}" / "site-packages"
 
     if not site_packages_path.exists():
         raise FileNotFoundError(f"Blender site-packages path does not exist: {site_packages_path}")
 
     return site_packages_path
+
+
+def _find_blender_python() -> Path:
+    """Discover Blender's bundled Python interpreter on disk.
+
+    Blender's bundled CPython minor version changes between releases (e.g. Blender 4.5
+    ships python3.11, Blender 5.1 ships python3.13), so it is discovered dynamically
+    rather than hardcoded.
+
+    Returns:
+        Path: The path to Blender's Python executable.
+
+    Raises:
+        FileNotFoundError: If no bundled Python interpreter is found.
+    """
+    bl_path = get_blender_root_path()
+    bl_version = blender_version(major_minor=True)
+    bl_python_root = bl_path / bl_version / "python"
+
+    python_candidates = sorted(bl_python_root.glob("bin/python3.*"))
+    if not python_candidates:
+        raise FileNotFoundError(f"Could not find a bundled Python interpreter under {bl_python_root / 'bin'}")
+
+    return python_candidates[0]
 
 
 @functools.lru_cache(maxsize=1)
@@ -202,6 +238,42 @@ def _get_viewport_override() -> dict | None:
     return None
 
 
+def capture_viewport_state() -> dict | None:
+    """Snapshot the 3D viewport's view so it can be restored after a reload.
+
+    Returns:
+        dict | None: The view state, or None if no viewport was found.
+    """
+    override = _get_viewport_override()
+    if override is None:
+        return None
+    region_3d = override["space_data"].region_3d
+    return {
+        "view_perspective": region_3d.view_perspective,
+        "view_location": region_3d.view_location.copy(),
+        "view_rotation": region_3d.view_rotation.copy(),
+        "view_distance": region_3d.view_distance,
+    }
+
+
+def restore_viewport_state(state: dict) -> None:
+    """Apply a view state captured by `capture_viewport_state`.
+
+    Args:
+        state (dict): The snapshot to restore.
+    """
+    override = _get_viewport_override()
+    if override is None:
+        logger.warning("No 3D viewport found to restore the view on")
+        return
+    region_3d = override["space_data"].region_3d
+    region_3d.view_perspective = state["view_perspective"]
+    region_3d.view_location = state["view_location"]
+    region_3d.view_rotation = state["view_rotation"]
+    region_3d.view_distance = state["view_distance"]
+    logger.debug("Restored the previous 3D viewport view")
+
+
 def configure_blender_viewport():
     """Configure the Blender 3D viewport to top view."""
     override = _get_viewport_override()
@@ -214,6 +286,19 @@ def configure_blender_viewport():
         if bpy.ops.view3d.view_axis.poll():
             bpy.ops.view3d.view_axis(type="TOP")
             logger.debug("Set 3D viewport to top view")
+
+
+def set_viewport_shading(shading: str = "MATERIAL") -> None:
+    """Set the 3D viewport's shading mode.
+
+    Args:
+        shading: One of "WIREFRAME", "SOLID", "MATERIAL" (material preview, EEVEE) or "RENDERED" (the scene's engine).
+    """
+    override = _get_viewport_override()
+    if override is None:
+        logger.warning("No 3D viewport found to set shading on")
+        return
+    override["space_data"].shading.type = shading
 
 
 def frame_scene_in_viewport(zoom_delta: float = 0):

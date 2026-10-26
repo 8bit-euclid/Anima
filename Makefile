@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: help all install install-dev install-debug install-release update install-blender-deps check-system-deps install-system-deps run test test-verbose test-ignored bench format format-check lint lint-fix precommit-install precommit clean clean-all
+.PHONY: help all install install-dev install-debug install-release update install-blender-deps check-system-deps install-system-deps run render render-frame encode check-render-deps test test-verbose test-ignored bench format format-check lint lint-fix precommit-install precommit clean clean-all
 
 # Required system (non-Python) binaries, checked before running
 SYSTEM_DEPS := wmctrl
@@ -59,6 +59,22 @@ reinstall: clean-all install ## Clean and reinstall the project
 # Run targets
 run: check-system-deps ## Run the project (default demo, or set SCRIPT=path/to/lesson.py)
 	@ANIMA_SCRIPT="$(SCRIPT)" uv run python run.py
+
+RENDER_ENV = ANIMA_SCRIPT="$(SCRIPT)" ANIMA_RENDER="$(or $(OUTPUT),1)" ANIMA_RENDER_PREVIEW="$(PREVIEW)" ANIMA_RENDER_DEVICE="$(DEVICE)" ANIMA_RENDER_DEPTH="$(DEPTH)" ANIMA_RENDER_RESTART="$(RESTART)"
+
+check-render-deps:
+	@command -v ffmpeg >/dev/null 2>&1 || { echo "Missing ffmpeg. Install it with: sudo apt install ffmpeg"; exit 1; }
+
+render: check-render-deps ## Headless 4K60 Cycles render: PNG frames (resumable) then MP4. Options: SCRIPT= OUTPUT=x.mp4 PREVIEW=1 DEVICE=CPU DEPTH=16 RESTART=1
+	@$(RENDER_ENV) uv run python run.py
+
+render-frame: ## Render one test frame to a PNG to check time and VRAM: make render-frame FRAME=120 (same options as render)
+	@test -n "$(FRAME)" || { echo "Usage: make render-frame FRAME=<n>"; exit 1; }
+	@$(RENDER_ENV) ANIMA_RENDER_FRAME="$(FRAME)" uv run python run.py
+
+encode: check-render-deps ## Encode existing frames to MP4: make encode FRAMES=out/main_frames OUTPUT=out/main.mp4
+	@test -n "$(FRAMES)" -a -n "$(OUTPUT)" || { echo "Usage: make encode FRAMES=<dir> OUTPUT=<file.mp4>"; exit 1; }
+	@uv run python -m anima.utils.encode "$(FRAMES)" "$(OUTPUT)"
 
 
 # Testing targets

@@ -76,7 +76,7 @@ class GlyphGroup(Object):
         if not isinstance(glyph, Glyph):
             raise TypeError(f"Expected Glyph instance, got {type(glyph).__name__}")
         self._glyphs.append(glyph)
-        self.add_subobject(glyph)
+        self.add_child(glyph)
 
     @property
     def glyphs(self) -> list[Glyph]:

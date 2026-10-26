@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import math
 from abc import ABC
+from collections.abc import Callable
 from copy import deepcopy
 from typing import Any
 
@@ -7,6 +10,7 @@ import bpy
 
 from anima.globals.easybpy import apply_scale
 from anima.globals.general import (
+    LAYER_SPACING,
     Euler,
     Matrix,
     Vector,
@@ -18,7 +22,13 @@ from anima.globals.general import (
     make_active,
     outer_product,
 )
-from anima.materials.material import create_color_material, get_material_color, to_rgba
+from anima.materials.material import (
+    get_material_color,
+    get_or_create_material,
+    get_palette_color,
+    set_material_properties,
+)
+from anima.materials.texture import AlbedoMode, TextureSet, apply_texture_set
 
 
 class Object(ABC):
@@ -30,14 +40,22 @@ class Object(ABC):
     See: https://docs.python.org/3/library/functions.html#super for more details.
 
     Attributes:
-        parent: The parent object (of type BaseObject).
-        children: A list of child objects (of type BaseObject).
-        shape_keys: A list of shape keys for the object.
-        _bl_object: The underlying Blender object.
-        _write_logs: A boolean flag indicating whether to write logs for this object.
+        _parent (Object | None): The parent object (of type Object), if one is set.
+        _children (list[Object]): A list of child objects (of type Object).
+        _shape_keys (list[bpy.types.ShapeKey]): A list of shape keys for the object.
+        _bl_object (bpy.types.Object): The underlying Blender object.
+        _write_logs (bool): A boolean flag indicating whether to write logs for this object.
+        _layer (int): The stacking layer of the object, relative to its parent. Higher layers sit above lower ones.
     """
 
-    def __init__(self, *, bl_object=None, name="Object", parent: "Object" = None, **kwargs):
+    def __init__(
+        self,
+        *,
+        bl_object: bpy.types.Object | None = None,
+        name: str = "Object",
+        parent: Object | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialises the object.
 
         Args:
@@ -50,40 +68,102 @@ class Object(ABC):
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {kwargs}")
 
-        self._parent: type[Object] = None
-        self.children: list[type[Object]] = []
+        self._parent: Object | None = None
+        self._children: list[Object] = []
 
         if bl_object is None:
             bl_object = add_object(name=name)
         bl_object.name = name
-        self._bl_object = bl_object
-        self.shape_keys = []
-        self._write_logs = False
+        self._bl_object: bpy.types.Object = bl_object
+        self._shape_keys: list[bpy.types.ShapeKey] = []
+        self._write_logs: bool = False
+        self._layer: int = 0
+        self._texture_set: TextureSet | None = None
+        self._texture_options: dict[str, Any] = {}
 
         # Set parent after bl_object is initialized (required for Blender parenting)
         if parent is not None:
-            self._set_parent(parent)
+            parent.add_child(self)
 
-    def add_subobject(self, object):
-        """Adds a sub-object (of type BaseObject) as a child and sets current object as its parent.
+    def add_child(self, object: Object) -> None:
+        """Adds a sub-object (of type Object) as a child and sets current object as its parent.
 
         Args:
-            object (BaseObject): The sub-object to add.
+            object (Object): The sub-object to add.
 
         Raises:
             AssertionError: If the object is not animable.
+            ValueError: If the object already has a different parent; remove it from that parent first.
         """
         assert is_animable(object), "Can only add animable sub-objects."
-        object._set_parent(self)
-        self.children.append(object)
+        if object._parent is self:  # Idempotent check: already a child of this parent
+            return
+        if object._parent is not None:
+            raise ValueError(
+                f"The object {object.name} already has the parent {object._parent.name}; "
+                f"call remove_child() on that parent first to move it to {self.name}."
+            )
+        self._children.append(object)
+        object._parent = self
+        object._bl_object.parent = self._bl_object
+
+    def add_children(self, *objects: Object) -> None:
+        """Adds multiple sub-objects as children and sets current object as their parent.
+
+        Args:
+            *objects (Object): The sub-objects to add.
+
+        Raises:
+            AssertionError: If any of the objects is not animable.
+            ValueError: If any of the objects already has a different parent; remove it from that parent first.
+        """
+        for obj in objects:
+            self.add_child(obj)
+
+    def remove_child(self, object: Object) -> None:
+        """Removes a sub-object from this object's children and clears its parent.
+
+        Args:
+            object (Object): The sub-object to remove.
+
+        Raises:
+            ValueError: If the object is not a child of this object.
+        """
+        if object._parent is not self:
+            raise ValueError(f"The object {object.name} is not a child of {self.name}.")
+        # Match by identity, not equality, so a future __eq__ on Object cannot remove the wrong child.
+        self._children[:] = [child for child in self._children if child is not object]
+        object._parent = None
+        object._bl_object.parent = None
+
+    def remove_children(self, *objects: Object) -> None:
+        """Removes multiple sub-objects from this object's children and clears their parent.
+
+        Args:
+            *objects (Object): The sub-objects to remove.
+
+        Raises:
+            ValueError: If any of the objects is not a child of this object.
+        """
+        for obj in objects:
+            self.remove_child(obj)
+
+    @property
+    def children(self) -> list[Object]:
+        """Return the list of sub-objects (children) of this object.
+
+        Returns:
+            list[Object]: The list of child objects.
+        """
+        return self._children
 
     def add_keyframe(
         self,
         bl_data_path: str,
         index: int = -1,
-        frame: int = None,
+        frame: int | None = None,
         is_custom: bool = False,
-    ):
+    ) -> None:
         """Add a keyframe for the specified object property at the given frame.
 
         Args:
@@ -104,14 +184,14 @@ class Object(ABC):
         assert hasattr(self.object, path), f"Invalid data path: {path}"
         self.object.keyframe_insert(path, index=index, frame=frame)
 
-    def add_handler(self, handler):
+    def add_handler(self, handler: Callable[..., Any]) -> None:
         """Add a handler for the specified object property.
 
         Args:
-            handler (function): The handler function to add"""
+            handler (callable): The handler function to add"""
         raise NotImplementedError("Subclasses should implement add_handler if needed")
 
-    def create_shape_key(self, name):
+    def create_shape_key(self, name: str) -> bpy.types.ShapeKey:
         """Create and return a shape key for this object.
 
         Args:
@@ -121,36 +201,46 @@ class Object(ABC):
             bpy.types.ShapeKey: The created shape key.
         """
         shape_key = self._bl_object.shape_key_add(name)
-        self.shape_keys.append(shape_key)
+        self._shape_keys.append(shape_key)
         return shape_key
 
-    def make_active(self):
+    def make_active(self) -> None:
         """Make this the current active object."""
         make_active(self.object)
 
-    def make_inactive(self):
+    def make_inactive(self) -> None:
         """Make this object inactive."""
         deselect_all()
 
-    def hide(self):
+    def hide(self) -> None:
         """Hide this object and its children in both the viewport and the render."""
         self._set_visibility(False)
         for child in self.children:
             child.hide()
 
-    def unhide(self):
+    def unhide(self) -> None:
         """Unhide this object and its children in both the viewport and the render."""
         self._set_visibility(True)
         for child in self.children:
             child.unhide()
 
-    def copy(self):
-        """Get a deep copy of this object."""
+    def copy(self) -> Object:
+        """Get a deep copy of this object.
+
+        Returns:
+            Object: A deep copy of this object.
+        """
         return deepcopy(self)
 
     # Location-related methods ----------------------------------------------------------------------------- #
 
-    def set_location(self, x=None, y=None, z=None, apply=False):
+    def set_location(
+        self,
+        x: float | None = None,
+        y: float | None = None,
+        z: float | None = None,
+        apply: bool = False,
+    ) -> None:
         """Sets the object's location in world space.
 
         Args:
@@ -182,7 +272,7 @@ class Object(ABC):
         z: float = 0,
         local: bool = False,
         apply: bool = False,
-    ):
+    ) -> None:
         """Translates the object in world/local space (defaults to world).
 
         Args:
@@ -199,15 +289,39 @@ class Object(ABC):
             ebpy.apply_location(ref=self.object)
 
     @property
-    def location(self):
+    def layer(self) -> int:
+        """Get the object's stacking layer.
+
+        Returns:
+            int: The layer relative to the parent. Higher layers sit above lower ones.
+        """
+        return self._layer
+
+    @layer.setter
+    def layer(self, value: int) -> None:
+        """Set the object's stacking layer, used to prevent z-fighting between coplanar objects.
+
+        The layer is realised as a tiny z-offset stored in Blender's delta location, so it is independent of the
+        object's location (and its keyframes) and is added to the parent's offset for child objects.
+
+        Args:
+            value (int): The layer index. Higher layers sit above lower ones.
+        """
+        self._layer = value
+        delta = self._bl_object.delta_location
+        self._bl_object.delta_location = (delta.x, delta.y, value * LAYER_SPACING)
+
+    @property
+    def location(self) -> Vector:
         """Get the object's location.
 
         Returns:
-            tuple: A 3D Vector representing the location in x, y, z dimensions."""
+            Vector: A 3D vector representing the location in x, y, z dimensions.
+        """
         return self._bl_object.location
 
     @location.setter
-    def location(self, loc):
+    def location(self, loc: tuple[float, float, float] | list[float]) -> None:
         """Set the object's location.
 
         Args:
@@ -217,7 +331,13 @@ class Object(ABC):
 
     # Rotation-related methods ----------------------------------------------------------------------------- #
 
-    def set_rotation(self, x=None, y=None, z=None, apply=False):
+    def set_rotation(
+        self,
+        x: float | None = None,
+        y: float | None = None,
+        z: float | None = None,
+        apply: bool = False,
+    ) -> None:
         """Sets the object's rotation (Euler angles in radians) in world space.
 
         Args:
@@ -251,7 +371,7 @@ class Object(ABC):
         z: float = 0,
         local: bool = False,
         apply: bool = False,
-    ):
+    ) -> None:
         """Rotates the object by the given Euler angles (x, y, z) in world/local space (defaults to world).
 
         Args:
@@ -274,10 +394,10 @@ class Object(ABC):
     def rotate_about(
         self,
         angle: float,
-        axis: tuple | list[float] | Vector,
+        axis: tuple[float, ...] | list[float] | Vector,
         local: bool = False,
         apply: bool = False,
-    ):
+    ) -> None:
         """Rotates the object about a given axis.
 
         Args:
@@ -292,10 +412,10 @@ class Object(ABC):
 
     def set_orientation(
         self,
-        x_axis: tuple | list[float] | Vector,
-        y_axis: tuple | list[float] | Vector,
+        x_axis: tuple[float, ...] | list[float] | Vector,
+        y_axis: tuple[float, ...] | list[float] | Vector,
         apply: bool = False,
-    ):
+    ) -> None:
         """Sets the object's orientation based on two orthogonal axes.
 
         Args:
@@ -323,15 +443,16 @@ class Object(ABC):
         self.set_rotation(*rot_matr.to_euler(), apply)
 
     @property
-    def rotation(self):
+    def rotation(self) -> Euler:
         """Get the object's rotation (Euler angles).
 
         Returns:
-            tuple: A 3D Vector representing the rotation in Euler angles."""
+            Euler: A 3D Euler rotation.
+        """
         return self._bl_object.rotation_euler
 
     @rotation.setter
-    def rotation(self, rot):
+    def rotation(self, rot: tuple[float, float, float] | list[float]) -> None:
         """Set the object's rotation (Euler angles).
 
         Args:
@@ -340,7 +461,7 @@ class Object(ABC):
         self.set_rotation(*rot)
 
     @property
-    def local_matrix(self):
+    def local_matrix(self) -> Matrix:
         """Get the local matrix.
 
         Returns:
@@ -348,7 +469,7 @@ class Object(ABC):
         return self._bl_object.matrix_local
 
     @local_matrix.setter
-    def local_matrix(self, matrix):
+    def local_matrix(self, matrix: Matrix) -> None:
         """Set the local matrix.
 
         Args:
@@ -356,7 +477,7 @@ class Object(ABC):
         self._bl_object.matrix_local = matrix
 
     @property
-    def world_matrix(self):
+    def world_matrix(self) -> Matrix:
         """Get the world matrix.
 
         Returns:
@@ -364,7 +485,7 @@ class Object(ABC):
         return self._bl_object.matrix_world
 
     @world_matrix.setter
-    def world_matrix(self, matrix):
+    def world_matrix(self, matrix: Matrix) -> None:
         """Set the world matrix.
 
         Args:
@@ -373,7 +494,13 @@ class Object(ABC):
 
     # Scale-related methods -------------------------------------------------------------------------------- #
 
-    def set_scale(self, x: float = None, y: float = None, z: float = None, apply: bool = False):
+    def set_scale(
+        self,
+        x: float | None = None,
+        y: float | None = None,
+        z: float | None = None,
+        apply: bool = False,
+    ) -> None:
         """Sets the object's scale.
 
         Args:
@@ -404,7 +531,7 @@ class Object(ABC):
         y_fact: float = 1.0,
         z_fact: float = 1.0,
         apply: bool = False,
-    ):
+    ) -> None:
         """Scale the object by the given factors.
 
         Args:
@@ -418,15 +545,16 @@ class Object(ABC):
             apply_scale(ref=self.object)
 
     @property
-    def scale(self):
+    def scale(self) -> Vector:
         """Get the object's scale.
 
         Returns:
-            tuple: A tuple of 3 floats representing the scale in x, y, z dimensions."""
+            Vector: A 3D vector representing the scale in x, y, z dimensions.
+        """
         return self._bl_object.scale
 
     @scale.setter
-    def scale(self, scale):
+    def scale(self, scale: tuple[float, float, float] | list[float]) -> None:
         """Set the object's scale.
 
         Args:
@@ -436,8 +564,16 @@ class Object(ABC):
 
     # Other geometric operations --------------------------------------------------------------------------- #
 
-    def reflect(self, plane_normal, plane_point=(0, 0, 0)):
-        """Reflects an object about an arbitrary plane."""
+    def reflect(
+        self,
+        plane_normal: tuple[float, ...] | list[float] | Vector,
+        plane_point: tuple[float, ...] | list[float] | Vector = (0, 0, 0),
+    ) -> None:
+        """Reflects an object about an arbitrary plane.
+        Args:
+            plane_normal (tuple or list): A 3-element tuple or list representing the normal vector of the plane.
+            plane_point (tuple or list, optional): A 3-element tuple or list representing a point on the plane. Defaults to (0, 0, 0).
+        """
         plane_normal = Vector(plane_normal).normalized()
         plane_point = Vector(plane_point)
 
@@ -452,29 +588,142 @@ class Object(ABC):
         # Apply transformation
         self.world_matrix = refl_matrix @ self.world_matrix
 
-    # Color-related methods ---------------------------------------------------------------------------------- #
+    # Material-related methods ---------------------------------------------------------------------------------- #
 
-    def set_color(self, color: tuple[float, float, float] | tuple[float, float, float, float]):
-        """Sets the object's color by assigning it a material set to the given color.
+    def set_material_properties(
+        self,
+        *,
+        color: tuple[float, float, float] | tuple[float, float, float, float] | str | None = None,
+        roughness: float | None = None,
+        metallic: float | None = None,
+        specular_ior_level: float | None = None,
+        ior: float | None = None,
+        coat_weight: float | None = None,
+        coat_roughness: float | None = None,
+        sheen_weight: float | None = None,
+        emission_strength: float | None = None,
+    ) -> Object:
+        """Update the specified color and shader properties of the object's material.
+
+        Properties left as None retain their current values. If the object has data but no material,
+        a matte one is created first. Objects without data (e.g. a `Group`) only forward the properties to
+        their children.
 
         Args:
-            color (tuple): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
-                Alpha defaults to 1.0 if omitted.
+            color (tuple | str, optional): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
+                Alpha defaults to 1.0 if omitted. Alternatively, a string representing the hex color (e.g. "#RRGGBB").
+            roughness (float, optional): The roughness of the material.
+            metallic (float, optional): The metallic property of the material.
+            specular_ior_level (float, optional): The specular IOR level of the material.
+            ior (float, optional): The index of refraction of the material.
+            coat_weight (float, optional): The coat weight of the material.
+            coat_roughness (float, optional): The coat roughness of the material.
+            sheen_weight (float, optional): The sheen weight of the material.
+            emission_strength (float, optional): The emission strength of the material.
+
+        Returns:
+            Object: This object, after updating its material properties.
+        """
+        material_options = {
+            "color": color,
+            "roughness": roughness,
+            "metallic": metallic,
+            "specular_ior_level": specular_ior_level,
+            "ior": ior,
+            "coat_weight": coat_weight,
+            "coat_roughness": coat_roughness,
+            "sheen_weight": sheen_weight,
+            "emission_strength": emission_strength,
+        }
+        if self._has_data():
+            materials = self._bl_object.data.materials
+            if not materials:
+                materials.append(get_or_create_material(f"{self.name}_material"))
+            set_material_properties(materials[0], **material_options)
+        for child in self.children:
+            child.set_material_properties(**material_options)
+        return self
+
+    def set_textures(
+        self,
+        textures: TextureSet,
+        *,
+        albedo_mode: AlbedoMode = "replace",
+        **options: Any,
+    ) -> Object:
+        """Apply PBR texture maps to the object's material and those of its children.
+
+        Textures are sampled in world XY coordinates, so overlapping objects line up with each other.
+
+        Args:
+            textures: The texture maps to apply.
+            albedo_mode: "replace", "multiply", "modulate" or "ignore"; see `apply_texture_set`.
+            **options: Further keyword arguments for `apply_texture_set` (e.g. `bump_strength`).
+
+        Returns:
+            Object: This object.
+        """
+        self._texture_set = textures
+        self._texture_options = {"albedo_mode": albedo_mode, **options}
+        if self._has_data():
+            materials = self._bl_object.data.materials
+            if not materials:
+                materials.append(get_or_create_material(f"{self.name}_material"))
+            apply_texture_set(materials[0], textures, albedo_mode=albedo_mode, **options)
+        for child in self.children:
+            child.set_textures(textures, albedo_mode=albedo_mode, **options)
+        return self
+
+    def inherit_textures_from(self, other: Object, *, albedo_mode: AlbedoMode = "modulate", **options: Any) -> Object:
+        """Apply the textures set on another object to this one, keeping this object's own color by default.
+
+        Args:
+            other: The object whose texture set to inherit (see `set_textures`).
+            albedo_mode: "modulate" (default) applies only the albedo's local variation to this object's color,
+                leaving its overall color unchanged; "multiply" tints the color by the albedo luminance (which
+                darkens it); "ignore" keeps the color flat; "replace" copies the albedo.
+            **options: Overrides for the other object's `apply_texture_set` options.
 
         Raises:
-            AssertionError: If the object has no data to which a material can be assigned.
+            ValueError: If the other object has no textures.
+
+        Returns:
+            Object: This object.
         """
-        assert self._has_data(), f"The object {self.name} has no data to color."
-        color = to_rgba(color)
-        mat = create_color_material(f"{self.name}_material", color)
-        materials = self._bl_object.data.materials
-        if materials:
-            materials[0] = mat
-        else:
-            materials.append(mat)
-        for child in self.children:
-            child.color = color
-        return self
+        textures = getattr(other, "_texture_set", None)
+        if textures is None:
+            raise ValueError(f"The object {other.name} has no textures to inherit.")
+        merged = {k: v for k, v in other._texture_options.items() if k != "albedo_mode"}
+        return self.set_textures(textures, albedo_mode=albedo_mode, **{**merged, **options})
+
+    def set_color(
+        self,
+        color: tuple[float, float, float] | tuple[float, float, float, float] | str,
+    ) -> Object:
+        """Set only the object's material color. Convenience wrapper around set_material_properties().
+
+        Args:
+            color (tuple | str): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
+                Alpha defaults to 1.0 if omitted. Alternatively, a string representing the hex color (e.g. "#RRGGBB").
+        """
+        return self.set_material_properties(color=color)
+
+    def set_palette_color(
+        self,
+        palette_name: str,
+        color_name: str,
+    ) -> Object:
+        """Set the object's color from a palette.
+
+        Args:
+            palette_name (str): The name of the color palette.
+            color_name (str): The name of the color within the palette.
+
+        Returns:
+            Object: This object, after updating its color.
+        """
+        color = get_palette_color(palette_name, color_name)
+        return self.set_color(color)
 
     @property
     def color(self) -> tuple[float, float, float, float] | None:
@@ -489,19 +738,19 @@ class Object(ABC):
         return get_material_color(self._bl_object.data.materials[0])
 
     @color.setter
-    def color(self, color: tuple[float, float, float] | tuple[float, float, float, float]):
+    def color(self, color: tuple[float, float, float] | tuple[float, float, float, float] | str) -> None:
         """Set the object's color.
 
         Args:
-            color (tuple): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
-                Alpha defaults to 1.0 if omitted.
+            color (tuple | str): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color,
+                or a string representing the hex color (e.g. "#RRGGBB"). Alpha defaults to 1.0 if omitted.
         """
         self.set_color(color)
 
     # Property getters/setters for underlying blender object attributes ------------------------------------ #
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Get the object's name.
 
         Returns:
@@ -509,7 +758,7 @@ class Object(ABC):
         return self._bl_object.name
 
     @name.setter
-    def name(self, name):
+    def name(self, name: str) -> None:
         """Set the object's name.
 
         Args:
@@ -517,33 +766,42 @@ class Object(ABC):
         self._bl_object.name = name
 
     @property
-    def object(self):
-        """Get the underlying Blender object."""
+    def object(self) -> bpy.types.Object:
+        """Get the underlying Blender object.
+
+        Returns:
+            bpy.types.Object: The underlying Blender object.
+        """
         return self._bl_object
 
     @property
-    def parent(self) -> "Object":
+    def parent(self) -> Object | None:
         """Get the object's parent.
 
         Returns:
-            Object: The parent object, or None if no parent is set.
+            Object | None: The parent object, or None if no parent is set.
         """
         return self._parent
 
-    @parent.setter
-    def parent(self, value: "Object"):
-        """Set the object's parent.
+    # Debugging tools -------------------------------------------------------------------------------------- #
+
+    def highlight(self, *, clear: bool = True) -> None:
+        """Select this object and all its descendants so that they are outlined in the viewport.
 
         Args:
-            value (Object): The parent object to set, or None to clear the parent.
+            clear (bool, optional): Deselect everything else first. Defaults to True.
         """
-        if value is not None:
-            self._set_parent(value)
-        else:
-            self._parent = None
-            self._bl_object.parent = None
+        if clear:
+            deselect_all()
+        self._bl_object.select_set(True)
+        for child in self.children:
+            child.highlight(clear=False)
 
-    # Debugging tools -------------------------------------------------------------------------------------- #
+    def unhighlight(self) -> None:
+        """Deselect this object and all its descendants."""
+        self._bl_object.select_set(False)
+        for child in self.children:
+            child.unhighlight()
 
     def debug(self) -> bool:
         """Check if debugging is enabled for this object.
@@ -552,17 +810,17 @@ class Object(ABC):
             bool: True if debugging is enabled, else False."""
         return self._write_logs
 
-    def debug_on(self):
+    def debug_on(self) -> None:
         """Turn on debugging for this object."""
         self._write_logs = True
 
-    def debug_off(self):
+    def debug_off(self) -> None:
         """Turn off debugging for this object."""
         self._write_logs = False
 
     # Magic methods ---------------------------------------------------------------------------------------- #
 
-    def __getitem__(self, attr_name):
+    def __getitem__(self, attr_name: str) -> Any:
         """Get a custom property using the [] operator.
 
         Args:
@@ -572,7 +830,7 @@ class Object(ABC):
             Any: The value of the custom property."""
         return self._bl_object[attr_name]
 
-    def __setitem__(self, attr_name, value):
+    def __setitem__(self, attr_name: str, value: Any) -> None:
         """Set a custom property using the [] operator.
 
         Args:
@@ -580,7 +838,7 @@ class Object(ABC):
             value (Any): The value to set for the custom property."""
         self._bl_object[attr_name] = value
 
-    def __deepcopy__(self, memo: dict[int, Any] | None = None):
+    def __deepcopy__(self, memo: dict[int, Any] | None = None) -> Object:
         """Deepcopy all contents of the object except those in _deepcopy_excluded_attrs().
 
         Args:
@@ -621,13 +879,17 @@ class Object(ABC):
         """Attributes to exclude from deep copying.
 
         Returns:
-            set[str]: A set of attribute names to exclude from deep copying."""
-        assert len(self.shape_keys) == 0, "Cannot deepcopy objects with shape keys yet."
-        return {"_bl_object", "shape_keys", "_parent"}
+            set[str]: A set of attribute names to exclude from deep copying.
+        """
+        assert len(self._shape_keys) == 0, "Cannot deepcopy objects with shape keys yet."
+        excl_attrs = {"_bl_object", "_shape_keys", "_parent"}
+        for attr in excl_attrs:
+            assert hasattr(self, attr), f"Expected attribute '{attr}' to exist in the object."
+        return excl_attrs
 
     # Private methods -------------------------------------------------------------------------------------- #
 
-    def _has_data(self):
+    def _has_data(self) -> bool:
         """Does the Blender object have data?
 
         Returns:
@@ -638,19 +900,7 @@ class Object(ABC):
         assert self._bl_object is not None, "The Blender object is not set. Cannot check for data."
         return self._bl_object.data is not None
 
-    def _set_parent(self, parent: type["Object"]):
-        """Sets the parent (of type BaseObject) of the current object.
-
-        Args:
-            parent (BaseObject): The parent object to set.
-
-        Raises:
-            AssertionError: If the parent is not of type BaseObject."""
-        assert is_animable(parent), "Can only set a parent of type BaseObject."
-        self._parent = parent
-        self._bl_object.parent = parent._bl_object
-
-    def _set_visibility(self, val: bool):
+    def _set_visibility(self, val: bool) -> None:
         """Sets the object's visibility in both the viewport and render.
 
         Args:
@@ -658,7 +908,7 @@ class Object(ABC):
         self._set_viewport_visibility(val)
         self._set_render_visibility(val)
 
-    def _set_viewport_visibility(self, val: bool):
+    def _set_viewport_visibility(self, val: bool) -> None:
         """Sets the object's visibility in the viewport.
 
         Args:
@@ -666,7 +916,7 @@ class Object(ABC):
         """
         self._bl_object.hide_viewport = not val
 
-    def _set_render_visibility(self, val: bool):
+    def _set_render_visibility(self, val: bool) -> None:
         """Sets the object's visibility in the render.
 
         Args:
@@ -674,7 +924,7 @@ class Object(ABC):
         """
         self._bl_object.hide_render = not val
 
-    def _log_info(self, visitor: callable):
+    def _log_info(self, visitor: Callable[[Object], Any]) -> None:
         """Logs information about the object using the provided visitor function.
 
         Args:

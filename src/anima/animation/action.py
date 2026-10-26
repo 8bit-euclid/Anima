@@ -41,8 +41,8 @@ class Action(ABC):
 #       case AT::TrackOrientationOf: return "TrackOrientationOf";
 #       case AT::MorphTo:            return "MorphTo";
 #       case AT::MorphFrom:          return "MorphFrom";
-#       case AT::SetStrokeColour:    return "SetStrokeColour";
-#       case AT::SetFillColour:      return "SetFillColour";
+#       case AT::SetStrokeColor:    return "SetStrokeColor";
+#       case AT::SetFillColor:      return "SetFillColor";
 #       case AT::Glow:               return "Glow";
 #       case AT::Blink:              return "Blink";
 #       default:                     throw std::invalid_argument("Unrecognised action type.");
