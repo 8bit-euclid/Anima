@@ -25,9 +25,12 @@ from .curves import DEFAULT_LINE_WIDTH, Curve
 from .endcaps import Endcap
 
 DEFAULT_RESOLUTION = 100
-RELATIVE_LENGTH_ERR = 1.0e-3  # 0.1% of the length
+RELATIVE_LENGTH_ERR = 1.0e-4  # 0.01% of the length
 MIN_ABSOLUTE_LENGTH_ERR = 1.0e-5
 NUM_PARAM_LOOKUP_PTS = 40
+NUM_GAUSS_NODES = 128
+_GAUSS_LEGENDRE = np.polynomial.legendre.leggauss(NUM_GAUSS_NODES)
+Coefficients = tuple[float, float, float]
 
 
 class BezierSpline(Curve):
@@ -545,6 +548,25 @@ class BezierSpline(Curve):
 
             attmt.set_orientation(x_dir, y_dir)
 
+    def _derivative_coefficients(self, bzr_index: int) -> tuple[Coefficients, Coefficients, Coefficients]:
+        """Return a segment's derivative as polynomial coefficients in its local parameter.
+
+        The derivative with respect to the local parameter t is ``a + b * t + c * t ** 2``.
+        Control points are read from Blender once per call and combined in double precision
+        (``mathutils.Vector`` is single precision).
+
+        Args:
+            bzr_index: The index of the Bezier segment.
+
+        Returns:
+            The component tuples of the vector coefficients a, b and c.
+        """
+        p0, h0, h1, p1 = (tuple(p) for p in self._control_points(bzr_index))
+        a = tuple(3 * (h0[i] - p0[i]) for i in range(3))
+        b = tuple(6 * (p0[i] - 2 * h0[i] + h1[i]) for i in range(3))
+        c = tuple(3 * (-p0[i] + 3 * h0[i] - 3 * h1[i] + p1[i]) for i in range(3))
+        return a, b, c
+
     def _bezier_tangent(self, bzr_index: int, param: float) -> Vector:
         """Evaluate a segment's derivative with respect to its local parameter.
 
@@ -555,10 +577,8 @@ class BezierSpline(Curve):
         Returns:
             The derivative as a Vector.
         """
-        p0, h0, h1, p1 = self._control_points(bzr_index)
-        t = param
-        t_sq = t * t
-        return -3 * (1 - t) ** 2 * p0 + 3 * (1 - 4 * t + 3 * t_sq) * h0 + 3 * (2 * t - 3 * t_sq) * h1 + 3 * t_sq * p1
+        a, b, c = self._derivative_coefficients(bzr_index)
+        return Vector(a[i] + param * (b[i] + param * c[i]) for i in range(3))
 
     def _bezier_length(self, bzr_index: int, param: float = 1.0) -> float:
         """Integrate a segment's speed from zero to its local parameter.
@@ -570,10 +590,7 @@ class BezierSpline(Curve):
         Returns:
             The arc length as a float.
         """
-        p0, h0, h1, p1 = (tuple(p) for p in self._control_points(bzr_index))
-        a = tuple(3 * (h0[i] - p0[i]) for i in range(3))
-        b = tuple(6 * (p0[i] - 2 * h0[i] + h1[i]) for i in range(3))
-        c = tuple(3 * (-p0[i] + 3 * h0[i] - 3 * h1[i] + p1[i]) for i in range(3))
+        a, b, c = self._derivative_coefficients(bzr_index)
 
         def integrand(t: float) -> float:
             return math.sqrt(sum((a[i] + t * (b[i] + t * c[i])) ** 2 for i in range(3)))
@@ -594,40 +611,36 @@ class BezierSpline(Curve):
 
         This method samples the spline at uniformly distributed points and at the intermediate
         Bezier points to create lookup tables for spline parameters and their corresponding
-        cumulative arc lengths. The resulting arrays are stored in self._spline_params and
-        self._length_params.
+        cumulative arc lengths. Partial segment lengths are computed for all samples at once with
+        fixed-order Gauss-Legendre quadrature. The resulting arrays are stored in self._spline_params
+        and self._length_params.
         """
         num_pts = self._num_lookup_pts
-        spl_params = [-1.0] * num_pts
-        len_params = [-1.0] * num_pts
-
-        # Compute the lengths at uniformly distributed points.
-        du = 1.0 / (num_pts - 1)
-        for i in range(num_pts):
-            u = min(i * du, 1)
-            spl_params[i] = u
-            len_params[i] = self.length(u)
-
-        # Compute the extra parameters at spline points.
         num_bzr_crvs = len(self._spline_points()) - 1
-        num_bzr_pts = num_bzr_crvs - 1  # Only the intermediate points are inserted
-        extra_spl_params = [-1.0] * num_bzr_pts
-        extra_len_params = [-1.0] * num_bzr_pts
-        du = 1 / num_bzr_crvs
-        for i in range(num_bzr_pts):
-            u = (i + 1) * du
-            extra_spl_params[i] = u
-            extra_len_params[i] = self.length(u)
-        spl_params.extend(extra_spl_params)
-        len_params.extend(extra_len_params)
 
-        # Zip the lists together, sort based on first list, and unzip and then convert back to lists.
-        sorted_lists = zip(*sorted(zip(spl_params, len_params)))
-        spl_params, len_params = map(list, sorted_lists)
+        # Uniform samples plus the interior anchors, so that segment boundaries are represented exactly.
+        uniform = np.minimum(np.arange(num_pts) / (num_pts - 1), 1.0)
+        anchors = np.arange(1, num_bzr_crvs) / num_bzr_crvs
+        u = np.sort(np.concatenate((uniform, anchors)))
 
-        # Lastly, convert to numpy arrays.
-        self._spline_params = np.array(spl_params, dtype=float)
-        self._length_params = np.array(len_params, dtype=float)
+        scaled = u * num_bzr_crvs
+        seg = np.minimum(np.floor(scaled).astype(int), num_bzr_crvs - 1)
+        local = scaled - seg
+
+        # Per-segment derivative polynomial coefficients, read from Blender once per segment.
+        coeffs = np.array([self._derivative_coefficients(i) for i in range(num_bzr_crvs)])
+
+        # Gauss-Legendre quadrature of the speed over [0, local] for every sample at once.
+        nodes, weights = _GAUSS_LEGENDRE
+        t = 0.5 * local[:, None] * (nodes[None, :] + 1.0)  # (samples, nodes)
+        c = coeffs[seg]  # (samples, 3, 3)
+        deriv = c[:, None, 0, :] + t[:, :, None] * (c[:, None, 1, :] + t[:, :, None] * c[:, None, 2, :])
+        speed = np.sqrt(np.sum(deriv * deriv, axis=2))
+        partial = 0.5 * local * (speed @ weights)
+
+        cumu = np.asarray(self._cumu_bzr_lens, dtype=float)
+        self._spline_params = u
+        self._length_params = cumu[seg] + partial
 
     def _get_u_from_s(self, s: float) -> float:
         """Interpolate a spline parameter for an arc length, building the table if needed.

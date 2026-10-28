@@ -409,7 +409,7 @@ class TestBezierCurve:
         assert_curve_death_tests(self.curve_simple)
 
 
-class TestBezier:
+class TestBezierSpline:
     def setup_method(self):
         self.spline1 = BezierSpline([(0, 0), (3, 1), (7, -1)])
         self.spline1.set_resolution(100)
@@ -445,7 +445,7 @@ class TestBezier:
         # Right endpoint tangent. Should be horizontal.
         tn = self.spline1.tangent(1.0, normalise=True)
         btn = Vector((1, 0, 0))
-        assert_vectors_equal(tn, btn)
+        assert_vectors_equal(tn, btn, places=12)
 
         # Death tests
         assert_death(self.spline1.tangent, -0.1)

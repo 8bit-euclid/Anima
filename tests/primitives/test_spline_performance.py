@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 
+from anima.primitives import bezier_spline
 from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.bezier_spline import BezierSpline
 from anima.primitives.chains import CurveChain
@@ -128,3 +129,73 @@ def test_deepcopy_has_independent_lookup_state():
     assert copied._length_params is None
     assert curve._length_params is not None
     assert copied.length() != pytest.approx(curve.length())
+
+
+def exact_cumulative_lengths(spline, params):
+    """Return tightly integrated arc lengths at the given spline parameters."""
+    num_segments = len(spline._spline_points()) - 1
+    lengths = []
+    for u in params:
+        scaled = u * num_segments
+        index = min(int(scaled), num_segments - 1)
+        total = sum(reference_length(spline, i, 1) for i in range(index))
+        lengths.append(total + reference_length(spline, index, scaled - index))
+    return np.array(lengths)
+
+
+LOOKUP_CURVES = {
+    "generic": lambda: BezierCurve((0, 0), (4, 1), control_pts=[(1, 3), (3, -1)]),
+    "cusp": lambda: BezierCurve((0, 0), (0, 0), control_pts=[(3, 5), (-3, 5)]),
+    "straight": lambda: BezierCurve((0, 0), (4, 0), control_pts=[(1, 0), (3, 0)]),
+    "overshoot": lambda: BezierCurve((0, 0), (4, 0), control_pts=[(5, 0), (-1, 0)]),
+    "tiny": lambda: BezierCurve((0, 0), (1e-5, 0), control_pts=[(0, 2e-5), (1e-5, 2e-5)]),
+    "multisegment": lambda: BezierSpline([(0, 0), (1, 1), (3, 0), (4, 2)]),
+}
+
+
+@pytest.mark.parametrize("name", LOOKUP_CURVES)
+def test_lookup_lengths_match_reference_and_are_well_formed(name):
+    spline = LOOKUP_CURVES[name]()
+    spline.point(0.5)
+    params, lengths = spline._spline_params, spline._length_params
+
+    assert params[0] == 0 and params[-1] == 1
+    assert np.all(np.diff(params) >= 0)
+    assert np.all(np.diff(lengths) >= -1e-12)
+    assert lengths[0] == pytest.approx(0, abs=1e-12)
+    assert lengths[-1] == pytest.approx(spline.length(), rel=5e-4, abs=1e-8)
+
+    num_segments = len(spline._spline_points()) - 1
+    for i in range(1, num_segments):
+        assert np.isclose(params, i / num_segments).any()
+
+    scale = max(spline._length, 1e-9)
+    error = np.max(np.abs(lengths - exact_cumulative_lengths(spline, params)))
+    assert error <= 5e-4 * scale
+
+
+def test_lookup_build_does_not_use_adaptive_integration(monkeypatch):
+    spline = BezierSpline([(0, 0), (1, 1), (3, 0)])
+    calls = []
+    real_quad = bezier_spline.integrate.quad
+    monkeypatch.setattr(bezier_spline.integrate, "quad", lambda *a, **k: calls.append(1) or real_quad(*a, **k))
+
+    spline._map_u_to_s()
+    assert calls == []
+
+
+def test_each_geometry_edit_rebuilds_lookup_once(monkeypatch):
+    curve = BezierCurve((0, 0), (4, 0), control_pts=[(0, 4), (3, 1)])
+    builds = []
+    real_build = BezierSpline._map_u_to_s
+    monkeypatch.setattr(BezierSpline, "_map_u_to_s", lambda self: builds.append(1) or real_build(self))
+
+    curve.point(0.5)
+    assert len(builds) == 1
+    for i in range(5):
+        curve.point(0.3)
+        curve.tangent(0.7)
+        curve.set_handle_0((0, 4 + i + 1), relative=False)
+        curve.point(0.5)
+        curve.tangent(0.2)
+    assert len(builds) == 6
