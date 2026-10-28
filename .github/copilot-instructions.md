@@ -11,6 +11,12 @@
 - Keep documented names and behavior accurate to the implementation. Do not invent exceptions, guarantees, or examples.
 - Use consistent English spelling and punctuation; match the surrounding code where a project-wide choice has not been established.
 
+## Python type hints
+- Annotate function parameters and return values when their contracts can be verified; keep existing annotations accurate when changing behavior.
+- Use modern Python typing compatible with the project's declared Python versions, including parameterized containers and `X | None` for nullable values.
+- Reflect accepted inputs and actual return values; avoid guessing, unnecessary `Any`, casts, or suppressions to satisfy a checker.
+- Check relevant callers and run the project's available type checks or diagnostics after changing annotations.
+
 ## Commit Messages
 - Format every suggested commit message as `<type>: <short summary>`.
 - Put a blank line after the summary, followed by one or more flat hyphen bullets describing the changes.
