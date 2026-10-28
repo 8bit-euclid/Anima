@@ -55,4 +55,4 @@ def test_text_to_glyphs():
     # text = r'$\frac{x^2 - 1}{x^2 + 1}$'
 
     # Default minimal quality: turning-angle-adaptive boundary, no interior points.
-    GlyphGroup.from_tex_string(text, mesh_quality=MeshQuality.balanced())
+    GlyphGroup.from_tex_string(text, mesh_quality=MeshQuality.high())
