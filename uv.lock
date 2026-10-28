@@ -9,10 +9,10 @@ dependencies = [
     { name = "bpy" },
     { name = "dill" },
     { name = "loguru" },
+    { name = "mapbox-earcut" },
     { name = "mathutils" },
     { name = "numpy" },
     { name = "pytest" },
-    { name = "pytriwild" },
     { name = "scipy" },
     { name = "svgpathtools" },
 ]
@@ -28,11 +28,11 @@ requires-dist = [
     { name = "bpy", specifier = "==5.1.2" },
     { name = "dill", specifier = "==0.4.1" },
     { name = "loguru", specifier = "==0.7.3" },
+    { name = "mapbox-earcut", specifier = "==2.1.0" },
     { name = "mathutils", specifier = "==3.3.0" },
     { name = "numpy", specifier = "==2.3.4" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.6.2" },
     { name = "pytest", specifier = "==8.4.0" },
-    { name = "pytriwild", git = "https://github.com/8bit-euclid/TriWild.git?rev=master" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16.9" },
     { name = "scipy", specifier = "==1.15.3" },
     { name = "svgpathtools", specifier = ">=1.8.0" },
@@ -213,6 +213,26 @@ wheels = [
 ]
 
 [[package]]
+name = "mapbox-earcut"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/aa/14/8505f246191c41da54a64a4d6c30049ed47b6047930d8f0de328dadb06ee/mapbox_earcut-2.1.0.tar.gz", hash = "sha256:fb0c1e43581a635bbaabf4a5149009014d370c515816c4d5a7d8118477f28d48", size = 46744, upload-time = "2026-09-08T19:01:06.749Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/8d/9225758660ddf74fa757a044efdd40bc3e9ad509bc012c0efd58082012dc/mapbox_earcut-2.1.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:fe652ace9a050b9f6447e9d7a9f2465fab951547e295ba1de7f2404f8bdf326f", size = 69339, upload-time = "2026-09-08T18:59:54.207Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/c7/34fc86374e487adeae197f42883664abe72c48663e9d106b6b431645d053/mapbox_earcut-2.1.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:01e1df4c841ebdccce44e07046e6d23f307019957f69751439da744f7b09a262", size = 66326, upload-time = "2026-09-08T18:59:55.603Z" },
+    { url = "https://files.pythonhosted.org/packages/38/24/edf60cbcdf8327e18279dce6963496542dfefbf3c49641a8a68e753b9a6d/mapbox_earcut-2.1.0-cp313-cp313-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:611a6fc362c6a24cd7fc230e2740300e60bc5360e6085e36b40c5776eaf156a5", size = 72924, upload-time = "2026-09-08T18:59:56.854Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/a1/841d702350b644808fc9c4793910045a9fb63a387aabe132de225d0a07cc/mapbox_earcut-2.1.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7cee9422275dd8700bb04f82eac3410d03c283630a1cc536b1a09cc721a5c0a1", size = 76712, upload-time = "2026-09-08T18:59:58.146Z" },
+    { url = "https://files.pythonhosted.org/packages/47/ca/349241fb7971173f2bb7f626396b2d504c7ed3fc1f46f19c18769865fc94/mapbox_earcut-2.1.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:d2d87ecc9a00faafb7a0e6c0179bc61e54f79c23f44c33269605475d5eeceb07", size = 168702, upload-time = "2026-09-08T18:59:59.439Z" },
+    { url = "https://files.pythonhosted.org/packages/38/45/1a43da1002787a1b4dcc3740d0216d60239cf92a878ac6cc1ca8d2d4d089/mapbox_earcut-2.1.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:086cf89caf061da1669add4f92aa76e5e90a232edc7f82445df362334fd4c3f8", size = 174200, upload-time = "2026-09-08T19:00:01.047Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/65/c97fabf109c2e381611e20a9657a4097d90dcbd82abb2e183e0247a81a8f/mapbox_earcut-2.1.0-cp313-cp313-win32.whl", hash = "sha256:fed97aaa1cd846c1a24867a43fe0a6603e84b25543cec9f58aced65a8c5c723f", size = 272923, upload-time = "2026-09-08T19:00:02.618Z" },
+    { url = "https://files.pythonhosted.org/packages/60/e1/dc52f1b18347c29742ff1a82c0f88553c8fac71fdc541cabe553ddead1c4/mapbox_earcut-2.1.0-cp313-cp313-win_amd64.whl", hash = "sha256:0224b889f67b2868b4cf4dc3ba7dd7006122ece2199159147edce80e05df079c", size = 279382, upload-time = "2026-09-08T19:00:04.145Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/45/cc48844e03f595b535facd5f5b481db05f98e017b3858fab96c639b5da50/mapbox_earcut-2.1.0-cp313-cp313-win_arm64.whl", hash = "sha256:7b3441c188704bd03ca7c320c444378eda529ef494220b9b735389b87765a38e", size = 448060, upload-time = "2026-09-08T19:00:05.728Z" },
+]
+
+[[package]]
 name = "mathutils"
 version = "3.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -323,14 +343,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fb/aa/405082ce2749be5398045152251ac69c0f3578c7077efc53431303af97ce/pytest-8.4.0.tar.gz", hash = "sha256:14d920b48472ea0dbf68e45b96cd1ffda4705f33307dcc86c676c1b5104838a6", size = 1515232, upload-time = "2025-06-02T17:36:30.03Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2f/de/afa024cbe022b1b318a3d224125aa24939e99b4ff6f22e0ba639a2eaee47/pytest-8.4.0-py3-none-any.whl", hash = "sha256:f40f825768ad76c0977cbacdf1fd37c6f7a468e460ea6a0636078f8972d4517e", size = 363797, upload-time = "2025-06-02T17:36:27.859Z" },
-]
-
-[[package]]
-name = "pytriwild"
-version = "0.1.0"
-source = { git = "https://github.com/8bit-euclid/TriWild.git?rev=master#e43f64eb366a4cd978cdab06686f787fa96b6a83" }
-dependencies = [
-    { name = "numpy" },
 ]
 
 [[package]]
