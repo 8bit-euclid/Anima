@@ -14,7 +14,6 @@ name = "anima"
 dynamic = ["version"]
 dependencies = [
    "bpy==5.1.2", # NOTE: See `pip index versions bpy` for versions and match with tool.blender.version
-   "mathutils==3.3.0",
    "numpy==2.3.4", # Match the numpy version bundled with Blender 5.1.2
    "scipy==1.15.3",
    "pytest==8.4.0",

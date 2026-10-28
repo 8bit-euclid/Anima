@@ -16,7 +16,7 @@ ANIMA
 
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - [GNU Make](https://www.gnu.org/software/make/) (for building, testing, and running)
-- [Python 3.11+](https://www.python.org/downloads/) (specifically 3.11.4 - 3.11.13 for Blender compatibility)
+- [Python 3.13](https://www.python.org/downloads/) (matches the Python version bundled with Blender 5.1.2)
 - [Blender](https://www.blender.org/download/) (4.0+ recommended)
 - [wmctrl](https://linux.die.net/man/1/wmctrl) (Linux only; used to focus the Blender window on hot reload).
 - [Visual Studio Code](https://code.visualstudio.com/) (optional, but recommended for development)

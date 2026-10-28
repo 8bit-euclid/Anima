@@ -1,7 +1,7 @@
 name: Test Anima
 
 env:
-  PYTHON_VERSION: "3.11.9" # Should match version in pyproject.toml
+  PYTHON_VERSION: "3.13" # Should match version in pyproject.toml
   PROJECT_CONFIG: "pyproject.toml"
 
 on:
