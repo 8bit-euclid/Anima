@@ -213,7 +213,8 @@ class Joint(Attachment, Curve, Mesh):
         hw = 0.5 * w
         p7 = p1 + hw * n1
         p8 = p1 + hw * n2
-        self._update_path([p7, p0, p8])
+        path_midpoint = 0.5 * (p7 + p8) if are_vectors_close(p7, p8) else p0
+        self._update_path([p7, path_midpoint, p8])
 
         # self.update_param_0()
         # self.update_param_1()

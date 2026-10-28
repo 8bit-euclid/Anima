@@ -779,7 +779,6 @@ class TestCurveChain:
         assert seg1.width == 2.0
         assert seg2.width == 2.0
 
-    @pytest.mark.skip(reason="Broken after bpy update")
     def test_set_bias(self):
         """Test set_bias() propagates to all curves.
 
@@ -797,6 +796,7 @@ class TestCurveChain:
         # Bias is propagated to child curves
         assert seg1.bias == 0.5
         assert seg2.bias == 0.5
+        assert chain._joints[0].length() == pytest.approx(0.0)
 
     def test_normal_perpendicular(self):
         """Test that normal is perpendicular to tangent."""
@@ -873,6 +873,12 @@ class TestJoint:
         result = joint.set_bias(0.5)
         assert result is joint
         assert joint.bias == 0.5
+
+    def test_set_bias_preserves_corner_path(self):
+        self.round.set_bias(0.5)
+
+        assert self.round.length() > 0.0
+        assert_vectors_equal(self.round.point(0.5), self.crv1.point(1.0), places=6)
 
 
 class TestBevelJoint:
