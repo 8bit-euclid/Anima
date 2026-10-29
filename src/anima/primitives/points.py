@@ -15,7 +15,7 @@ class Empty(Object):
     """
 
     def __init__(self, location=(0, 0, 0), parent=None, name="Empty"):
-        obj = add_empty(name, location=location)
+        obj = add_empty(name)
         super().__init__(bl_object=obj, name=name, parent=parent)
         self.location = make_3d_vector(location)
 
