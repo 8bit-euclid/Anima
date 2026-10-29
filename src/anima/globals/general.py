@@ -122,10 +122,12 @@ def deepcopy_object(obj, name=None):
 
 
 def add_empty(name="Empty", location=(0, 0, 0), parent=None):
-    bpy.ops.object.empty_add(location=location, type="PLAIN_AXES")
-    obj = bpy.context.object
-    obj.name = name
+    obj = bpy.data.objects.new(name, None)
+    obj.empty_display_type = "CIRCLE"
+    obj.empty_display_size = 0.001
+    obj.location = location
     obj.parent = parent
+    link_object(obj)
     return obj
 
 

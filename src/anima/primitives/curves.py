@@ -120,7 +120,7 @@ class Curve(Object):
             dash_len=dash_len,
             gap_len=gap_len,
             offset=offset,
-            name=self.name,
+            name=f"{self.name}_dashed",
         )
 
     @abstractmethod

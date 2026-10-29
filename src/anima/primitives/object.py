@@ -5,6 +5,7 @@ from abc import ABC
 from collections.abc import Callable
 from copy import deepcopy
 from typing import Any
+from weakref import WeakSet
 
 import bpy
 
@@ -48,6 +49,9 @@ class Object(ABC):
         _layer (int): The stacking layer of the object, relative to its parent. Higher layers sit above lower ones.
     """
 
+    # Every live Object, so that `anima.diagnostics.hierarchy` can compare the Anima and Blender trees.
+    _registry: WeakSet[Object] = WeakSet()
+
     def __init__(
         self,
         *,
@@ -70,6 +74,7 @@ class Object(ABC):
 
         self._parent: Object | None = None
         self._children: list[Object] = []
+        Object._registry.add(self)
 
         if bl_object is None:
             bl_object = add_object(name=name)
@@ -872,6 +877,13 @@ class Object(ABC):
 
         # Copy Blender object manually.
         new_copy._bl_object = deepcopy_object(self.object)
+        Object._registry.add(new_copy)
+
+        # The copy starts detached, and its copied children must hang off the copy, not the original.
+        new_copy._bl_object.parent = None
+        for child in new_copy._children:
+            child._parent = new_copy
+            child._bl_object.parent = new_copy._bl_object
 
         return new_copy
 

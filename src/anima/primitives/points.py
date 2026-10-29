@@ -9,16 +9,15 @@ DEFAULT_POINT_RADIUS = 1.1 * DEFAULT_LINE_WIDTH
 
 class Empty(Object):
     """
-    An object with just a point location and no mesh. It is invisible in the final render and can be used as
-    reference points for other geometry or as a hook that drives some object property.
+    A data-less Blender empty with just a location. It is invisible in the final render and can be used as
+    a reference point for other geometry, a hook that drives some object property, or a holder of custom
+    properties (e.g. animated driver values).
     """
 
     def __init__(self, location=(0, 0, 0), parent=None, name="Empty"):
-        mesh = create_mesh(f"{name}_mesh", verts=[(0, 0, 0)], faces=[])
-        obj = add_object(name, mesh)
-
+        obj = add_empty(name, location=location)
         super().__init__(bl_object=obj, name=name, parent=parent)
-        self.location = location
+        self.location = make_3d_vector(location)
 
 
 class Point(Object):

@@ -15,6 +15,7 @@ up = Updater()
 
 
 def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
+    root = Group(name="BezierSplines")
     bspline = BezierSpline([(0, 0), (3, 1), (7, -1)])
     # bspline = BezierSpline([(0, 0), (1, 0), (7, 0)])
     # bspline.set_width(THIN)
@@ -27,7 +28,7 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
     bcurve.handle_0 = (ln, ht)
     bcurve.handle_1 = (-ln, ht)
 
-    e = Empty()
+    e = Empty(name="t_driver", parent=root)
     # e.t = 0.0
     e["t"] = 0.0
     e.add_keyframe("t", frame=30, is_custom=True)
@@ -44,9 +45,6 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
     # crv.attachment_0 = RoundEndcap()
     # crv.attachment_1 = RoundEndcap()
 
-    seg_t = Segment((0, 0), (0, 0))
-    seg_n = Segment((0, 0), (0, 0))
-
     p1 = Point(name="Point1")
     p2 = Point(name="Point2")
     p1.set_palette_color("byrne_euclid", "black")
@@ -61,9 +59,11 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
         bspline.set_palette_color("byrne_euclid", color)
         bcurve.set_palette_color("byrne_euclid", color)
     if paper is not None:
-        Group([bspline, bcurve, p1, p2], name="Overlays").inherit_textures_from(
+        Group([bspline, bcurve, p1, p2], name=f"{root.name}_overlays", parent=root).inherit_textures_from(
             paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
         )
+    else:
+        root.add(bspline, bcurve, p1, p2)
 
     def update(scene):
         t1 = e["t"]
@@ -78,18 +78,12 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
         p1.location.x = bspline.point(t1).x
         p2.location.x = bcurve.point(t1).x
 
-        # length = 0.4
-        # seg_t.spline_point(0).co = pt
-        # seg_t.spline_point(1).co = pt + length * crv.tangent(t, True)
-
-        # seg_n.spline_point(0).co = pt
-        # seg_n.spline_point(1).co = pt + length * crv.normal(t, True)
-
     # up.add_input_variable(e, '["t"]')
     up.add_function(update)
 
 
 def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
+    root = Group(name="CurveJoints")
     c1 = Segment((0.5, -1), (1, 0))
     # c1 = BezierCurve((0, -1), (1, 0))
     # c1.set_handle_0((1, 0))
@@ -121,7 +115,7 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
             emission_strength=0.0,
         )
 
-    e = Empty()
+    e = Empty(name="t_driver", parent=root)
     e["t"] = 0.0
     e.add_keyframe("t", frame=30, is_custom=True)
     e["t"] = 1.0
@@ -137,9 +131,11 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
     p = Point()
     # chain.bias = 1
     if paper is not None:
-        Group([chain, p], name="Overlays").inherit_textures_from(
+        Group([chain, p], name=f"{root.name}_overlays", parent=root).inherit_textures_from(
             paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
         )
+    else:
+        root.add(chain, p)
 
     pf = profiler
 
@@ -191,6 +187,7 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
 
 
 def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
+    root = Group(name="DashedCurves")
     width = 1.6 * DEFAULT_LINE_WIDTH
 
     # c1 = Segment((0, -1), (0, 0))
@@ -205,6 +202,7 @@ def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangl
     # dashed2 = DashedCurve(curve2, width=width)
     dashed2 = curve2.make_dashed()
     dashed2.width = width
+    root.add(dashed2)
     if color is not None:
         dashed2.set_palette_color("byrne_euclid", color)
         dashed2.set_material_properties(
@@ -226,7 +224,7 @@ def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangl
     scal2 = 1 / (dash2 + gap2)
 
     radi = 1.0
-    e = Empty()
+    e = Empty(name="t_driver", parent=root)
     e["t"] = 0.0
     e.add_keyframe("t", frame=30, is_custom=True)
     e["t"] = radi

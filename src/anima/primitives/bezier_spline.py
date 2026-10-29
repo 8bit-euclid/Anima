@@ -123,7 +123,7 @@ class BezierSpline(Curve):
             for i, pt in enumerate(pts):
                 bpts[i].co = make_3d_vector(pt)
         else:
-            line_obj = add_line_segment("profile", *pts)
+            line_obj = add_line_segment(f"{self.name}_profile", *pts)
             self.object.data.bevel_mode = "OBJECT"
             self.object.data.bevel_object = line_obj
             line_obj.parent = self.object
@@ -353,6 +353,18 @@ class BezierSpline(Curve):
             res: The subdivision resolution to set.
         """
         self.set_resolution(res)
+
+    @Curve.name.setter
+    def name(self, name: str) -> None:
+        """Rename the spline and its bevel profile.
+
+        Args:
+            name: The new name.
+        """
+        Curve.name.fset(self, name)
+        profile = self.object.data.bevel_object if self.object.data is not None else None
+        if profile is not None:
+            profile.name = f"{name}_profile"
 
     def __deepcopy__(self, memo: dict[int, Any] | None = None) -> BezierSpline:
         """Copy the spline and its Blender bevel profile.

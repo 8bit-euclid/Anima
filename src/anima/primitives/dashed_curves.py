@@ -37,8 +37,18 @@ class DashedCurve(Curve):
         super().__init__(width=width, bias=bias, name=name)
         self._update_geometry()
 
-        # Hide base curve.
+        # Take the base curve's place in its parent (if any), then adopt it and hide it.
+        base_parent = curve.parent
+        if base_parent is not None:
+            base_parent.remove_child(curve)
+            base_parent.add_child(self)
+        self.add_child(curve)
         curve.hide()
+
+    def unhide(self) -> None:
+        """Unhide the dashes while keeping the base curve hidden."""
+        super().unhide()
+        self._base_curve.hide()
 
     def auto_adjust(self):
         pass
@@ -117,6 +127,7 @@ class DashedCurve(Curve):
                 dash = DashedCurve.Dash()
                 dashes[i] = dash
                 dash.curve = deepcopy(self._base_curve)
+                dash.curve.name = f"{self.name}_dash{i}"
 
             # Compute and make a dash over the interval (t0, t1).
             t0 = (i - 1) * stride_dt  # Start with hidden dash.
