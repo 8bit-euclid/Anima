@@ -1,11 +1,13 @@
 """Unit tests for Glyph, GlyphBorder, GlyphBody, and GlyphGroup classes."""
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from anima.latex.glyph import Glyph, GlyphBBox
 from anima.latex.glyph_body import GlyphBody
 from anima.latex.glyph_border import GlyphBorder
-from anima.latex.glyph_group import GlyphGroup
+from anima.latex.glyph_group import GlyphGroup, _format_glyph_name
 from anima.latex.tex_object import TeXObject
 from anima.primitives.chains import CurveLoop
 from anima.primitives.mesh import Mesh
@@ -115,9 +117,14 @@ class TestGlyph:
 
     def test_bbox_y_inverted(self):
         """Test that bbox y-coordinates are inverted for Blender."""
-        glyph = Glyph(self.path, name="TestGlyph")
-        # Original path bbox has positive y, inverted should be negative
-        assert glyph.bbox is not None
+        path = create_rect_path(x=2, y=3, width=7, height=11)
+
+        glyph = Glyph(path, name="TestGlyph")
+
+        assert glyph.bbox.x_min == 2
+        assert glyph.bbox.x_max == 9
+        assert glyph.bbox.y_min == -3
+        assert glyph.bbox.y_max == -14
 
     def test_default_text_empty(self):
         """Test that text property defaults to empty string."""
@@ -159,6 +166,39 @@ class TestGlyphBody:
 
 class TestGlyphGroup:
     """Test suite for GlyphGroup class."""
+
+    def test_format_glyph_name(self):
+        assert _format_glyph_name(1, "A", 8) == "01-A"
+        assert _format_glyph_name(8, "\n", 8) == "08-U+000A"
+        assert _format_glyph_name(1, None, 100) == "001-U+?"
+        assert _format_glyph_name(2, None, 3, "rule") == "02-rule"
+        assert _format_glyph_name(3, "\ue050", 3, "summationtext") == "03-summationtext"
+
+    def test_from_tex_string_builds_named_positioned_glyphs_in_order(self, monkeypatch):
+        positions = [
+            ("g0-65", (1.0, 2.0), "A", None),
+            ("rule-1", (0.0, 0.0), None, "rule"),
+            ("g1-private", (3.0, 4.0), "\ue050", "summationtext"),
+        ]
+        processor = MagicMock()
+        processor.return_value.__enter__.return_value = (
+            {"g0-65": self.path1, "rule-1": self.path2, "g1-private": self.path1},
+            positions,
+        )
+        monkeypatch.setattr("anima.latex.glyph_group.TeXDocumentProcessor", processor)
+
+        group = GlyphGroup.from_tex_string("A+?", name="Equation")
+
+        assert group.name == "Equation"
+        assert [glyph.name for glyph in group] == ["01-A", "02-rule", "03-summationtext"]
+        assert [glyph.text for glyph in group] == ["A", "", "\ue050"]
+        assert group.text == "A\ue050"
+        assert [tuple(glyph.location) for glyph in group] == [
+            pytest.approx((1.0, 2.0, 0.0)),
+            pytest.approx((0.0, 0.0, 0.0)),
+            pytest.approx((3.0, 4.0, 0.0)),
+        ]
+        assert all(glyph in group.children for glyph in group)
 
     def setup_method(self):
         """Set up test fixtures."""

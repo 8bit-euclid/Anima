@@ -71,7 +71,7 @@ def build_scene(start_time: str, end_time: str):
     test_bezier_splines(end_frame, color="red1", paper=rect)
     test_curve_joints(end_frame, color="yellow1", paper=rect)
     test_dashed_curves(end_frame, color="blue1", paper=rect)
-    # test_text_to_glyphs()
+    test_text_to_glyphs()
 
     for problem in check_hierarchy():
         print(f"Hierarchy warning: {problem}")

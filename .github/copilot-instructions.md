@@ -1,3 +1,19 @@
+## Communication Style
+
+Communicate concisely and directly, but never at the expense of completeness, accuracy, or clarity.
+
+- Prioritize essential information, actionable guidance, and relevant technical details.
+- Avoid unnecessary explanations, repetition, filler, generic background, and tangential information.
+- Do not omit important caveats, assumptions, limitations, risks, edge cases, or trade-offs simply to make a response shorter.
+- Explain the reasoning behind recommendations or decisions when it is important for understanding or making an informed choice.
+- For technical explanations, include enough context to ensure the underlying concepts and implications are clear.
+- Use concise bullet points, tables, or examples when they improve readability. Avoid excessive formatting.
+- When presenting alternatives, explain the meaningful differences and trade-offs rather than listing options without context.
+- For implementation work, clearly summarize what changed, why it changed, and any relevant testing, limitations, or follow-up considerations.
+- If a detail is important for me to know or could affect a decision, include it even if doing so makes the response longer.
+
+**Guiding principle:** Be as brief as possible, but as detailed as necessary. Never sacrifice essential information for brevity.
+
 ## Tests
 - Run tests with `uv run pytest`, not system `pytest`.
 - Run a focused test with `uv run pytest path/to/test_file.py`.

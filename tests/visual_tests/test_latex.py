@@ -3,6 +3,7 @@ from anima.latex.glyph_group import GlyphGroup
 
 
 def test_text_to_glyphs():
+    """Build a visual gallery for text glyphs and common LaTeX math shapes."""
     # text = r"""
     # \section*{Introduction}
 
@@ -56,3 +57,20 @@ def test_text_to_glyphs():
 
     # Default minimal quality: turning-angle-adaptive boundary, no interior points.
     GlyphGroup.from_tex_string(text, mesh_quality=MeshQuality.high())
+
+    samples = (
+        ("PlainText", "Anima 012: AaBbOo"),
+        ("Radical", r"$\sqrt{x^2+y^2}$"),
+        ("Fractions", r"$\frac{1}{2}+\frac{x^2-1}{x^2+1}$"),
+        ("Operators", r"$\sum_{i=1}^{n} x_i+\int_0^1 f(x)\,dx$"),
+        ("AccentsDelimiters", r"$\left(\frac{a}{b}\right)+\hat{x}+\vec{y}$"),
+    )
+    row_spacing = 16
+
+    for row, (sample_name, text) in enumerate(samples):
+        group = GlyphGroup.from_tex_string(
+            text,
+            name=f"Latex_{sample_name}",
+            mesh_quality=MeshQuality.high(),
+        )
+        group.location = (0, -row * row_spacing, 0)
