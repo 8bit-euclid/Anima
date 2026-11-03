@@ -1,36 +1,56 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
+from typing import cast
+
 from anima.latex.glyph import Glyph
 from anima.latex.glyph_body import MeshQuality
 from anima.latex.tex_document import TeXDocument
 from anima.latex.tex_document_processor import TeXDocumentProcessor
+from anima.primitives.group import Group
 from anima.primitives.object import Object
 
 
-class GlyphGroup(Object):
-    """A group of glyphs that can be animated together as a single unit.
+class GlyphGroup(Group):
+    """A `Group` that holds only glyphs, in order, and can be animated as a single unit.
 
-    Useful for representing words, equations, or other multi-glyph constructs.
-    All glyphs in the group are added as children, enabling hierarchical
-    animation and transformation.
-
-    Attributes:
-        glyphs: List of Glyph objects in this group.
+    Useful for representing words, equations, or other multi-glyph constructs. Glyphs are the group's
+    children, so the group's children are the single source of truth; every way of adding a child
+    (`add` and `add_children`) rejects anything that is not a `Glyph`.
     """
 
-    def __init__(self, glyphs: list[Glyph] = None, name: str = "GlyphGroup"):
+    def __init__(
+        self,
+        glyphs: Iterable[Glyph] = (),
+        *,
+        name: str = "GlyphGroup",
+        parent: Object | None = None,
+    ) -> None:
         """Initialize a GlyphGroup.
 
         Args:
-            glyphs: Optional initial list of glyphs to add.
+            glyphs: Glyphs to add as children, in order.
             name: Name for this group.
-        """
-        super().__init__(name=name)
-        self._glyphs: list[Glyph] = []
+            parent: The parent object. Defaults to None.
 
-        if glyphs:
-            for glyph in glyphs:
-                self.add_glyph(glyph)
+        Raises:
+            TypeError: If any of the glyphs is not a Glyph instance.
+        """
+        super().__init__(glyphs, name=name, parent=parent)
+
+    def add_child(self, object: Object) -> None:
+        """Add a glyph as a child of this group.
+
+        Args:
+            object: The Glyph to add.
+
+        Raises:
+            TypeError: If the argument is not a Glyph instance.
+            ValueError: If the glyph already belongs to another parent.
+        """
+        if not isinstance(object, Glyph):
+            raise TypeError(f"Expected Glyph instance, got {type(object).__name__}")
+        super().add_child(object)
 
     @classmethod
     def from_tex_string(
@@ -65,32 +85,18 @@ class GlyphGroup(Object):
                 glyph = Glyph(glyph_paths[gid], name=glyph_name, mesh_quality=mesh_quality)
                 glyph.text = char or ""
                 glyph.location = (x, y, 0)
-                group.add_glyph(glyph)
+                group.add(glyph)
 
         return group
 
-    def add_glyph(self, glyph: Glyph):
-        """Add a glyph to this group.
-
-        Args:
-            glyph: The Glyph to add.
-
-        Raises:
-            TypeError: If the argument is not a Glyph instance.
-        """
-        if not isinstance(glyph, Glyph):
-            raise TypeError(f"Expected Glyph instance, got {type(glyph).__name__}")
-        self._glyphs.append(glyph)
-        self.add_child(glyph)
-
     @property
     def glyphs(self) -> list[Glyph]:
-        """Get the list of glyphs in this group.
+        """Get the glyphs in this group.
 
         Returns:
-            List of Glyph objects.
+            A new list of the group's children, in order. `add_child()` guarantees that all of them are glyphs.
         """
-        return self._glyphs
+        return cast("list[Glyph]", list(self._children))
 
     @property
     def text(self) -> str:
@@ -99,7 +105,7 @@ class GlyphGroup(Object):
         Returns:
             Concatenated text from all glyphs in order.
         """
-        return "".join(g.text for g in self._glyphs)
+        return "".join(g.text for g in self.glyphs)
 
     def __len__(self) -> int:
         """Get the number of glyphs in this group.
@@ -107,15 +113,15 @@ class GlyphGroup(Object):
         Returns:
             Number of glyphs.
         """
-        return len(self._glyphs)
+        return len(self._children)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Glyph]:
         """Iterate over glyphs in this group.
 
         Yields:
             Each Glyph in order.
         """
-        return iter(self._glyphs)
+        return iter(self.glyphs)
 
     def __getitem__(self, index: int) -> Glyph:
         """Get a glyph by index.
@@ -126,7 +132,7 @@ class GlyphGroup(Object):
         Returns:
             The Glyph at the given index.
         """
-        return self._glyphs[index]
+        return self.glyphs[index]
 
 
 def _format_glyph_name(index: int, character: str | None, glyph_count: int, shape_label: str | None = None) -> str:

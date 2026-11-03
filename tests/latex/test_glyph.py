@@ -10,6 +10,7 @@ from anima.latex.glyph_border import GlyphBorder
 from anima.latex.glyph_group import GlyphGroup, _format_glyph_name
 from anima.latex.tex_object import TeXObject
 from anima.primitives.chains import CurveLoop
+from anima.primitives.group import Group
 from anima.primitives.mesh import Mesh
 from anima.primitives.object import Object
 from tests.test_utils import create_rect_path, create_rect_with_hole_path
@@ -210,9 +211,19 @@ class TestGlyphGroup:
         self.glyph2.text = "B"
 
     def test_inheritance(self):
-        """Test that GlyphGroup inherits from Object."""
+        """Test that GlyphGroup inherits from Group (and therefore Object)."""
         group = GlyphGroup(name="TestGroup")
+        assert isinstance(group, Group)
         assert isinstance(group, Object)
+
+    def test_inherited_add_stays_consistent(self):
+        """Test that Group.add and remove_child keep glyphs in sync with children."""
+        group = GlyphGroup(name="TestGroup")
+        group.add(self.glyph1, self.glyph2)
+        assert group.glyphs == [self.glyph1, self.glyph2]
+        group.remove_child(self.glyph1)
+        assert group.glyphs == [self.glyph2]
+        assert len(group) == 1
 
     def test_empty_group(self):
         """Test creating an empty group."""
@@ -227,14 +238,14 @@ class TestGlyphGroup:
         assert len(group) == 2
         assert group.glyphs == [self.glyph1, self.glyph2]
 
-    def test_add_glyph(self):
+    def test_add(self):
         """Test adding glyphs to a group."""
         group = GlyphGroup(name="TestGroup")
-        group.add_glyph(self.glyph1)
+        group.add(self.glyph1)
         assert len(group) == 1
         assert group.glyphs[0] == self.glyph1
 
-        group.add_glyph(self.glyph2)
+        group.add(self.glyph2)
         assert len(group) == 2
 
     def test_glyphs_are_children(self):
@@ -266,9 +277,12 @@ class TestGlyphGroup:
         """Test that adding non-Glyph raises TypeError."""
         group = GlyphGroup(name="TestGroup")
         with pytest.raises(TypeError):
-            group.add_glyph("not a glyph")
+            group.add("not a glyph")
         with pytest.raises(TypeError):
-            group.add_glyph(123)
+            group.add_child(123)
+        with pytest.raises(TypeError):
+            group.add(Object(name="plain"))
+        assert len(group) == 0
 
 
 class TestTeXObject:
