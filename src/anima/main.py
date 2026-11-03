@@ -18,7 +18,6 @@ from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joint
 from tests.visual_tests.test_latex import test_text_to_glyphs
 from tests.visual_tests.test_textures import TEXTURE_DIR, render_gallery, test_paper_textures
 
-from anima.diagnostics.hierarchy import check_hierarchy
 from anima.globals.general import to_frame
 from anima.materials.material import create_raking_sun
 from anima.materials.texture import TextureSet
@@ -72,9 +71,6 @@ def build_scene(start_time: str, end_time: str):
     test_curve_joints(end_frame, color="yellow1", paper=rect)
     test_dashed_curves(end_frame, color="blue1", paper=rect)
     test_text_to_glyphs()
-
-    for problem in check_hierarchy():
-        print(f"Hierarchy warning: {problem}")
 
     # A low sun circling once over the lesson, to show the paper relief. Add fill_energy=... to compare with a fixed fill.
     create_raking_sun(end_frame, elevation_deg=25, energy=4)
