@@ -174,6 +174,43 @@ class CurveChain(Curve):
             for c in curves[idx_:idx]:
                 c._set_param(1, end_idx)
 
+        if self.debug():
+            self.validate_param_state()
+
+    def validate_param_state(self, tol: float = 1e-6) -> None:
+        """Assert that the children's parameters agree with the chain's `param_0` and `param_1`.
+
+        `_set_param` only sweeps the curves between the previous and the new curve index, so it relies on
+        every other child already being settled. For each end, children before the chain's current curve
+        index must be at 1, children after it at 0, and the child at the index at the local parameter. This
+        breaks if a child is modified directly, or if lengths change after construction. Joints are skipped
+        because their own `_set_param` overwrites the opposite end's parameter. Called
+        automatically after every parameter change while debugging is on (see `Object.debug_on`).
+
+        Args:
+            tol: The absolute tolerance used when comparing parameters.
+
+        Raises:
+            AssertionError: If a child's parameter, or the stored curve index, is inconsistent.
+        """
+        entities = self._all_entities
+        for end_idx in (0, 1):
+            param = getattr(self, f"_param_{end_idx}")
+            _, expected_idx, expected_t = self._compute_curve_info(param)
+            idx = getattr(self, f"_curve_{end_idx}_idx")
+            assert idx == expected_idx, (
+                f"{self.name}: stored curve index {idx} for end {end_idx} does not match the index "
+                f"{expected_idx} implied by param {param}."
+            )
+            for i, c in enumerate(entities):
+                if isinstance(c, Joint):
+                    continue
+                expected = 1.0 if i < idx else 0.0 if i > idx else expected_t
+                actual = getattr(c, f"_param_{end_idx}")
+                assert abs(actual - expected) <= tol, (
+                    f"{self.name}: child {i} has param_{end_idx}={actual}, expected {expected}."
+                )
+
     def _update_attachment(self, end_index: int):
         """Update the attachment at the specified end of the curve chain.
 
