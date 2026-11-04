@@ -46,7 +46,7 @@ def test_text_to_glyphs():
     # text = r'$E = \mathit{mc}^2$'
     # text = 'C'
     # text = "B"
-    text = "o08AaB"  # Test glyphs with holes
+    # text = "o08AaB"  # Test glyphs with holes
     # text = 'O{\Huge 8}'
     # text = "O"
     # text = "O8P"
@@ -56,7 +56,7 @@ def test_text_to_glyphs():
     # text = r'$\frac{x^2 - 1}{x^2 + 1}$'
 
     # Default minimal quality: turning-angle-adaptive boundary, no interior points.
-    GlyphGroup.from_tex_string(text, mesh_quality=MeshQuality.high())
+    # GlyphGroup.from_tex_string(text, mesh_quality=MeshQuality.high())
 
     samples = (
         ("PlainText", "Anima 012: AaBbOo"),

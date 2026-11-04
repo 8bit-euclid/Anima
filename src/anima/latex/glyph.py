@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import svgpathtools as svgtools
 
 from anima.latex.glyph_body import GlyphBody, MeshQuality
 from anima.latex.glyph_border import GlyphBorder
 from anima.primitives.object import Object
+
+if TYPE_CHECKING:
+    from anima.animation.reveal import Reveal
 
 
 @dataclass
@@ -30,6 +36,11 @@ class Glyph(Object):
         border: The GlyphBorder containing the outline curves.
         body: The GlyphBody containing the filled mesh.
     """
+
+    # The windows of the reveal progress in which the outline is drawn and the fill fades in. They overlap, so the
+    # fill starts to appear before the outline is complete.
+    BORDER_REVEAL_WINDOW = (0.0, 0.7)
+    BODY_REVEAL_WINDOW = (0.5, 1.0)
 
     def __init__(
         self,
@@ -83,3 +94,21 @@ class Glyph(Object):
             The GlyphBody containing the filled mesh.
         """
         return self._body
+
+    def create_reveal(self) -> Reveal:
+        """Create the default reveal for a glyph: draw the outline, then fade in the fill.
+
+        All the loops of the outline, including the holes, are drawn together.
+
+        Returns:
+            Reveal: A new reveal strategy bound to this glyph.
+        """
+        from anima.animation.reveal import Fade, Phase, Stagger  # Deferred: avoids a package cycle.
+
+        return Phase(
+            self,
+            [
+                (Stagger(self._border, lag_ratio=0.0), *self.BORDER_REVEAL_WINDOW),
+                (Fade(self._body), *self.BODY_REVEAL_WINDOW),
+            ],
+        )

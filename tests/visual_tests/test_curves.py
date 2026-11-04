@@ -1,3 +1,4 @@
+from anima.animation.action import FCurvePreset, KeyframedProperty
 from anima.animation.updater import Updater
 from anima.diagnostics import profiler
 from anima.primitives.bezier_curve import BezierCurve
@@ -8,10 +9,10 @@ from anima.primitives.dashed_curves import DashedCurve
 from anima.primitives.endcaps import ArrowEndcap, PointEndcap, RoundEndcap
 from anima.primitives.group import Group
 from anima.primitives.lines import Segment
-from anima.primitives.points import Empty, Point
+from anima.primitives.points import Point
 from anima.primitives.polytopes import Rectangle
 
-up = Updater()
+up = Updater.instance()
 
 
 def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
@@ -28,13 +29,7 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
     bcurve.handle_0 = (ln, ht)
     bcurve.handle_1 = (-ln, ht)
 
-    e = Empty(name="t_driver", parent=root)
-    # e.t = 0.0
-    e["t"] = 0.0
-    e.add_keyframe("t", frame=30, is_custom=True)
-    # e.t = 1.0
-    e["t"] = 1.0
-    e.add_keyframe("t", frame=end_frame, is_custom=True)
+    track = KeyframedProperty((30, end_frame), name="BezierSplineProgress")
 
     # bcurve.attachment_0 = ArrowEndcap()
     bcurve.attachment_0 = PointEndcap()
@@ -65,8 +60,8 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
     else:
         root.add(bspline, bcurve, p1, p2)
 
-    def update(scene):
-        t1 = e["t"]
+    def update():
+        t1 = track.value
         t0 = max(0.0, t1 - 0.3)
 
         bcurve.param_0 = t0
@@ -115,11 +110,7 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
             emission_strength=0.0,
         )
 
-    e = Empty(name="t_driver", parent=root)
-    e["t"] = 0.0
-    e.add_keyframe("t", frame=30, is_custom=True)
-    e["t"] = 1.0
-    e.add_keyframe("t", frame=end_frame, is_custom=True)
+    track = KeyframedProperty((30, end_frame), name="CurveJointsProgress")
 
     # b = 1
     # j1.bias = b
@@ -139,11 +130,8 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
 
     pf = profiler
 
-    def update(scene):
-        # depsgraph = bpy.context.evaluated_depsgraph_get()
-        # e_eval = e.object.evaluated_get(depsgraph)
-        # t = e_eval['t']
-        t1 = e["t"]
+    def update():
+        t1 = track.value
 
         # b = -1 + 2 * t
         # j1.bias = b
@@ -224,14 +212,14 @@ def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangl
     scal2 = 1 / (dash2 + gap2)
 
     radi = 1.0
-    e = Empty(name="t_driver", parent=root)
-    e["t"] = 0.0
-    e.add_keyframe("t", frame=30, is_custom=True)
-    e["t"] = radi
-    e.add_keyframe("t", frame=end_frame, is_custom=True)
+    track = KeyframedProperty(
+        (30, end_frame),
+        value_range=(0.0, radi),
+        name="DashedCurveProgress",
+    )
 
-    def updater(scene):
-        t1 = e["t"]
+    def updater():
+        t1 = track.value
         t0 = max(0, t1 - 0.57)
 
         # dashed1.offset = t1

@@ -121,6 +121,23 @@ def test_create_color_material_sets_blender_material_and_node_value():
     assert bsdf.inputs["Specular IOR Level"].default_value == pytest.approx(0.0)
 
 
+def test_rgba_alpha_and_opacity_are_one_value():
+    material = create_color_material("pytest_alpha_material", (0.25, 0.5, 0.75, 0.4))
+    assert get_material_color(material) == pytest.approx((0.25, 0.5, 0.75, 0.4))
+    assert material.node_tree.nodes["Principled BSDF"].inputs["Alpha"].default_value == pytest.approx(0.4)
+
+    material = create_color_material("pytest_opacity_material", (0.25, 0.5, 0.75), opacity=0.6)
+    assert get_material_color(material) == pytest.approx((0.25, 0.5, 0.75, 0.6))
+    with pytest.raises(ValueError):
+        create_color_material("pytest_conflicting_alpha_material", (0.25, 0.5, 0.75, 0.4), opacity=0.6)
+
+
+def test_rgb_color_change_preserves_opacity():
+    material = create_color_material("pytest_preserved_opacity", (0.25, 0.5, 0.75, 0.4))
+    material_module.set_material_properties(material, color=(0.8, 0.2, 0.1))
+    assert get_material_color(material) == pytest.approx((0.8, 0.2, 0.1, 0.4))
+
+
 def test_create_color_material_applies_scalar_shader_options():
     material = create_color_material(
         "pytest_material_options",

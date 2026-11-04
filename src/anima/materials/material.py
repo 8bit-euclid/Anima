@@ -76,6 +76,7 @@ def create_color_material(
     name: str,
     color: RGB | RGBA,
     *,
+    opacity: float | None = None,
     roughness: float | None = None,
     metallic: float | None = None,
     specular_ior_level: float | None = None,
@@ -93,6 +94,7 @@ def create_color_material(
     set_material_properties(
         mat,
         color=color,
+        opacity=opacity,
         roughness=roughness,
         metallic=metallic,
         specular_ior_level=specular_ior_level,
@@ -151,12 +153,13 @@ def set_material_properties(
     coat_roughness: float | None = None,
     sheen_weight: float | None = None,
     emission_strength: float | None = None,
+    opacity: float | None = None,
 ):
     """Update the given color and shader properties of a material, leaving those set to None unchanged.
 
     Args:
         mat: The material to update.
-        color: An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1]. Also sets the emission color.
+        color: An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1]. RGBA alpha sets opacity. Also sets emission.
         roughness: Surface roughness, from 0.0 (smooth) to 1.0 (rough).
         metallic: Metallic response, from 0.0 (dielectric) to 1.0 (metal).
         specular_ior_level: Specular reflection strength, from 0.0 to 1.0.
@@ -165,13 +168,25 @@ def set_material_properties(
         coat_roughness: Clear coat roughness, from 0.0 to 1.0.
         sheen_weight: Sheen strength, from 0.0 to 1.0.
         emission_strength: Strength of the (color-matched) emission.
+        opacity: Opacity of the surface, from 0.0 (transparent) to 1.0 (opaque). Do not pass with RGBA color.
     """
+    has_color_alpha = isinstance(color, tuple) and len(color) == 4
+    if has_color_alpha and opacity is not None:
+        raise ValueError("Pass either an RGBA color or opacity, not both.")
+
+    if has_color_alpha:
+        opacity = color[3]
     if color is not None:
-        color = to_rgba(color)
+        rgba = to_rgba(color)
+        if opacity is None:
+            opacity = get_material_opacity(mat)
+        color = (*rgba[:3], opacity)
         mat.diffuse_color = color  # Used for solid shading in the viewport.
         from anima.materials.texture import set_native_color  # Deferred: texture imports this module.
 
         set_native_color(mat, color)
+    elif opacity is not None:
+        mat.diffuse_color = (*mat.diffuse_color[:3], opacity)
 
     bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree is not None else None
     if bsdf is None:
@@ -187,6 +202,7 @@ def set_material_properties(
         "Coat Roughness": coat_roughness,
         "Sheen Weight": sheen_weight,
         "Emission Strength": emission_strength,
+        "Alpha": opacity,
     }
     for socket_name, value in values.items():
         if value is not None and socket_name in bsdf.inputs:
@@ -202,7 +218,23 @@ def get_material_color(mat: bpy.types.Material) -> RGBA:
     Returns:
         The (r, g, b, a) color of the material.
     """
-    return tuple(mat.diffuse_color)
+    return (*mat.diffuse_color[:3], get_material_opacity(mat))
+
+
+def get_material_opacity(mat: bpy.types.Material) -> float:
+    """Get the opacity of a material (see `set_material_properties`).
+
+    Args:
+        mat: The material to query.
+
+    Returns:
+        The opacity from 0.0 (transparent) to 1.0 (opaque), using the diffuse color alpha if there is no Principled
+        BSDF Alpha input.
+    """
+    bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree is not None else None
+    if bsdf is None or "Alpha" not in bsdf.inputs:
+        return float(mat.diffuse_color[3])
+    return float(bsdf.inputs["Alpha"].default_value)
 
 
 def create_area_light(name: str = "Key Light"):

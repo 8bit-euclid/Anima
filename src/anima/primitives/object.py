@@ -4,7 +4,7 @@ import math
 from abc import ABC
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from weakref import WeakSet
 
 import bpy
@@ -25,11 +25,15 @@ from anima.globals.general import (
 )
 from anima.materials.material import (
     get_material_color,
+    get_material_opacity,
     get_or_create_material,
     get_palette_color,
     set_material_properties,
 )
 from anima.materials.texture import AlbedoMode, TextureSet, apply_texture_set
+
+if TYPE_CHECKING:
+    from anima.animation.reveal import Reveal
 
 
 class Object(ABC):
@@ -228,6 +232,22 @@ class Object(ABC):
         self._set_visibility(True)
         for child in self.children:
             child.unhide()
+
+    def create_reveal(self) -> Reveal:
+        """Create the default strategy for revealing this object (see `anima.animation.reveal`).
+
+        Subclasses override this to say how they appear, e.g. a curve is drawn along its length. By default an
+        object with no data of its own (such as a `Group`) reveals its children in turn, and any other object
+        fades in and scales up together.
+
+        Returns:
+            Reveal: A new reveal strategy bound to this object.
+        """
+        from anima.animation.reveal import Fade, Scale, Stagger, Together  # Deferred: the animation package uses this.
+
+        if self._has_data() or not self.children:
+            return Together(self, [Fade(self), Scale(self)])
+        return Stagger(self)
 
     def copy(self) -> Object:
         """Get a deep copy of this object.
@@ -607,16 +627,20 @@ class Object(ABC):
         coat_roughness: float | None = None,
         sheen_weight: float | None = None,
         emission_strength: float | None = None,
+        opacity: float | None = None,
     ) -> Object:
         """Update the specified color and shader properties of the object's material.
 
         Properties left as None retain their current values. If the object has data but no material,
         a matte one is created first. Objects without data (e.g. a `Group`) only forward the properties to
-        their children.
+        their children. RGBA color sets opacity; use RGB color with `opacity` to set them together.
+
+        Raises:
+            ValueError: If an RGBA color and a separate opacity are both provided.
 
         Args:
-            color (tuple | str, optional): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
-                Alpha defaults to 1.0 if omitted. Alternatively, a string representing the hex color (e.g. "#RRGGBB").
+            color (tuple | str, optional): An RGB or RGBA color. RGBA alpha sets opacity; RGB preserves the existing
+                opacity. Alternatively, a string representing the hex color (e.g. "#RRGGBB").
             roughness (float, optional): The roughness of the material.
             metallic (float, optional): The metallic property of the material.
             specular_ior_level (float, optional): The specular IOR level of the material.
@@ -625,10 +649,13 @@ class Object(ABC):
             coat_roughness (float, optional): The coat roughness of the material.
             sheen_weight (float, optional): The sheen weight of the material.
             emission_strength (float, optional): The emission strength of the material.
+            opacity (float, optional): The opacity of the material, from 0.0 (transparent) to 1.0 (opaque).
 
         Returns:
             Object: This object, after updating its material properties.
         """
+        if isinstance(color, tuple) and len(color) == 4 and opacity is not None:
+            raise ValueError("Pass either an RGBA color or opacity, not both.")
         material_options = {
             "color": color,
             "roughness": roughness,
@@ -639,6 +666,7 @@ class Object(ABC):
             "coat_roughness": coat_roughness,
             "sheen_weight": sheen_weight,
             "emission_strength": emission_strength,
+            "opacity": opacity,
         }
         if self._has_data():
             materials = self._bl_object.data.materials
@@ -708,8 +736,8 @@ class Object(ABC):
         """Set only the object's material color. Convenience wrapper around set_material_properties().
 
         Args:
-            color (tuple | str): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color.
-                Alpha defaults to 1.0 if omitted. Alternatively, a string representing the hex color (e.g. "#RRGGBB").
+            color (tuple | str): An RGB or RGBA color. RGBA alpha sets opacity; RGB preserves the existing opacity.
+                Alternatively, a string representing the hex color (e.g. "#RRGGBB").
         """
         return self.set_material_properties(color=color)
 
@@ -735,8 +763,7 @@ class Object(ABC):
         """Get the object's color.
 
         Returns:
-            tuple: The (r, g, b, a) color of the object's first assigned material, or None if it has no
-                material.
+            tuple: The (r, g, b, opacity) color of the object's first assigned material, or None if it has no material.
         """
         if not self._has_data() or not self._bl_object.data.materials:
             return None
@@ -747,12 +774,40 @@ class Object(ABC):
         """Set the object's color.
 
         Args:
-            color (tuple | str): An (r, g, b) or (r, g, b, a) tuple of floats in [0, 1] specifying the color,
-                or a string representing the hex color (e.g. "#RRGGBB"). Alpha defaults to 1.0 if omitted.
+            color (tuple | str): An RGB or RGBA color, or a hex color string. RGBA alpha sets opacity.
         """
         self.set_color(color)
 
     # Property getters/setters for underlying blender object attributes ------------------------------------ #
+
+    def set_opacity(self, opacity: float) -> Object:
+        """Set the opacity of the object's material and those of its children. Convenience wrapper around
+        set_material_properties().
+
+        Args:
+            opacity (float): The opacity, from 0.0 (transparent) to 1.0 (opaque).
+
+        Returns:
+            Object: This object.
+        """
+        return self.set_material_properties(opacity=opacity)
+
+    @property
+    def opacity(self) -> float | None:
+        """Get the object's opacity.
+
+        Returns:
+            float: The opacity of the object's first assigned material, from 0.0 (transparent) to 1.0
+                (opaque), or None if it has no material.
+        """
+        if not self._has_data() or not self._bl_object.data.materials:
+            return None
+        return get_material_opacity(self._bl_object.data.materials[0])
+
+    @opacity.setter
+    def opacity(self, opacity: float) -> None:
+        """Set the object's opacity (see `set_opacity`)."""
+        self.set_opacity(opacity)
 
     @property
     def name(self) -> str:

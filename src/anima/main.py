@@ -16,6 +16,7 @@ for path in paths_to_add:
 # Now import modules as usual
 from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
 from tests.visual_tests.test_latex import test_text_to_glyphs
+from tests.visual_tests.test_reveals import test_curves_reveal, test_latex_write_on
 from tests.visual_tests.test_textures import TEXTURE_DIR, render_gallery, test_paper_textures
 
 from anima.globals.general import to_frame
@@ -71,6 +72,8 @@ def build_scene(start_time: str, end_time: str):
     test_curve_joints(end_frame, color="yellow1", paper=rect)
     test_dashed_curves(end_frame, color="blue1", paper=rect)
     test_text_to_glyphs()
+    test_latex_write_on()
+    test_curves_reveal()
 
     # A low sun circling once over the lesson, to show the paper relief. Add fill_energy=... to compare with a fixed fill.
     create_raking_sun(end_frame, elevation_deg=25, energy=4)

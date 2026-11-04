@@ -169,6 +169,40 @@ Alternatively, set them immediately before the run command:
 ANIMA_LOG_LEVEL=INFO ANIMA_LOG_SHOW_FUNCTION=1 make run
 ```
 
+## Introducing objects (reveals)
+
+Objects can be brought into the scene with `Enter` and taken out with `Exit`. Each action creates a keyframed custom
+property on a separate driver Empty; Blender's F-curve supplies the progress and easing. Reveal strategies determine
+how that progress affects an object: curves draw along their length, meshes combine fade and scale, groups reveal their
+children in turn, and glyphs trace their outline before fading in the fill. Independent strategies can be composed
+with `Together`.
+
+```python
+from anima.animation.action import Enter, Exit, FCurvePreset
+from anima.animation.reveal import Fade, Scale, Stagger, Together
+from anima.animation.scheduler import play
+
+enter = Enter(
+    group,
+    frame_range=(1, 241),
+    preset=FCurvePreset.EASE_IN_OUT,
+    reveal=Together(group, [Fade(group), Scale(group, from_scale=0.5)]),
+)
+play(enter, Exit(group, frame_range=(361, 421)))
+
+# Staggering children remains a separate coordination strategy.
+play(Enter(group, (1, 181), reveal=Stagger(group, lag_ratio=0.3)))
+
+# The underlying F-curve is available for further editing in Python or Blender.
+fcurve = enter.track.fcurve
+```
+
+One shared pre-frame updater samples each F-curve at the incoming frame, so the reveal is applied before Blender
+evaluates and renders that frame. `KeyframedProperty` exposes its driver Empty, F-curve, frame range, and custom-property
+value; additional keyframes can be inserted with `track.add_keyframe(...)`.
+An RGBA color's alpha is the material opacity; use RGB when changing color without changing opacity.
+See `tests/visual_tests/test_reveals.py` for examples.
+
 ## Status
 
 This project is a work in progress. Usage instructions and examples will be sporadically added as development progresses.
