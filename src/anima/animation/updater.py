@@ -41,7 +41,7 @@ class Updater:
         """
         return cls()
 
-    def add_function(self, function: Callable[[], None]) -> None:
+    def add_callback(self, function: Callable[[], None]) -> None:
         """Register a callback for pre-frame-change events.
 
         The same callback is registered only once. It is called with no arguments; read the new frame from
@@ -53,7 +53,7 @@ class Updater:
         if function not in self._functions:
             self._functions.append(function)
 
-    def remove_function(self, function: Callable[[], None]) -> None:
+    def remove_callback(self, function: Callable[[], None]) -> None:
         """Unregister a callback without affecting other subscribers.
 
         Args:

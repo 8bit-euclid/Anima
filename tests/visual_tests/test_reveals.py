@@ -8,24 +8,25 @@ from anima.primitives.group import Group
 from anima.primitives.lines import Segment
 
 
-def test_latex_write_on():
+def test_latex_write_on(end_frame: int):
     """Write on a line of text: each glyph's outline is traced, then its fill fades in."""
+    half = end_frame // 2
     group = GlyphGroup.from_tex_string("o08AaB", name="WriteOn", mesh_quality=MeshQuality.high())
     play(
         Enter(
             group,
-            (1, 241),
+            (1, half),
             preset=FCurvePreset.EASE_IN_OUT,
         ),
         Exit(
             group,
-            (361, 421),
+            (half + 30, end_frame),
             preset=FCurvePreset.EASE_IN_OUT,
         ),
     )
 
 
-def test_curves_reveal():
+def test_curves_reveal(end_frame: int):
     """Reveal plain curves with the same abstractions, from the middle outwards."""
     xs = {}
     bars = []
@@ -36,4 +37,4 @@ def test_curves_reveal():
     group = Group(bars, name="Bars")
     group.location = (0, -10, 0)
     reveal = Stagger(group, lag_ratio=0.3, order=by_key(lambda bar: abs(xs[id(bar)])))
-    play(Enter(group, (1, 181), reveal=reveal, preset=FCurvePreset.SINE_IN_OUT))
+    play(Enter(group, (1, end_frame), reveal=reveal, preset=FCurvePreset.SINE_IN_OUT))

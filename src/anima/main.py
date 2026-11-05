@@ -63,17 +63,17 @@ def build_scene(start_time: str, end_time: str):
     """
     end_frame = to_frame(end_time)
 
-    rect = Rectangle(length=20, width=10)
-    rect.layer = -1
-    rect.set_palette_color("byrne_euclid", "paper")
-    rect.set_textures(TextureSet.from_directory(TEXTURE_DIR, physical_size=10), bump_strength=0.5, bump_distance=0.1)
+    # rect = Rectangle(length=20, width=10)
+    # rect.layer = -1
+    # rect.set_palette_color("byrne_euclid", "paper")
+    # rect.set_textures(TextureSet.from_directory(TEXTURE_DIR, physical_size=10), bump_strength=0.5, bump_distance=0.1)
 
-    test_bezier_splines(end_frame, color="red1", paper=rect)
-    test_curve_joints(end_frame, color="yellow1", paper=rect)
-    test_dashed_curves(end_frame, color="blue1", paper=rect)
-    test_text_to_glyphs()
-    test_latex_write_on()
-    test_curves_reveal()
+    # test_bezier_splines(end_frame, color="red1", paper=rect)
+    # test_curve_joints(end_frame, color="yellow1", paper=rect)
+    # test_dashed_curves(end_frame, color="blue1", paper=rect)
+    # test_text_to_glyphs()
+    test_latex_write_on(end_frame)
+    test_curves_reveal(end_frame)
 
     # A low sun circling once over the lesson, to show the paper relief. Add fill_energy=... to compare with a fixed fill.
     create_raking_sun(end_frame, elevation_deg=25, energy=4)
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     render_settings, render_request = get_render_config()
     run_lesson(
         build_scene,
-        end_time="00:06",
+        end_time="00:10",
         frame_rate=FRAME_RATE,
         use_default_lighting=False,
         render_settings=render_settings,

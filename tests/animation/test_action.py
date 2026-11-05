@@ -241,10 +241,10 @@ def test_updater_dispatches_multiple_callbacks():
     def callback():
         calls.append(bpy.context.scene.frame_current)
 
-    updater.add_function(callback)
+    updater.add_callback(callback)
     try:
         at(2)
         assert calls == [2]
     finally:
-        updater.remove_function(callback)
+        updater.remove_callback(callback)
     assert updater_module._dispatch_frame_change in bpy.app.handlers.frame_change_pre

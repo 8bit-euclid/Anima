@@ -74,7 +74,7 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
         p2.location.x = bcurve.point(t1).x
 
     # up.add_input_variable(e, '["t"]')
-    up.add_function(update)
+    up.add_callback(update)
 
 
 def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
@@ -171,7 +171,7 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
         chain.param_1 = t1
         p.location = chain.point(t1)
 
-    up.add_function(update)
+    up.add_callback(update)
 
 
 def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
@@ -230,4 +230,4 @@ def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangl
         dashed2.param_0 = t0
         dashed2.param_1 = t1
 
-    up.add_function(updater)
+    up.add_callback(updater)

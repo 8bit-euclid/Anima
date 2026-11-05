@@ -43,7 +43,7 @@ class Scheduler:
         """
         if cls._instance is None:
             cls._instance = cls()
-            Updater.instance().add_function(cls._instance._on_frame_change)
+            Updater.instance().add_callback(cls._instance._on_frame_change)
         return cls._instance
 
     @classmethod
@@ -54,7 +54,7 @@ class Scheduler:
         is appropriate when rebuilding a scene so actions bound to the previous scene are not retained.
         """
         if cls._instance is not None:
-            Updater.instance().remove_function(cls._instance._on_frame_change)
+            Updater.instance().remove_callback(cls._instance._on_frame_change)
             cls._instance.clear()
             cls._instance = None
 
