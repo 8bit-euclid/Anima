@@ -169,36 +169,43 @@ Alternatively, set them immediately before the run command:
 ANIMA_LOG_LEVEL=INFO ANIMA_LOG_SHOW_FUNCTION=1 make run
 ```
 
-## Introducing objects (reveals)
+## Animating objects with effects
 
-Objects can be brought into the scene with `Enter` and taken out with `Exit`. You specify only durations: the shared
-`Scheduler` keeps a cursor, places each action where the previous one ended, and creates its keyframed progress (a
-custom property on a separate driver Empty, with Blender's F-curve supplying the easing). Reveal strategies determine
-how that progress affects an object: curves draw along their length, meshes combine fade and scale, groups reveal their
-children in turn, and glyphs trace their outline before fading in the fill. Independent strategies can be composed
-with `Together`.
+An `Effect` maps a progress value to changes in geometry, material, transforms, or other state. Objects do not choose
+default effects; actions require the user to select an effect explicitly. Effects can be composed with `Together`,
+`Stagger`, and `Phase`. The action owns the duration and F-curve, while the effect defines what happens as progress
+changes.
 
 ```python
 from anima.animation.action import Enter, Exit, FCurvePreset
-from anima.animation.reveal import Fade, Scale, Stagger, Together
+from anima.animation.effects import Draw, Fade, Scale, Stagger, Together
 from anima.animation.scheduler import Scheduler
 
 scheduler = Scheduler()
+effect = Together(group, [Fade(group), Scale(group, from_scale=0.5)])
 enter = Enter(
-    group,
+    effect,
     "00:04",
     preset=FCurvePreset.EASE_IN_OUT,
-    reveal=Together(group, [Fade(group), Scale(group, from_scale=0.5)]),
 )
 scheduler.add_action(enter)  # starts at 00:00
 scheduler.wait("00:02")
-scheduler.add_action(Exit(group, "00:01"))  # starts at 00:06
+scheduler.add_action(Exit(Together(group, [Fade(group), Scale(group)]), "00:01"))  # starts at 00:06
 
 # Run in parallel: either as one group, or by starting with the previous placement.
 # The cursor moves to whichever placement ends last.
-scheduler.add_actions(Enter(a, "00:01"), Enter(b, "00:02", reveal=Stagger(b, lag_ratio=0.3)))
-scheduler.add_action(Enter(c, "00:03"), with_previous=True)
-print(scheduler.end_time)  # 00:12
+scheduler.add_actions(
+    Enter(Draw(a), "00:01"),
+    Enter(Stagger(b, lag_ratio=0.3, child_effect=Draw), "00:02"),
+)
+scheduler.add_action(Enter(Draw(c), "00:03"), with_previous=True)
+print(scheduler.end_time)  # 00:10
+
+# A reusable, explicit recipe is provided for glyph write-on animation.
+from anima.latex.glyph import glyph_write_on
+
+glyph_effect = glyph_write_on(glyph)
+scheduler.add_action(Enter(glyph_effect, "00:02"))
 
 # The underlying F-curve is available for further editing in Python or Blender.
 fcurve = enter.track.fcurve
@@ -220,7 +227,7 @@ renders. `KeyframedProperty` is the low-level, frame-based building block exposi
 custom-property value; additional keyframes can be inserted with `track.add_keyframe(...)`. `Scheduler().reset()` clears
 the schedule and cursor.
 An RGBA color's alpha is the material opacity; use RGB when changing color without changing opacity.
-See `tests/visual_tests/test_reveals.py` for examples.
+See `tests/visual_tests/test_reveals.py` and `tests/animation/test_effect.py` for examples.
 
 ## Status
 

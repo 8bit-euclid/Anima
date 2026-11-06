@@ -1,11 +1,13 @@
-"""Tests for the reveal strategies."""
+"""Tests for composable progress effects."""
+
+from datetime import timedelta
 
 import pytest
 from mathutils import Matrix, Vector
 
-from anima.animation.reveal import Draw, Fade, Phase, Reveal, Scale, Stagger, Together
+from anima.animation.effects import Draw, Effect, Fade, Phase, Scale, Stagger, Together
 from anima.animation.stagger import reversed_order
-from anima.latex.glyph import Glyph
+from anima.latex.glyph import Glyph, glyph_write_on
 from anima.latex.glyph_group import GlyphGroup
 from anima.primitives.chains import CurveLoop
 from anima.primitives.group import Group
@@ -28,18 +30,18 @@ def make_segments(n: int = 3) -> list[Segment]:
     return [Segment((i, 0), (i + 1, 0)) for i in range(n)]
 
 
-class Recorder(Reveal):
-    """A reveal that records the progress it is given."""
+class Recorder(Effect):
+    """An effect that records the progress it is given."""
 
     def __init__(self, target):
         super().__init__(target)
         self.calls: list[float] = []
 
-    def _apply(self, progress: float) -> None:
+    def _apply(self, progress: float, elapsed: timedelta | None) -> None:
         self.calls.append(progress)
 
 
-class TestRevealBase:
+class TestEffectBase:
     def test_apply_clamps(self):
         reveal = Recorder(Group())
         reveal.apply(-1.0)
@@ -170,7 +172,7 @@ class TestStagger:
     def test_reveals_children_in_turn(self):
         segments = make_segments(3)
         group = Group(segments)
-        reveal = Stagger(group, lag_ratio=1.0)
+        reveal = Stagger(group, lag_ratio=1.0, child_effect=Draw)
         reveal.apply(0.5)
         assert [s.param_1 for s in segments] == pytest.approx([1.0, 0.5 * 3 - 1, 0.0])
         reveal.apply(1.0)
@@ -180,21 +182,21 @@ class TestStagger:
 
     def test_no_lag_reveals_children_together(self):
         segments = make_segments(3)
-        reveal = Stagger(Group(segments), lag_ratio=0.0)
+        reveal = Stagger(Group(segments), lag_ratio=0.0, child_effect=Draw)
         reveal.apply(0.4)
         assert [s.param_1 for s in segments] == pytest.approx([0.4] * 3)
 
     def test_order_decides_who_goes_first(self):
         segments = make_segments(3)
-        reveal = Stagger(Group(segments), lag_ratio=1.0, order=reversed_order)
+        reveal = Stagger(Group(segments), lag_ratio=1.0, order=reversed_order, child_effect=Draw)
         reveal.apply(1 / 3)
         assert [s.param_1 for s in segments] == pytest.approx([0.0, 0.0, 1.0])
 
     def test_rejects_an_order_that_is_not_a_permutation(self):
         with pytest.raises(ValueError):
-            Stagger(Group(make_segments(3)), order=lambda items: [0, 0, 1])
+            Stagger(Group(make_segments(3)), order=lambda items: [0, 0, 1], child_effect=Draw)
 
-    def test_custom_child_reveal(self):
+    def test_custom_child_effect(self):
         children = [make_mesh(), make_mesh()]
         made: list[Recorder] = []
 
@@ -202,23 +204,23 @@ class TestStagger:
             made.append(Recorder(child))
             return made[-1]
 
-        reveal = Stagger(Group(children), lag_ratio=1.0, child_reveal=make)
+        reveal = Stagger(Group(children), lag_ratio=1.0, child_effect=make)
         reveal.apply(0.5)
         assert [r.calls for r in made] == [[1.0], [0.0]]
 
     def test_explicit_children(self):
         segments = make_segments(3)
         group = Group(segments)
-        reveal = Stagger(group, children=segments[:2], lag_ratio=1.0)
+        reveal = Stagger(group, children=segments[:2], lag_ratio=1.0, child_effect=Draw)
         reveal.apply(0.0)
         assert [s.param_1 for s in segments] == [0.0, 0.0, 1.0]  # The third is not revealed, so it is untouched.
 
     def test_invalidate_reaches_children(self):
         group = Group(make_segments(2))
-        reveal = Stagger(group)
+        reveal = Stagger(group, child_effect=Draw)
         reveal.apply(1.0)
         reveal.invalidate()
-        assert all(child.progress is None for child in reveal.reveals)
+        assert all(child.progress is None for child in reveal.effects)
 
 
 class TestPhase:
@@ -250,43 +252,26 @@ class TestPhase:
         assert a.progress is None
 
 
-class TestDefaults:
-    def test_group_staggers_its_children(self):
-        assert isinstance(Group(make_segments(2)).create_reveal(), Stagger)
-
-    def test_curve_is_drawn(self):
-        assert isinstance(Segment((0, 0), (1, 0)).create_reveal(), Draw)
-
-    def test_mesh_combines_fade_and_scale(self):
-        reveal = make_mesh().create_reveal()
-        assert isinstance(reveal, Together)
-        assert [type(component) for component in reveal.reveals] == [Fade, Scale]
-
-    def test_empty_group_does_not_fail(self):
-        reveal = Group().create_reveal()
-        reveal.apply(0.5)
-
-
-class TestGlyphReveal:
+class TestGlyphWriteOn:
     def test_outline_is_drawn_before_the_fill_fades_in(self):
         glyph = Glyph(create_rect_path(), name="G")
-        reveal = glyph.create_reveal()
+        effect = glyph_write_on(glyph)
         loops = list(glyph.border.children)
         assert all(isinstance(loop, CurveLoop) for loop in loops)
 
-        reveal.apply(0.0)
+        effect.apply(0.0)
         assert not shown(glyph.body)
         assert loops[0].param_1 == 0.0
 
-        reveal.apply(Glyph.BORDER_REVEAL_WINDOW[1])
+        effect.apply(Glyph.BORDER_REVEAL_WINDOW[1])
         assert loops[0].param_1 == pytest.approx(1.0)
         assert glyph.body.opacity < 1.0
 
-        reveal.apply(0.75)
+        effect.apply(0.75)
         assert glyph.body.opacity == pytest.approx(0.5)
         assert tuple(glyph.body.object.delta_scale) == pytest.approx((1.0, 1.0, 1.0))
 
-        reveal.apply(1.0)
+        effect.apply(1.0)
         assert glyph.body.opacity == pytest.approx(1.0)
         assert shown(glyph.body)
 
@@ -294,13 +279,13 @@ class TestGlyphReveal:
         glyph = Glyph(create_rect_with_hole_path(), name="H")
         loops = list(glyph.border.children)
         assert len(loops) == 2
-        glyph.create_reveal().apply(0.35)
+        glyph_write_on(glyph).apply(0.35)
         assert loops[0].param_1 == pytest.approx(loops[1].param_1)
         assert 0.0 < loops[0].param_1 < 1.0
 
     def test_glyph_group_staggers_its_glyphs(self):
         glyphs = [Glyph(create_rect_path(), name=f"G{i}") for i in range(3)]
-        reveal = GlyphGroup(glyphs).create_reveal()
+        reveal = Stagger(GlyphGroup(glyphs), child_effect=glyph_write_on)
         assert isinstance(reveal, Stagger)
         reveal.apply(0.0)
         assert all(not shown(g.body) for g in glyphs)

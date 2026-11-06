@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING
 
 from anima.globals.general import Vector, reciprocal
 
 from .attachments import Attachment
 from .object import Object
-
-if TYPE_CHECKING:
-    from anima.animation.reveal import Reveal
 
 # Line widths
 DEFAULT_LINE_WIDTH = 0.02
@@ -128,16 +124,6 @@ class Curve(Object):
             offset=offset,
             name=f"{self.name}_dashed",
         )
-
-    def create_reveal(self) -> Reveal:
-        """Create the default reveal for a curve, which draws it from its start to its end (see `Draw`).
-
-        Returns:
-            Reveal: A new reveal strategy bound to this curve.
-        """
-        from anima.animation.reveal import Draw  # Deferred: the animation package uses this one.
-
-        return Draw(self)
 
     @abstractmethod
     def set_width(self, width: float):

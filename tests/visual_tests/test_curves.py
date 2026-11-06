@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from anima.animation.action import Callback
+from anima.animation.effects import Callback
 from anima.animation.scheduler import Scheduler
 from anima.diagnostics import profiler
 from anima.primitives.bezier_curve import BezierCurve
@@ -172,7 +172,7 @@ def test_curve_joints(duration: timedelta, color: str | None = None, paper: Rect
     sched.add_callback(update, duration=duration, name="CurveJointsProgress", with_previous=True)
 
 
-def test_dashed_curves(duration: timedelta, color: str | None = None, paper: Rectangle | None = None) -> Callback:
+def test_dashed_curves(duration: timedelta, color: str | None = None, paper: Rectangle | None = None) -> None:
     root = Group(name="DashedCurves")
     width = 1.6 * DEFAULT_LINE_WIDTH
 

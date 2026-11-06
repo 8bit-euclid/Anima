@@ -1,24 +1,17 @@
-"""Actions that bind keyframed progress tracks to reveal strategies."""
+"""Time-based actions that apply explicit effects."""
 
 from __future__ import annotations
 
-import inspect
-from abc import ABC, abstractmethod
-from collections.abc import Callable
 from datetime import timedelta
 from enum import Enum
-from typing import TYPE_CHECKING
 
 import bpy
 
+from anima.animation.effects import Effect
 from anima.animation.timeline import TimeInput, as_timedelta, from_frame, range_to_frames
 from anima.primitives.points import Empty
 
-if TYPE_CHECKING:
-    from anima.animation.reveal import Reveal
-    from anima.primitives.object import Object
-
-__all__ = ["Action", "Appearance", "Callback", "Enter", "Exit", "FCurvePreset", "KeyframedProperty"]
+__all__ = ["Action", "Enter", "Exit", "FCurvePreset", "KeyframedProperty"]
 
 
 class FCurvePreset(Enum):
@@ -65,10 +58,10 @@ class FCurvePreset(Enum):
 class KeyframedProperty:
     """A custom property animated by a Blender F-curve.
 
-    The driver is a separate Empty, not the object whose reveal it controls. The F-curve is exposed so it can be
+    The driver is a separate Empty, not the object whose effect it controls. The F-curve is exposed so it can be
     further edited using Blender's animation tools or API.
 
-    Values are not restricted to [0, 1]; a reveal strategy clamps them when applied. The Empty's custom property
+    Values are not restricted to [0, 1]; an effect clamps them when applied. The Empty's custom property
     reflects Blender's evaluated value after a frame change. Use `value_at` to sample the F-curve during a pre-frame
     callback.
 
@@ -251,44 +244,47 @@ class KeyframedProperty:
         raise RuntimeError(f"Blender did not create an F-curve for {data_path}.")
 
 
-class Action(ABC):
-    """A time window over which a progress value drives some change.
+class Action:
+    """Apply an explicit effect over a duration.
 
-    An action is created with only a duration. It receives its start time when a `Scheduler` places it, and only then
-    is its keyframed progress track created. An action can therefore be placed once. Subclasses define what the
-    progress value does: `Appearance` (used by `Enter` and `Exit`) drives a reveal and `Callback` calls a function.
+    The action owns timing and a keyframed progress track; its effect defines the resulting state change. No effect is
+    inferred from the target.
 
     Attributes:
+        effect: The effect driven by this action.
         duration: The length of the window.
-        target: The object whose state the action controls, or None if it controls no single object.
+        target: The effect's target, if it has one.
     """
 
     def __init__(
         self,
         duration: TimeInput,
+        effect: Effect,
         *,
-        target: Object | None = None,
         value_range: tuple[float, float] = (0.0, 1.0),
         name: str = "Action",
         preset: FCurvePreset = FCurvePreset.BEZIER,
     ) -> None:
-        """Describe an action without placing it on the timeline.
+        """Create an action that applies an explicit effect over a progress window.
 
         Args:
             duration: Positive length of the window, as a `timedelta` or time string.
-            target: The object whose state the action controls, if any.
+            effect: Effect to apply.
             value_range: The progress values at the start and end of the window.
             name: Name of the driver Empty created on placement.
             preset: Blender's built-in interpolation/easing preset for the progress.
 
         Raises:
-            TypeError: If the duration has an unsupported type.
+            TypeError: If the duration or effect has an unsupported type.
             ValueError: If the duration is not positive.
         """
+        if not isinstance(effect, Effect):
+            raise TypeError(f"Expected an Effect, got {type(effect).__name__}.")
         self.duration = as_timedelta(duration)
         if self.duration <= timedelta(0):
             raise ValueError("Animation duration must be positive.")
-        self.target = target
+        self.effect = effect
+        self.target = effect.target
         self._value_range = value_range
         self._name = name
         self._preset = preset
@@ -361,191 +357,8 @@ class Action(ABC):
         """Return the last frame controlled by the track."""
         return self.track.stop_frame
 
-    @abstractmethod
     def apply(self, frame: float | None = None) -> None:
-        """Apply the action's state at a frame.
-
-        Args:
-            frame: Blender frame to evaluate, including an optional fractional subframe. Defaults to the current
-                scene frame.
-        """
-
-    def invalidate(self) -> None:  # noqa: B027 (an optional hook, so it is not abstract)
-        """Discard cached target state before the next application.
-
-        Override this when the action's strategy caches its last output and another action may have changed the same
-        target in the meantime.
-        """
-
-
-class Appearance(Action):
-    """Apply a keyframed progress value to an object's reveal strategy.
-
-    Values are passed to `Reveal.apply`, which clamps them to [0, 1]. This class does not reverse or reinterpret the
-    progress; the value range determines the direction of the appearance.
-
-    Attributes:
-        target: The object whose appearance is controlled.
-        reveal: The strategy that applies progress to the target.
-    """
-
-    target: Object
-
-    def __init__(
-        self,
-        target: Object,
-        duration: TimeInput,
-        *,
-        value_range: tuple[float, float] = (0.0, 1.0),
-        name: str = "Appearance",
-        preset: FCurvePreset = FCurvePreset.BEZIER,
-        reveal: Reveal | None = None,
-    ) -> None:
-        """Bind an object's reveal to a progress window.
-
-        Args:
-            target: The object whose appearance is controlled.
-            duration: Positive length of the window, as a `timedelta` or time string.
-            value_range: The reveal progress at the start and end of the window.
-            name: Name of the driver Empty created on placement.
-            preset: Blender's built-in interpolation/easing preset.
-            reveal: The strategy to use. Defaults to the target's `create_reveal()` strategy.
-
-        Raises:
-            TypeError: If the duration has an unsupported type.
-            ValueError: If the duration is not positive or the reveal is bound to another object.
-        """
-        super().__init__(duration, target=target, value_range=value_range, name=name, preset=preset)
-        if reveal is not None and reveal.target is not target:
-            raise ValueError("The reveal is bound to a different object than the action's target.")
-        self.reveal = reveal if reveal is not None else target.create_reveal()
-
-    def apply(self, frame: float | None = None) -> None:
-        """Apply the reveal state sampled from the track.
-
-        Args:
-            frame: Blender frame to evaluate, including an optional fractional subframe. Defaults to the current
-                scene frame.
-        """
-        self.reveal.apply(self.track.value_at(frame))
-
-    def invalidate(self) -> None:
-        """Invalidate the reveal's cached state so the next application updates the target."""
-        self.reveal.invalidate()
-
-
-class Enter(Appearance):
-    """Animate an object into the scene, defaulting to progress 0 to 1."""
-
-    def __init__(
-        self,
-        target: Object,
-        duration: TimeInput,
-        *,
-        value_range: tuple[float, float] = (0.0, 1.0),
-        name: str = "Enter",
-        preset: FCurvePreset = FCurvePreset.BEZIER,
-        reveal: Reveal | None = None,
-    ) -> None:
-        """Create an entry action.
-
-        Args:
-            target: The object to bring into the scene.
-            duration: Positive animation duration, as a `timedelta` or time string.
-            value_range: The reveal progress at the start and end; defaults to (0, 1).
-            name: Name of the driver Empty created on placement.
-            preset: Blender's built-in interpolation/easing preset.
-            reveal: The target's default reveal strategy, or an explicit alternative.
-
-        Raises:
-            TypeError: If the duration has an unsupported type.
-            ValueError: If the duration is not positive or the reveal belongs to another target.
-        """
-        super().__init__(target, duration, value_range=value_range, name=name, preset=preset, reveal=reveal)
-
-
-class Exit(Appearance):
-    """Animate an object out of the scene, defaulting to progress 1 to 0."""
-
-    def __init__(
-        self,
-        target: Object,
-        duration: TimeInput,
-        *,
-        value_range: tuple[float, float] = (1.0, 0.0),
-        name: str = "Exit",
-        preset: FCurvePreset = FCurvePreset.BEZIER,
-        reveal: Reveal | None = None,
-    ) -> None:
-        """Create an exit action.
-
-        Args:
-            target: The object to take out of the scene.
-            duration: Positive animation duration, as a `timedelta` or time string.
-            value_range: The reveal progress at the start and end; defaults to (1, 0).
-            name: Name of the driver Empty created on placement.
-            preset: Blender's built-in interpolation/easing preset.
-            reveal: The target's default reveal strategy, or an explicit alternative.
-
-        Raises:
-            TypeError: If the duration has an unsupported type.
-            ValueError: If the duration is not positive or the reveal belongs to another target.
-        """
-        super().__init__(target, duration, value_range=value_range, name=name, preset=preset, reveal=reveal)
-
-
-class Callback(Action):
-    """Call a function with the progress of a time window.
-
-    The function may declare either or both of these parameters, matched by name:
-
-    - `u`: the eased progress, running over the value range (0 to 1 by default).
-    - `t`: the `timedelta` elapsed since the window started, clamped to the window.
-
-    The function is called on each frame inside the window. It is also called once with the final values after the
-    window has passed, and once with the initial values when the scene is before it, so the state it draws is correct
-    when scrubbing or jumping to any frame. It is not called on other frames outside the window.
-    """
-
-    _PARAMETERS = frozenset({"u", "t"})
-
-    def __init__(
-        self,
-        function: Callable[..., object],
-        duration: TimeInput,
-        *,
-        value_range: tuple[float, float] = (0.0, 1.0),
-        name: str = "Callback",
-        preset: FCurvePreset = FCurvePreset.BEZIER,
-    ) -> None:
-        """Describe a callback over a window.
-
-        Args:
-            function: Function taking `u`, `t`, or both as parameters, matched by name.
-            duration: Positive length of the window, as a `timedelta` or time string.
-            value_range: The progress `u` at the start and end of the window.
-            name: Name of the driver Empty created on placement.
-            preset: Blender's built-in interpolation/easing preset applied to `u`.
-
-        Raises:
-            TypeError: If the function has no parameters, or any parameter is not named `u` or `t`.
-            ValueError: If the duration is not positive.
-        """
-        super().__init__(duration, value_range=value_range, name=name, preset=preset)
-        parameters = inspect.signature(function).parameters
-        if not parameters or not all(
-            parameter.kind in (parameter.POSITIONAL_OR_KEYWORD, parameter.KEYWORD_ONLY) and key in self._PARAMETERS
-            for key, parameter in parameters.items()
-        ):
-            raise TypeError(
-                f"A callback may only take the parameters 'u' (progress) and 't' (elapsed time): {parameters}."
-            )
-        self.function = function
-        self._parameters = tuple(parameters)
-        self._region: int | None = None
-
-    def apply(self, frame: float | None = None) -> None:
-        """Call the function if the frame is inside the window or the window's side changed since the last call.
+        """Apply the effect at progress and elapsed time sampled from the track.
 
         Args:
             frame: Blender frame to evaluate, including an optional fractional subframe. Defaults to the current
@@ -554,17 +367,66 @@ class Callback(Action):
         if frame is None:
             scene = bpy.context.scene
             frame = scene.frame_current + scene.frame_subframe
-        start, stop = self.start_frame, self.stop_frame
-        region = -1 if frame < start else 1 if frame > stop else 0
-        if region != 0 and region == self._region:
-            return
-        self._region = region
-        values = {
-            "u": self.track.value_at(frame),
-            "t": from_frame(min(max(frame, start), stop)) - from_frame(start),
-        }
-        self.function(**{key: values[key] for key in self._parameters})
+        elapsed_frame = min(max(frame, self.start_frame), self.stop_frame)
+        elapsed = from_frame(elapsed_frame) - from_frame(self.start_frame)
+        self.effect.apply(self.track.value_at(frame), elapsed)
 
     def invalidate(self) -> None:
-        """Forget which side of the window was last drawn so the next application calls the function."""
-        self._region = None
+        """Invalidate the effect's cache so the next application updates its target."""
+        self.effect.invalidate()
+
+
+class Enter(Action):
+    """Apply an effect from its initial to final progress value."""
+
+    def __init__(
+        self,
+        effect: Effect,
+        duration: TimeInput,
+        *,
+        value_range: tuple[float, float] = (0.0, 1.0),
+        name: str = "Enter",
+        preset: FCurvePreset = FCurvePreset.BEZIER,
+    ) -> None:
+        """Create an action whose effect progresses from its initial to final value.
+
+        Args:
+            effect: Effect to apply.
+            duration: Positive animation duration, as a `timedelta` or time string.
+            value_range: The effect progress at the start and end; defaults to (0, 1).
+            name: Name of the driver Empty created on placement.
+            preset: Blender's built-in interpolation/easing preset.
+
+        Raises:
+            TypeError: If the duration has an unsupported type.
+            ValueError: If the duration is not positive.
+        """
+        super().__init__(duration, effect, value_range=value_range, name=name, preset=preset)
+
+
+class Exit(Action):
+    """Apply an effect from its final to initial progress value."""
+
+    def __init__(
+        self,
+        effect: Effect,
+        duration: TimeInput,
+        *,
+        value_range: tuple[float, float] = (1.0, 0.0),
+        name: str = "Exit",
+        preset: FCurvePreset = FCurvePreset.BEZIER,
+    ) -> None:
+        """Create an action whose effect progresses from its final to initial value.
+
+        Args:
+            effect: Effect to apply.
+            duration: Positive animation duration, as a `timedelta` or time string.
+            value_range: The effect progress at the start and end; defaults to (1, 0).
+            name: Name of the driver Empty created on placement.
+            preset: Blender's built-in interpolation/easing preset.
+
+        Raises:
+            TypeError: If the duration has an unsupported type.
+            ValueError: If the duration is not positive.
+        """
+        super().__init__(duration, effect, value_range=value_range, name=name, preset=preset)

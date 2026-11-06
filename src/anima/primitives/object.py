@@ -4,7 +4,7 @@ import math
 from abc import ABC
 from collections.abc import Callable
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from weakref import WeakSet
 
 import bpy
@@ -31,9 +31,6 @@ from anima.materials.material import (
     set_material_properties,
 )
 from anima.materials.texture import AlbedoMode, TextureSet, apply_texture_set
-
-if TYPE_CHECKING:
-    from anima.animation.reveal import Reveal
 
 
 class Object(ABC):
@@ -232,22 +229,6 @@ class Object(ABC):
         self._set_visibility(True)
         for child in self.children:
             child.unhide()
-
-    def create_reveal(self) -> Reveal:
-        """Create the default strategy for revealing this object (see `anima.animation.reveal`).
-
-        Subclasses override this to say how they appear, e.g. a curve is drawn along its length. By default an
-        object with no data of its own (such as a `Group`) reveals its children in turn, and any other object
-        fades in and scales up together.
-
-        Returns:
-            Reveal: A new reveal strategy bound to this object.
-        """
-        from anima.animation.reveal import Fade, Scale, Stagger, Together  # Deferred: the animation package uses this.
-
-        if self._has_data() or not self.children:
-            return Together(self, [Fade(self), Scale(self)])
-        return Stagger(self)
 
     def copy(self) -> Object:
         """Get a deep copy of this object.

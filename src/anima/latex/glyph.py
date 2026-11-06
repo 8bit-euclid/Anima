@@ -10,7 +10,7 @@ from anima.latex.glyph_border import GlyphBorder
 from anima.primitives.object import Object
 
 if TYPE_CHECKING:
-    from anima.animation.reveal import Reveal
+    from anima.animation.effects import Effect
 
 
 @dataclass
@@ -37,7 +37,7 @@ class Glyph(Object):
         body: The GlyphBody containing the filled mesh.
     """
 
-    # The windows of the reveal progress in which the outline is drawn and the fill fades in. They overlap, so the
+    # The progress windows in which the outline is drawn and the fill fades in. They overlap, so the
     # fill starts to appear before the outline is complete.
     BORDER_REVEAL_WINDOW = (0.0, 0.7)
     BODY_REVEAL_WINDOW = (0.5, 1.0)
@@ -95,20 +95,25 @@ class Glyph(Object):
         """
         return self._body
 
-    def create_reveal(self) -> Reveal:
-        """Create the default reveal for a glyph: draw the outline, then fade in the fill.
 
-        All the loops of the outline, including the holes, are drawn together.
+def glyph_write_on(glyph: Glyph) -> Effect:
+    """Create an explicit effect that draws a glyph's outline and fades in its fill.
 
-        Returns:
-            Reveal: A new reveal strategy bound to this glyph.
-        """
-        from anima.animation.reveal import Fade, Phase, Stagger  # Deferred: avoids a package cycle.
+    All the loops of the outline, including holes, are drawn together. This is a reusable recipe, not an implicit
+    default assigned to every glyph.
 
-        return Phase(
-            self,
-            [
-                (Stagger(self._border, lag_ratio=0.0), *self.BORDER_REVEAL_WINDOW),
-                (Fade(self._body), *self.BODY_REVEAL_WINDOW),
-            ],
-        )
+    Args:
+        glyph: The glyph to animate.
+
+    Returns:
+        A phase effect for drawing the outline and fading in the body.
+    """
+    from anima.animation.effects import Draw, Fade, Phase, Stagger
+
+    return Phase(
+        glyph,
+        [
+            (Stagger(glyph.border, lag_ratio=0.0, child_effect=Draw), *glyph.BORDER_REVEAL_WINDOW),
+            (Fade(glyph.body), *glyph.BODY_REVEAL_WINDOW),
+        ],
+    )

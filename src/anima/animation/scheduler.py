@@ -8,7 +8,8 @@ from typing import ClassVar, TypeVar, overload
 
 import bpy
 
-from anima.animation.action import Action, Callback, FCurvePreset
+from anima.animation.action import Action, FCurvePreset
+from anima.animation.effects import Callback
 from anima.animation.timeline import TimeInput, as_timedelta, to_frame
 
 F = TypeVar("F", bound=Callable[..., object])
@@ -180,7 +181,13 @@ class Scheduler:
 
         def register(target: Callable[..., object]) -> Callable[..., object]:
             self.add_actions(
-                Callback(target, duration, value_range=value_range, name=name, preset=preset),
+                Action(
+                    duration,
+                    Callback(target),
+                    value_range=value_range,
+                    name=name,
+                    preset=preset,
+                ),
                 with_previous=with_previous,
             )
             return target
