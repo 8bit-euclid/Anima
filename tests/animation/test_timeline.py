@@ -12,12 +12,16 @@ def test_time_strings_and_timedeltas_are_supported():
     assert as_timedelta("00:01") == timedelta(seconds=1)
     assert as_timedelta("00:01:250") == timedelta(seconds=1, milliseconds=250)
     assert as_timedelta(timedelta(seconds=2)) == timedelta(seconds=2)
+    assert as_timedelta(1) == timedelta(seconds=1)
+    assert as_timedelta(1.25) == timedelta(seconds=1, milliseconds=250)
 
 
 def test_elapsed_time_uses_frame_one_as_the_origin():
     scene = bpy.context.scene
     assert to_frame(timedelta(0), scene=scene) == 1
     assert to_frame(timedelta(seconds=1), scene=scene) == round(frame_rate(scene)) + 1
+    assert to_frame(1) == round(frame_rate(scene)) + 1
+    assert to_frame(1.25) == round(1.25 * frame_rate(scene)) + 1
     assert from_frame(to_frame("00:01"), scene=scene) == timedelta(seconds=1)
 
 
@@ -57,4 +61,12 @@ def test_ranges_reject_nonpositive_or_negative_durations(duration):
 
 def test_time_conversion_rejects_unsupported_types():
     with pytest.raises(TypeError):
-        to_frame(1.0)
+        to_frame(object())
+    with pytest.raises(TypeError):
+        to_frame(True)
+
+
+@pytest.mark.parametrize("value", [float("inf"), float("-inf"), float("nan")])
+def test_time_conversion_rejects_nonfinite_seconds(value):
+    with pytest.raises(ValueError, match="finite"):
+        to_frame(value)

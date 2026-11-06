@@ -156,16 +156,16 @@ class Scheduler:
 
         It can be used directly or as a decorator:
 
-            scheduler.add_callback(draw, duration="00:02")
+            scheduler.add_callback(draw, duration=2)
 
-            @scheduler.add_callback(duration="00:02")
+            @scheduler.add_callback(duration=2)
             def draw(u): ...
 
         See `Callback` for the parameters the function may take and when it is called.
 
         Args:
             function: Function taking `u` (progress), `t` (elapsed time), or both. Omit it to use the decorator form.
-            duration: Positive length of the window, as a `timedelta` or time string.
+            duration: Positive length of the window, in seconds, as a `timedelta`, or as a time string.
             value_range: The progress `u` at the start and end of the window.
             name: Name of the driver Empty.
             preset: Blender's built-in interpolation/easing preset applied to `u`.
@@ -198,7 +198,7 @@ class Scheduler:
         """Advance the cursor without placing anything.
 
         Args:
-            duration: Non-negative length of the pause, as a `timedelta` or time string.
+            duration: Non-negative length of the pause, in seconds, as a `timedelta`, or as a time string.
 
         Raises:
             TypeError: If the duration has an unsupported type.
@@ -217,8 +217,8 @@ class Scheduler:
         """Evaluate every action at an elapsed animation time.
 
         Args:
-            at: Elapsed time from frame 1, as a `timedelta` or accepted time string. It is rounded to the nearest
-                frame at the active scene's frame rate.
+            at: Elapsed time from frame 1, in seconds, as a `timedelta`, or as an accepted time string. It is rounded
+                to the nearest frame at the active scene's frame rate.
         """
         self._evaluate_actions(to_frame(at))
 

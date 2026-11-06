@@ -268,7 +268,7 @@ class Action:
         """Create an action that applies an explicit effect over a progress window.
 
         Args:
-            duration: Positive length of the window, as a `timedelta` or time string.
+            duration: Positive length of the window, in seconds, as a `timedelta`, or as a time string.
             effect: Effect to apply.
             value_range: The progress values at the start and end of the window.
             name: Name of the driver Empty created on placement.
@@ -392,7 +392,7 @@ class Enter(Action):
 
         Args:
             effect: Effect to apply.
-            duration: Positive animation duration, as a `timedelta` or time string.
+            duration: Positive animation duration, in seconds, as a `timedelta`, or as a time string.
             value_range: The effect progress at the start and end; defaults to (0, 1).
             name: Name of the driver Empty created on placement.
             preset: Blender's built-in interpolation/easing preset.
@@ -420,7 +420,7 @@ class Exit(Action):
 
         Args:
             effect: Effect to apply.
-            duration: Positive animation duration, as a `timedelta` or time string.
+            duration: Positive animation duration, in seconds, as a `timedelta`, or as a time string.
             value_range: The effect progress at the start and end; defaults to (1, 0).
             name: Name of the driver Empty created on placement.
             preset: Blender's built-in interpolation/easing preset.

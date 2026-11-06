@@ -176,6 +176,9 @@ default effects; actions require the user to select an effect explicitly. Effect
 `Stagger`, and `Phase`. The action owns the duration and F-curve, while the effect defines what happens as progress
 changes.
 
+Specify durations and elapsed times as numbers of seconds (including fractional seconds), or keep using clock strings
+or `timedelta` values when they are more readable.
+
 ```python
 from anima.animation.action import Enter, Exit, FCurvePreset
 from anima.animation.effects import Draw, Fade, Scale, Stagger, Together
@@ -185,20 +188,20 @@ scheduler = Scheduler()
 effect = Together(group, [Fade(group), Scale(group, from_scale=0.5)])
 enter = Enter(
     effect,
-    "00:04",
+    4,
     preset=FCurvePreset.EASE_IN_OUT,
 )
 scheduler.add_action(enter)  # starts at 00:00
-scheduler.wait("00:02")
-scheduler.add_action(Exit(Together(group, [Fade(group), Scale(group)]), "00:01"))  # starts at 00:06
+scheduler.wait(2)
+scheduler.add_action(Exit(Together(group, [Fade(group), Scale(group)]), 1))  # starts at 00:06
 
 # Run in parallel: either as one group, or by starting with the previous placement.
 # The cursor moves to whichever placement ends last.
 scheduler.add_actions(
-    Enter(Draw(a), "00:01"),
-    Enter(Stagger(b, lag_ratio=0.3, child_effect=Draw), "00:02"),
+    Enter(Draw(a), 1),
+    Enter(Stagger(b, lag_ratio=0.3, child_effect=Draw), 2),
 )
-scheduler.add_action(Enter(Draw(c), "00:03"), with_previous=True)
+scheduler.add_action(Enter(Draw(c), 3), with_previous=True)
 print(scheduler.end_time)  # 00:10
 
 # A reusable, explicit recipe is provided for glyph write-on animation.
@@ -217,7 +220,7 @@ correct when scrubbing, and is placed at the cursor like any action. It works di
 `add_callback(..., with_previous=True)` runs it alongside the previous placement.
 
 ```python
-@scheduler.add_callback(duration="00:02")
+@scheduler.add_callback(duration=2)
 def draw(u):
     curve.param_1 = u
 ```

@@ -11,7 +11,7 @@ from typing import TypeAlias
 
 import bpy
 
-TimeInput: TypeAlias = timedelta | str
+TimeInput: TypeAlias = timedelta | str | int | float
 
 ORIGIN_FRAME = 1
 
@@ -65,19 +65,25 @@ def as_timedelta(value: TimeInput) -> timedelta:
     """Convert a supported time value to a duration.
 
     Args:
-        value: A `timedelta` or a time string accepted by `parse_time`.
+        value: Seconds as a number, a `timedelta`, or a time string accepted by `parse_time`.
 
     Returns:
         The parsed duration.
 
     Raises:
         TypeError: If `value` is not a supported time representation.
-        ValueError: If the time is negative.
+        ValueError: If the time is negative or not finite.
     """
+    if isinstance(value, bool):
+        raise TypeError("Expected seconds, timedelta, or time string, got bool.")
     if isinstance(value, str):
         value = parse_time(value)
+    elif isinstance(value, int | float):
+        if not isfinite(value):
+            raise ValueError(f"Animation time must be finite, got {value}.")
+        value = timedelta(seconds=value)
     if not isinstance(value, timedelta):
-        raise TypeError(f"Expected timedelta or time string, got {type(value).__name__}.")
+        raise TypeError(f"Expected seconds, timedelta, or time string, got {type(value).__name__}.")
     if value.total_seconds() < 0:
         raise ValueError("Animation time cannot be negative.")
     return value
