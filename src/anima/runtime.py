@@ -9,8 +9,9 @@ from collections.abc import Callable
 import bpy
 
 from anima.animation.scheduler import Scheduler
+from anima.animation.timeline import to_frame
 from anima.diagnostics import logger
-from anima.globals.general import clear_scene, deselect_all, ebpy, hide_relationship_lines, to_frame
+from anima.globals.general import clear_scene, deselect_all, ebpy, hide_relationship_lines
 from anima.utils.blender import (
     capture_viewport_state,
     configure_blender_panes,
@@ -72,7 +73,8 @@ def run_lesson(
     if use_default_lighting:
         bpy.ops.object.light_add(type="SUN")
 
-    Scheduler.reset()  # Drop the actions of any earlier scene.
+    scheduler = Scheduler()
+    scheduler.reset()  # Drop the actions of any earlier scene.
 
     logger.info("Building scene...")
     build_scene(start_time, end_time)
@@ -100,7 +102,7 @@ def run_lesson(
 
     # Reset to frame one, frame the scene, zoom in, and play animation
     bpy.context.scene.frame_set(1)
-    Scheduler.instance().refresh()
+    scheduler.refresh()
     if saved_view is None:
         frame_scene_in_viewport(zoom_delta=2.5)
     else:

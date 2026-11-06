@@ -171,8 +171,9 @@ ANIMA_LOG_LEVEL=INFO ANIMA_LOG_SHOW_FUNCTION=1 make run
 
 ## Introducing objects (reveals)
 
-Objects can be brought into the scene with `Enter` and taken out with `Exit`. Each action creates a keyframed custom
-property on a separate driver Empty; Blender's F-curve supplies the progress and easing. Reveal strategies determine
+Objects can be brought into the scene with `Enter` and taken out with `Exit`. You specify only durations: the shared
+`Scheduler` keeps a cursor, places each action where the previous one ended, and creates its keyframed progress (a
+custom property on a separate driver Empty, with Blender's F-curve supplying the easing). Reveal strategies determine
 how that progress affects an object: curves draw along their length, meshes combine fade and scale, groups reveal their
 children in turn, and glyphs trace their outline before fading in the fill. Independent strategies can be composed
 with `Together`.
@@ -180,26 +181,44 @@ with `Together`.
 ```python
 from anima.animation.action import Enter, Exit, FCurvePreset
 from anima.animation.reveal import Fade, Scale, Stagger, Together
-from anima.animation.scheduler import play
+from anima.animation.scheduler import Scheduler
 
+scheduler = Scheduler()
 enter = Enter(
     group,
-    frame_range=(1, 241),
+    "00:04",
     preset=FCurvePreset.EASE_IN_OUT,
     reveal=Together(group, [Fade(group), Scale(group, from_scale=0.5)]),
 )
-play(enter, Exit(group, frame_range=(361, 421)))
+scheduler.add_action(enter)  # starts at 00:00
+scheduler.wait("00:02")
+scheduler.add_action(Exit(group, "00:01"))  # starts at 00:06
 
-# Staggering children remains a separate coordination strategy.
-play(Enter(group, (1, 181), reveal=Stagger(group, lag_ratio=0.3)))
+# Run in parallel: either as one group, or by starting with the previous placement.
+# The cursor moves to whichever placement ends last.
+scheduler.add_actions(Enter(a, "00:01"), Enter(b, "00:02", reveal=Stagger(b, lag_ratio=0.3)))
+scheduler.add_action(Enter(c, "00:03"), with_previous=True)
+print(scheduler.end_time)  # 00:12
 
 # The underlying F-curve is available for further editing in Python or Blender.
 fcurve = enter.track.fcurve
 ```
 
-One shared pre-frame updater samples each F-curve at the incoming frame, so the reveal is applied before Blender
-evaluates and renders that frame. `KeyframedProperty` exposes its driver Empty, F-curve, frame range, and custom-property
-value; additional keyframes can be inserted with `track.add_keyframe(...)`.
+Custom behaviour uses the same mechanism. A callback is a function of progress `u` (0 to 1, eased) and/or the elapsed
+time `t` (a `timedelta`) over a window. It runs only while the window is active, plus once on each side so the state is
+correct when scrubbing, and is placed at the cursor like any action. It works directly or as a decorator, and
+`add_callback(..., with_previous=True)` runs it alongside the previous placement.
+
+```python
+@scheduler.add_callback(duration="00:02")
+def draw(u):
+    curve.param_1 = u
+```
+
+The scheduler samples each F-curve at the incoming frame before Blender evaluates properties, so changes appear in
+renders. `KeyframedProperty` is the low-level, frame-based building block exposing the driver Empty, F-curve, and
+custom-property value; additional keyframes can be inserted with `track.add_keyframe(...)`. `Scheduler().reset()` clears
+the schedule and cursor.
 An RGBA color's alpha is the material opacity; use RGB when changing color without changing opacity.
 See `tests/visual_tests/test_reveals.py` for examples.
 

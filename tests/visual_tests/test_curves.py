@@ -1,5 +1,7 @@
-from anima.animation.action import FCurvePreset, KeyframedProperty
-from anima.animation.updater import Updater
+from datetime import timedelta
+
+from anima.animation.action import Callback
+from anima.animation.scheduler import Scheduler
 from anima.diagnostics import profiler
 from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.bezier_spline import BezierSpline
@@ -12,10 +14,8 @@ from anima.primitives.lines import Segment
 from anima.primitives.points import Point
 from anima.primitives.polytopes import Rectangle
 
-up = Updater.instance()
 
-
-def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
+def test_bezier_splines(duration: timedelta, color: str | None = None, paper: Rectangle | None = None):
     root = Group(name="BezierSplines")
     bspline = BezierSpline([(0, 0), (3, 1), (7, -1)])
     # bspline = BezierSpline([(0, 0), (1, 0), (7, 0)])
@@ -28,8 +28,6 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
     ht = 3
     bcurve.handle_0 = (ln, ht)
     bcurve.handle_1 = (-ln, ht)
-
-    track = KeyframedProperty((30, end_frame), name="BezierSplineProgress")
 
     # bcurve.attachment_0 = ArrowEndcap()
     bcurve.attachment_0 = PointEndcap()
@@ -60,8 +58,10 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
     else:
         root.add(bspline, bcurve, p1, p2)
 
-    def update():
-        t1 = track.value
+    sched = Scheduler()
+
+    def update(u):
+        t1 = u
         t0 = max(0.0, t1 - 0.3)
 
         bcurve.param_0 = t0
@@ -73,11 +73,10 @@ def test_bezier_splines(end_frame: int, color: str | None = None, paper: Rectang
         p1.location.x = bspline.point(t1).x
         p2.location.x = bcurve.point(t1).x
 
-    # up.add_input_variable(e, '["t"]')
-    up.add_callback(update)
+    sched.add_callback(update, duration=duration, name="BezierSplineProgress", with_previous=True)
 
 
-def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
+def test_curve_joints(duration: timedelta, color: str | None = None, paper: Rectangle | None = None):
     root = Group(name="CurveJoints")
     c1 = Segment((0.5, -1), (1, 0))
     # c1 = BezierCurve((0, -1), (1, 0))
@@ -110,8 +109,6 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
             emission_strength=0.0,
         )
 
-    track = KeyframedProperty((30, end_frame), name="CurveJointsProgress")
-
     # b = 1
     # j1.bias = b
     # c1.bias = b
@@ -129,9 +126,10 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
         root.add(chain, p)
 
     pf = profiler
+    sched = Scheduler()
 
-    def update():
-        t1 = track.value
+    def update(u):
+        t1 = u
 
         # b = -1 + 2 * t
         # j1.bias = b
@@ -171,10 +169,10 @@ def test_curve_joints(end_frame: int, color: str | None = None, paper: Rectangle
         chain.param_1 = t1
         p.location = chain.point(t1)
 
-    up.add_callback(update)
+    sched.add_callback(update, duration=duration, name="CurveJointsProgress", with_previous=True)
 
 
-def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangle | None = None):
+def test_dashed_curves(duration: timedelta, color: str | None = None, paper: Rectangle | None = None) -> Callback:
     root = Group(name="DashedCurves")
     width = 1.6 * DEFAULT_LINE_WIDTH
 
@@ -211,15 +209,10 @@ def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangl
     gap_offs = gap2 / (dash2 + gap2)
     scal2 = 1 / (dash2 + gap2)
 
-    radi = 1.0
-    track = KeyframedProperty(
-        (30, end_frame),
-        value_range=(0.0, radi),
-        name="DashedCurveProgress",
-    )
+    sched = Scheduler()
 
-    def updater():
-        t1 = track.value
+    def updater(u):
+        t1 = u
         t0 = max(0, t1 - 0.57)
 
         # dashed1.offset = t1
@@ -230,4 +223,4 @@ def test_dashed_curves(end_frame: int, color: str | None = None, paper: Rectangl
         dashed2.param_0 = t0
         dashed2.param_1 = t1
 
-    up.add_callback(updater)
+    sched.add_callback(updater, duration=duration, name="DashedCurveProgress", with_previous=True)

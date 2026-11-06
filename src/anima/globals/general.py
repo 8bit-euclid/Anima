@@ -3,7 +3,6 @@ import math
 import sys
 from collections.abc import Iterable
 from copy import deepcopy
-from datetime import timedelta
 from pathlib import Path
 
 import bpy
@@ -240,43 +239,6 @@ def extrude_active_obj(displacement: Vector):
     set_edit_mode()
     bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value": displacement})
     set_object_mode()
-
-
-def time(time_str: str) -> timedelta:
-    """Accepts a time string of the form mm:ss or mm:ss:mmm and returns the corresponding timedelta object.
-    Args:
-        time_str (str): The time string to convert.
-    Returns:
-        timedelta: The corresponding timedelta object.
-    Raises:
-        AssertionError: If the time string is not in the correct format.
-    """
-    units = time_str.split(":")
-    assert len(units) in [2, 3], "Accepted time formats are mm:ss and mm:ss:mmm"
-    assert len(units[0]) == 2
-    assert len(units[1]) == 2
-
-    delta = timedelta(minutes=int(units[0]), seconds=int(units[1]))
-    if len(units) == 3:
-        assert len(units[2]) == 3
-        delta += timedelta(milliseconds=int(units[2]))
-    return delta
-
-
-def to_frame(delta):
-    """Converts a time delta or string to a frame index based on the current scene's FPS.
-    Args:
-        delta (timedelta | str): The time delta or string to convert.
-    Returns:
-        int: The corresponding frame index.
-    Raises:
-        AssertionError: If the delta is greater than 1 hour.
-    """
-    if isinstance(delta, str):
-        delta = time(delta)
-
-    assert delta < timedelta(hours=1), "Can only convert up to 1hr to a frame index."
-    return round(ebpy.get_scene().render.fps * delta.total_seconds()) + 1
 
 
 def save_as(file_name: str):
