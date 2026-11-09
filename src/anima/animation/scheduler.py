@@ -9,7 +9,7 @@ from typing import ClassVar, TypeVar, overload
 import bpy
 
 from anima.animation.action import Action, FCurvePreset
-from anima.animation.effects import Callback
+from anima.animation.effects import Callback, Effect
 from anima.animation.timeline import TimeInput, as_timedelta, to_frame
 
 F = TypeVar("F", bound=Callable[..., object])
@@ -21,6 +21,7 @@ class Scheduler:
     Constructing the class always returns the shared scheduler. Users specify durations only; the scheduler keeps a
     cursor that starts at zero and places each action where the previous one ended:
 
+    - `add` wraps an effect in an action, places it at the cursor, and returns the action.
     - `add_action` places one action at the cursor and moves the cursor to its end.
     - `add_actions` places several actions at the same cursor, so they run in parallel, and moves the cursor to the
       end of the longest.
@@ -84,6 +85,33 @@ class Scheduler:
             RuntimeError: If the action was already placed.
         """
         self.add_actions(action, with_previous=with_previous)
+
+    def add(
+        self,
+        effect: Effect,
+        duration: TimeInput,
+        *,
+        value_range: tuple[float, float] = (0.0, 1.0),
+        name: str = "Action",
+        preset: FCurvePreset = FCurvePreset.BEZIER,
+        with_previous: bool = False,
+    ) -> Action:
+        """Wrap an effect in an action and place it at the cursor.
+
+        Args:
+            effect: Effect to apply.
+            duration: Positive length of the window, in seconds, as a `timedelta`, or as a time string.
+            value_range: The progress values at the start and end of the window.
+            name: Name of the driver Empty created on placement.
+            preset: Blender's built-in interpolation/easing preset for the progress.
+            with_previous: Start together with the previous placement instead of at the cursor.
+
+        Returns:
+            The placed action.
+        """
+        action = Action(effect, duration, value_range=value_range, name=name, preset=preset)
+        self.add_action(action, with_previous=with_previous)
+        return action
 
     def add_actions(self, *actions: Action, with_previous: bool = False) -> None:
         """Place actions in parallel, then advance the cursor to the end of the latest-ending one.
@@ -152,7 +180,7 @@ class Scheduler:
         preset: FCurvePreset = FCurvePreset.BEZIER,
         with_previous: bool = False,
     ) -> Callable[..., object] | Callable[[F], F]:
-        """Place a callback at the cursor; shorthand for `add_actions(Callback(...))`.
+        """Place a callback at the cursor; shorthand for `add(Callback(...), duration)`.
 
         It can be used directly or as a decorator:
 
@@ -180,14 +208,12 @@ class Scheduler:
         """
 
         def register(target: Callable[..., object]) -> Callable[..., object]:
-            self.add_actions(
-                Action(
-                    duration,
-                    Callback(target),
-                    value_range=value_range,
-                    name=name,
-                    preset=preset,
-                ),
+            self.add(
+                Callback(target),
+                duration,
+                value_range=value_range,
+                name=name,
+                preset=preset,
                 with_previous=with_previous,
             )
             return target

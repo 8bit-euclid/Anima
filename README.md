@@ -186,12 +186,12 @@ from anima.animation.scheduler import Scheduler
 
 scheduler = Scheduler()
 effect = Together(group, [Fade(group), Scale(group, from_scale=0.5)])
-enter = Enter(
+enter = scheduler.add(
     effect,
     4,
     preset=FCurvePreset.EASE_IN_OUT,
 )
-scheduler.add_action(enter)  # starts at 00:00
+# Starts at 00:00; returns the Action so its F-curve can be edited.
 scheduler.wait(2)
 scheduler.add_action(Exit(Together(group, [Fade(group), Scale(group)]), 1))  # starts at 00:06
 
@@ -215,8 +215,9 @@ fcurve = enter.track.fcurve
 ```
 
 Custom behaviour uses the same mechanism. A callback is a function of progress `u` (0 to 1, eased) and/or the elapsed
-time `t` (a `timedelta`) over a window. It runs only while the window is active, plus once on each side so the state is
-correct when scrubbing, and is placed at the cursor like any action. It works directly or as a decorator, and
+time `t` (a `timedelta` since the outer action started) over a window. Compositions remap `u` for their child windows
+but preserve `t`. It runs only while the window is active, plus once on each side so the state is correct when scrubbing,
+and is placed at the cursor like any action. It works directly or as a decorator, and
 `add_callback(..., with_previous=True)` runs it alongside the previous placement.
 
 ```python

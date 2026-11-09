@@ -5,7 +5,7 @@ from datetime import timedelta
 import pytest
 from mathutils import Matrix, Vector
 
-from anima.animation.effects import Draw, Effect, Fade, Phase, Scale, Stagger, Together
+from anima.animation.effects import Callback, Draw, Effect, Fade, Phase, Scale, Stagger, Together
 from anima.animation.stagger import reversed_order
 from anima.latex.glyph import Glyph, glyph_write_on
 from anima.latex.glyph_group import GlyphGroup
@@ -63,6 +63,26 @@ class TestEffectBase:
         assert reveal.progress is None
         reveal.apply(0.5)
         assert reveal.calls == [0.5, 0.5]
+
+    def test_compositions_preserve_outer_elapsed_time(self):
+        observed = []
+
+        def callback(t):
+            observed.append(t)
+
+        children = [make_mesh()]
+        effects = [
+            Together(Group(), [Callback(callback)]),
+            Stagger(Group(children), child_effect=lambda child: Callback(callback)),
+            Phase(Group(), [(Callback(callback), 0.25, 0.75)]),
+        ]
+        elapsed = timedelta(seconds=2)
+
+        for effect in effects:
+            effect.apply(0.5, elapsed)
+            effect.apply(0.5, timedelta(seconds=3))
+
+        assert observed == [elapsed, timedelta(seconds=3)] * 3
 
 
 class TestDraw:

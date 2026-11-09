@@ -157,7 +157,7 @@ class TestEffectActions:
 
     def test_rejects_non_effects(self):
         with pytest.raises(TypeError):
-            Action(frames(10), make_mesh())
+            Action(make_mesh(), frames(10))
 
     @pytest.mark.parametrize("duration", [timedelta(0), timedelta(seconds=-1)])
     def test_rejects_nonpositive_durations(self, duration):
@@ -182,6 +182,16 @@ class TestEffectActions:
 
 
 class TestScheduler:
+    def test_add_wraps_and_returns_a_placed_action(self):
+        segment = make_segment()
+        action = Scheduler().add(Draw(segment), frames(10), preset=FCurvePreset.LINEAR)
+
+        assert isinstance(action, Action)
+        assert action.effect.target is segment
+        assert action.placed
+        assert action.start_frame == 1
+        assert segment.param_1 == 0.0
+
     def test_adding_applies_the_current_frame(self):
         segment = make_segment()
         Scheduler().add_action(enter_draw(segment, frames(19), preset=FCurvePreset.LINEAR))
@@ -447,7 +457,7 @@ class TestCallbacks:
     def test_callbacks_follow_the_cursor(self):
         scheduler = Scheduler()
         scheduler.add_callback(lambda u: None, duration=frames(10))
-        second = Action(frames(10), Callback(lambda u: None))
+        second = Action(Callback(lambda u: None), frames(10))
         scheduler.add_action(second)
         assert second.start_frame == 11
 

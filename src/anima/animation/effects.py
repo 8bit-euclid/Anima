@@ -1,7 +1,8 @@
-"""Effects that map progress values to object state.
+"""Effects that map progress values and optional elapsed time to object state.
 
-An `Effect` knows nothing about time or scheduling. It maps progress to an outcome and may be composed with other
-effects:
+An `Effect` does not own timing or scheduling. It maps progress to an outcome and may be composed with other effects.
+Time-aware effects receive elapsed time from the outer action; composites pass that same elapsed time to their
+children while remapping only progress:
 
 - `Draw` traces a curve from its start to its end.
 - `Fade` changes opacity without changing scale.
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
 
 
 class Effect(ABC):
-    """Maps progress and optional elapsed time to changes in state.
+    """Maps progress and optional action elapsed time to changes in state.
 
     Subclasses implement `_apply`. Unchanged inputs are skipped by default, keeping large compositions cheap to
     update. Call `invalidate` after changing controlled state by hand or when another effect has changed it.
@@ -44,6 +45,7 @@ class Effect(ABC):
             target: The object affected by this effect.
         """
         self.target = target
+        self._uses_elapsed = False
         self._last_input: tuple[float, timedelta | None] | None = None
 
     @property
@@ -56,7 +58,8 @@ class Effect(ABC):
 
         Args:
             progress: Progress in [0, 1]. Values outside that range are clamped.
-            elapsed: Elapsed time since the action started, when supplied by an action.
+            elapsed: Elapsed time since the outer action started, when supplied by an action. Composed effects receive
+                this same elapsed time; only their progress is remapped by composition windows.
         """
         progress = max(0.0, min(1.0, progress))
         current_input = self._cache_input(progress, elapsed)
@@ -75,7 +78,7 @@ class Effect(ABC):
 
     def _cache_input(self, progress: float, elapsed: timedelta | None) -> tuple[float, timedelta | None]:
         """Return the input tuple used to avoid redundant effect applications."""
-        return progress, None
+        return progress, elapsed if self._uses_elapsed else None
 
 
 class Draw(Effect):
@@ -179,6 +182,7 @@ class Together(Effect):
         """
         super().__init__(target)
         self.effects = list(effects)
+        self._uses_elapsed = any(effect._uses_elapsed for effect in self.effects)
 
     def invalidate(self) -> None:
         super().invalidate()
@@ -229,6 +233,7 @@ class Stagger(Effect):
         windows = stagger_windows(len(objects), lag_ratio)
         self.lag_ratio = lag_ratio
         self.effects: list[Effect] = [child_effect(child) for child in objects]
+        self._uses_elapsed = any(effect._uses_elapsed for effect in self.effects)
         self._windows: list[tuple[float, float]] = [(0.0, 1.0)] * len(objects)
         for place, index in enumerate(sequence):
             self._windows[index] = windows[place]
@@ -271,6 +276,7 @@ class Phase(Effect):
         """
         super().__init__(target)
         self.phases: list[PhaseWindow] = [PhaseWindow(*phase) for phase in phases]
+        self._uses_elapsed = any(phase.effect._uses_elapsed for phase in self.phases)
         for phase in self.phases:
             if not 0.0 <= phase.start <= phase.stop <= 1.0:
                 raise ValueError(f"A phase window must satisfy 0 <= start <= stop <= 1: {phase[1:]}.")
@@ -288,8 +294,9 @@ class Phase(Effect):
 class Callback(Effect):
     """Adapt a progress function into an effect.
 
-    The function may accept `u` (progress), `t` (elapsed time), or both. Callbacks that use `t` are invoked whenever
-    elapsed time changes; progress-only callbacks are skipped when progress is unchanged.
+    The function may accept `u` (progress), `t` (elapsed time since the outer action started), or both. Compositions
+    remap `u` but preserve `t`. Callbacks that use `t` are invoked whenever elapsed time changes; progress-only
+    callbacks are skipped when progress is unchanged.
     """
 
     _PARAMETERS = frozenset({"u", "t"})
@@ -314,11 +321,7 @@ class Callback(Effect):
         super().__init__()
         self.function = function
         self._parameters = tuple(parameters)
-
-    def _cache_input(self, progress: float, elapsed: timedelta | None) -> tuple[float, timedelta | None]:
-        if "t" in self._parameters:
-            return progress, elapsed
-        return progress, None
+        self._uses_elapsed = "t" in self._parameters
 
     def _apply(self, progress: float, elapsed: timedelta | None) -> None:
         values = {"u": progress, "t": elapsed or timedelta(0)}

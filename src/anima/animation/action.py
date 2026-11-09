@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from enum import Enum
+from typing import ClassVar
 
 import bpy
 
@@ -256,20 +257,23 @@ class Action:
         target: The effect's target, if it has one.
     """
 
+    _default_value_range: ClassVar[tuple[float, float]] = (0.0, 1.0)
+    _default_name: ClassVar[str] = "Action"
+
     def __init__(
         self,
-        duration: TimeInput,
         effect: Effect,
+        duration: TimeInput,
         *,
-        value_range: tuple[float, float] = (0.0, 1.0),
-        name: str = "Action",
+        value_range: tuple[float, float] | None = None,
+        name: str | None = None,
         preset: FCurvePreset = FCurvePreset.BEZIER,
     ) -> None:
         """Create an action that applies an explicit effect over a progress window.
 
         Args:
-            duration: Positive length of the window, in seconds, as a `timedelta`, or as a time string.
             effect: Effect to apply.
+            duration: Positive length of the window, in seconds, as a `timedelta`, or as a time string.
             value_range: The progress values at the start and end of the window.
             name: Name of the driver Empty created on placement.
             preset: Blender's built-in interpolation/easing preset for the progress.
@@ -285,8 +289,8 @@ class Action:
             raise ValueError("Animation duration must be positive.")
         self.effect = effect
         self.target = effect.target
-        self._value_range = value_range
-        self._name = name
+        self._value_range = self._default_value_range if value_range is None else value_range
+        self._name = self._default_name if name is None else name
         self._preset = preset
         self._track: KeyframedProperty | None = None
         self._start_time: timedelta | None = None
@@ -379,54 +383,12 @@ class Action:
 class Enter(Action):
     """Apply an effect from its initial to final progress value."""
 
-    def __init__(
-        self,
-        effect: Effect,
-        duration: TimeInput,
-        *,
-        value_range: tuple[float, float] = (0.0, 1.0),
-        name: str = "Enter",
-        preset: FCurvePreset = FCurvePreset.BEZIER,
-    ) -> None:
-        """Create an action whose effect progresses from its initial to final value.
-
-        Args:
-            effect: Effect to apply.
-            duration: Positive animation duration, in seconds, as a `timedelta`, or as a time string.
-            value_range: The effect progress at the start and end; defaults to (0, 1).
-            name: Name of the driver Empty created on placement.
-            preset: Blender's built-in interpolation/easing preset.
-
-        Raises:
-            TypeError: If the duration has an unsupported type.
-            ValueError: If the duration is not positive.
-        """
-        super().__init__(duration, effect, value_range=value_range, name=name, preset=preset)
+    _default_value_range = (0.0, 1.0)
+    _default_name = "Enter"
 
 
 class Exit(Action):
     """Apply an effect from its final to initial progress value."""
 
-    def __init__(
-        self,
-        effect: Effect,
-        duration: TimeInput,
-        *,
-        value_range: tuple[float, float] = (1.0, 0.0),
-        name: str = "Exit",
-        preset: FCurvePreset = FCurvePreset.BEZIER,
-    ) -> None:
-        """Create an action whose effect progresses from its final to initial value.
-
-        Args:
-            effect: Effect to apply.
-            duration: Positive animation duration, in seconds, as a `timedelta`, or as a time string.
-            value_range: The effect progress at the start and end; defaults to (1, 0).
-            name: Name of the driver Empty created on placement.
-            preset: Blender's built-in interpolation/easing preset.
-
-        Raises:
-            TypeError: If the duration has an unsupported type.
-            ValueError: If the duration is not positive.
-        """
-        super().__init__(duration, effect, value_range=value_range, name=name, preset=preset)
+    _default_value_range = (1.0, 0.0)
+    _default_name = "Exit"
