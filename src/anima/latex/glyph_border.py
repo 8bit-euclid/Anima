@@ -1,7 +1,7 @@
 import svgpathtools as svgtools
 
 from anima.primitives.chains import CurveLoop
-from anima.primitives.curves import Curve
+from anima.primitives.curves import THIN_LINE_WIDTH, Curve
 from anima.primitives.object import Object
 
 
@@ -36,6 +36,7 @@ class GlyphBorder(Object):
                 create_joints=False,  # Skip costly joints for glyph borders
                 name=f"{name}_loop_{i}",
             )
+            loop.width = THIN_LINE_WIDTH
             loop.bias = -1  # So that the border does not extend beyond the boundary of the body
             self._subpaths.append(loop)
             self.add_child(loop)

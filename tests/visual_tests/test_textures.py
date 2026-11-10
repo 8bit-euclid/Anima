@@ -7,7 +7,6 @@ of variants with both engines:
     uv run python -m tests.visual_tests.test_textures [output_dir]
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -17,10 +16,11 @@ from anima.globals.general import clear_scene
 from anima.materials.texture import TextureSet
 from anima.primitives.bezier_spline import BezierSpline
 from anima.primitives.polytopes import Rectangle
+from anima.scene.background import DEFAULT_BACKGROUND_TEXTURE_DIR
 from anima.utils.blender import set_viewport_shading
 from anima.utils.render import RenderSettings, configure_render, ensure_camera, render_still
 
-TEXTURE_DIR = Path(os.environ.get("ANIMA_TEXTURE_DIR", "~/Downloads/Other_Paper_vmcmfh1n_8K_surface_ms")).expanduser()
+TEXTURE_DIR = DEFAULT_BACKGROUND_TEXTURE_DIR
 PAPER_SIZE_UNITS = 2.5  # Scene units covered by one tile of the texture pack.
 
 CURVE_COLORS = ("red1", "blue1", "yellow1")

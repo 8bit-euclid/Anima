@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from math import isfinite
 from typing import cast
+
+import svgpathtools as svgtools
 
 from anima.latex.glyph import Glyph
 from anima.latex.glyph_body import MeshQuality
@@ -9,6 +12,10 @@ from anima.latex.tex_document import TeXDocument
 from anima.latex.tex_document_processor import TeXDocumentProcessor
 from anima.primitives.group import Group
 from anima.primitives.object import Object
+from anima.scene.state import get_profile
+
+# dvisvgm's coordinates are in big points (1/72 inch); TeX points are 1/72.27 inch.
+_TEX_POINT_IN_SVG_UNITS = 72 / 72.27
 
 
 class GlyphGroup(Group):
@@ -58,6 +65,8 @@ class GlyphGroup(Group):
         text: str,
         name: str = "GlyphGroup",
         mesh_quality: MeshQuality | None = None,
+        *,
+        font_size: float | None = None,
     ) -> GlyphGroup:
         """Create a GlyphGroup from a LaTeX string, with glyphs correctly positioned.
 
@@ -71,20 +80,30 @@ class GlyphGroup(Group):
             name: Name for the resulting GlyphGroup object.
             mesh_quality: Triangulation density/quality applied to every glyph
                 body in the group. Defaults to MeshQuality.minimal().
+            font_size: Base font size in TeX points. Defaults to the profile's body size.
+                LaTeX sizing commands in text can override this size.
 
         Returns:
             A GlyphGroup containing all positioned Glyph instances.
-        """
 
-        content = TeXDocument().set_defaults().add_to_body(text)
+        Raises:
+            ValueError: If font_size is not finite and positive.
+        """
+        profile = get_profile()
+        if font_size is None:
+            font_size = profile.body_font_size
+        if not isfinite(font_size) or font_size <= 0:
+            raise ValueError("font_size must be finite and positive.")
+        svg_scale = profile.tex_point_size / _TEX_POINT_IN_SVG_UNITS
+        content = TeXDocument().set_defaults().add_to_body(text, font_size=font_size)
         group = cls(name=name)
 
         with TeXDocumentProcessor(content) as (glyph_paths, positions):
             for index, (gid, (x, y), char, shape_label) in enumerate(positions, start=1):
                 glyph_name = _format_glyph_name(index, char, len(positions), shape_label)
-                glyph = Glyph(glyph_paths[gid], name=glyph_name, mesh_quality=mesh_quality)
+                glyph = Glyph(_scale_path(glyph_paths[gid], svg_scale), name=glyph_name, mesh_quality=mesh_quality)
                 glyph.text = char or ""
-                glyph.location = (x, y, 0)
+                glyph.location = (x * svg_scale, y * svg_scale, 0)
                 group.add(glyph)
 
         return group
@@ -133,6 +152,34 @@ class GlyphGroup(Group):
             The Glyph at the given index.
         """
         return self.glyphs[index]
+
+
+def _scale_path(path: svgtools.Path, factor: float) -> svgtools.Path:
+    """Scale Bézier control points directly, preserving exact shared endpoints.
+
+    Args:
+        path: The SVG path to scale.
+        factor: The scaling factor.
+
+    Returns:
+        A new SVG path with all control points scaled.
+    """
+    segments = []
+    for segment in path:
+        if isinstance(segment, svgtools.Line):
+            segments.append(svgtools.Line(segment.start * factor, segment.end * factor))
+        elif isinstance(segment, svgtools.CubicBezier):
+            segments.append(
+                svgtools.CubicBezier(
+                    segment.start * factor,
+                    segment.control1 * factor,
+                    segment.control2 * factor,
+                    segment.end * factor,
+                )
+            )
+        else:
+            raise ValueError(f"Unsupported SVG segment type: {type(segment)}")
+    return svgtools.Path(*segments)
 
 
 def _format_glyph_name(index: int, character: str | None, glyph_count: int, shape_label: str | None = None) -> str:

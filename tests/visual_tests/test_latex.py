@@ -1,5 +1,6 @@
 from anima.latex.glyph_body import MeshQuality
 from anima.latex.glyph_group import GlyphGroup
+from anima.scene.background import get_background
 
 
 def test_text_to_glyphs():
@@ -59,18 +60,20 @@ def test_text_to_glyphs():
     # GlyphGroup.from_tex_string(text, mesh_quality=MeshQuality.high())
 
     samples = (
-        ("PlainText", "Anima 012: AaBbOo"),
-        ("Radical", r"$\sqrt{x^2+y^2}$"),
-        ("Fractions", r"$\frac{1}{2}+\frac{x^2-1}{x^2+1}$"),
-        ("Operators", r"$\sum_{i=1}^{n} x_i+\int_0^1 f(x)\,dx$"),
-        ("AccentsDelimiters", r"$\left(\frac{a}{b}\right)+\hat{x}+\vec{y}$"),
+        ("PlainText", "Anima 012: AaBbOo", "black"),
+        ("Radical", r"$\sqrt{x^2+y^2}$", "red1"),
+        ("Fractions", r"$\frac{1}{2}+\frac{x^2-1}{x^2+1}$", "blue1"),
+        ("Operators", r"$\sum_{i=1}^{n} x_i+\int_0^1 f(x)\,dx$", "yellow1"),
+        ("AccentsDelimiters", r"$\left(\frac{a}{b}\right)+\hat{x}+\vec{y}$", "black"),
     )
-    row_spacing = 16
+    row_spacing = 1.8
 
-    for row, (sample_name, text) in enumerate(samples):
+    for row, (sample_name, text, color) in enumerate(samples):
         group = GlyphGroup.from_tex_string(
             text,
             name=f"Latex_{sample_name}",
             mesh_quality=MeshQuality.high(),
         )
-        group.location = (0, -row * row_spacing, 0)
+        group.location = (-8.5, 4.0 - row * row_spacing, 0)
+        group.set_palette_color("byrne_euclid", color)
+        group.inherit_textures_from(get_background(), mottling_strength=0.5)

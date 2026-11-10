@@ -12,6 +12,7 @@ from anima.animation.scheduler import Scheduler
 from anima.animation.timeline import to_frame
 from anima.diagnostics import logger
 from anima.globals.general import clear_scene, deselect_all, ebpy, hide_relationship_lines
+from anima.scene.state import get_profile
 from anima.utils.blender import (
     capture_viewport_state,
     configure_blender_panes,
@@ -30,7 +31,7 @@ def run_lesson(
     build_scene: Callable[[str, str], None],
     start_time: str = "00:00",
     end_time: str | None = None,
-    frame_rate: int = 60,
+    frame_rate: int | None = None,
     use_default_lighting: bool = True,
     render_settings: RenderSettings | None = None,
     render_request: RenderRequest | None = None,
@@ -41,7 +42,7 @@ def run_lesson(
         build_scene (Callable[[int], None]): Callable that populates the scene and returns the end frame.
         start_time (str): The time at which the lesson's animation starts.
         end_time (str): The time at which the lesson's animation ends.
-        frame_rate (int): Render frame rate.
+        frame_rate: Render frame rate. Defaults to the active scene profile.
         use_default_lighting (bool): Add a default sun light.
         render_settings (RenderSettings, optional): Render engine, samples and resolution to apply.
         render_request (RenderRequest, optional): If given (with `render_settings`), render the PNG frame
@@ -65,6 +66,8 @@ def run_lesson(
         configure_blender_panes()
 
     clear_scene()
+    if frame_rate is None:
+        frame_rate = get_profile().frame_rate
     ebpy.set_render_fps(frame_rate)
     if render_settings is not None:
         configure_render(render_settings)

@@ -80,6 +80,9 @@ def are_vectors_close(
 
 def clear_scene():
     """Clears and deletes all current screen elements."""
+    from anima.scene.state import clear_backgrounds
+
+    clear_backgrounds()
     for obj in bpy.data.objects:
         bpy.data.objects.remove(obj, do_unlink=True)
 

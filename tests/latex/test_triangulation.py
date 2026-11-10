@@ -9,7 +9,7 @@ from anima.latex.glyph_body import GlyphBody, MeshQuality
 from anima.latex.glyph_border import GlyphBorder
 from anima.latex.triangulation import get_triangulator
 from anima.utils.geometry import flatten_cubic_bezier, point_in_polygon
-from tests.test_utils import create_rect_path, create_rect_with_hole_path
+from tests.utils.test_utils import create_rect_path, create_rect_with_hole_path
 
 BACKENDS = ["earcut", "blender"]
 

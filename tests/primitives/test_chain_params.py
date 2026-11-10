@@ -7,7 +7,7 @@ import pytest
 
 from anima.primitives.chains import CurveChain, CurveLoop
 from anima.primitives.lines import Segment
-from tests.test_utils import create_rect_path
+from tests.utils.test_utils import create_rect_path
 
 TOL = 1e-6
 

@@ -8,7 +8,7 @@ from .attachments import Attachment
 from .object import Object
 
 # Line widths
-DEFAULT_LINE_WIDTH = 0.02
+DEFAULT_LINE_WIDTH = 0.015
 NORMAL_LINE_WIDTH = DEFAULT_LINE_WIDTH
 THIN_LINE_WIDTH = 0.5 * NORMAL_LINE_WIDTH
 THICK_LINE_WIDTH = 1.5 * NORMAL_LINE_WIDTH

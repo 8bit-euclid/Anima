@@ -371,5 +371,6 @@ def _load_image(path: Path, colorspace: str) -> bpy.types.Image:
     if not path.is_file():
         raise FileNotFoundError(f"Texture map not found: {path}")
     img = bpy.data.images.load(str(path), check_existing=True)
-    img.colorspace_settings.name = colorspace
+    if img.colorspace_settings.name != colorspace:
+        img.colorspace_settings.name = colorspace
     return img

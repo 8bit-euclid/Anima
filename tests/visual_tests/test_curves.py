@@ -12,10 +12,10 @@ from anima.primitives.endcaps import ArrowEndcap, PointEndcap, RoundEndcap
 from anima.primitives.group import Group
 from anima.primitives.lines import Segment
 from anima.primitives.points import Point
-from anima.primitives.polytopes import Rectangle
+from anima.scene.background import get_background
 
 
-def test_bezier_splines(duration: timedelta, color: str | None = None, paper: Rectangle | None = None):
+def test_bezier_splines(duration: timedelta, color: str | None = None):
     root = Group(name="BezierSplines")
     bspline = BezierSpline([(0, 0), (3, 1), (7, -1)])
     # bspline = BezierSpline([(0, 0), (1, 0), (7, 0)])
@@ -51,12 +51,9 @@ def test_bezier_splines(duration: timedelta, color: str | None = None, paper: Re
     if color is not None:
         bspline.set_palette_color("byrne_euclid", color)
         bcurve.set_palette_color("byrne_euclid", color)
-    if paper is not None:
-        Group([bspline, bcurve, p1, p2], name=f"{root.name}_overlays", parent=root).inherit_textures_from(
-            paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
-        )
-    else:
-        root.add(bspline, bcurve, p1, p2)
+    Group([bspline, bcurve, p1, p2], name=f"{root.name}_overlays", parent=root).inherit_textures_from(
+        get_background(), albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
+    )
 
     sched = Scheduler()
 
@@ -76,7 +73,7 @@ def test_bezier_splines(duration: timedelta, color: str | None = None, paper: Re
     sched.add_callback(update, duration=duration, name="BezierSplineProgress", with_previous=True)
 
 
-def test_curve_joints(duration: timedelta, color: str | None = None, paper: Rectangle | None = None):
+def test_curve_joints(duration: timedelta, color: str | None = None):
     root = Group(name="CurveJoints")
     c1 = Segment((0.5, -1), (1, 0))
     # c1 = BezierCurve((0, -1), (1, 0))
@@ -118,12 +115,9 @@ def test_curve_joints(duration: timedelta, color: str | None = None, paper: Rect
 
     p = Point()
     # chain.bias = 1
-    if paper is not None:
-        Group([chain, p], name=f"{root.name}_overlays", parent=root).inherit_textures_from(
-            paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
-        )
-    else:
-        root.add(chain, p)
+    Group([chain, p], name=f"{root.name}_overlays", parent=root).inherit_textures_from(
+        get_background(), albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
+    )
 
     pf = profiler
     sched = Scheduler()
@@ -172,7 +166,7 @@ def test_curve_joints(duration: timedelta, color: str | None = None, paper: Rect
     sched.add_callback(update, duration=duration, name="CurveJointsProgress", with_previous=True)
 
 
-def test_dashed_curves(duration: timedelta, color: str | None = None, paper: Rectangle | None = None) -> None:
+def test_dashed_curves(duration: timedelta, color: str | None = None) -> None:
     root = Group(name="DashedCurves")
     width = 1.6 * DEFAULT_LINE_WIDTH
 
@@ -201,8 +195,7 @@ def test_dashed_curves(duration: timedelta, color: str | None = None, paper: Rec
             emission_strength=0.0,
         )
 
-    if paper is not None:
-        dashed2.inherit_textures_from(paper, albedo_mode="modulate", mottling_strength=0.5, ao_strength=1)
+    dashed2.inherit_textures_from(get_background(), albedo_mode="modulate", mottling_strength=0.5, ao_strength=1)
 
     gap2 = dashed2._gap_len / dashed2._length
     dash2 = dashed2._dash_len / dashed2._length

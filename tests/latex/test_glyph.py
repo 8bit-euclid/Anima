@@ -1,19 +1,23 @@
 """Unit tests for Glyph, GlyphBorder, GlyphBody, and GlyphGroup classes."""
 
+from dataclasses import replace
 from unittest.mock import MagicMock
 
 import pytest
+import svgpathtools as svgtools
 
 from anima.latex.glyph import Glyph, GlyphBBox
 from anima.latex.glyph_body import GlyphBody
 from anima.latex.glyph_border import GlyphBorder
-from anima.latex.glyph_group import GlyphGroup, _format_glyph_name
+from anima.latex.glyph_group import GlyphGroup, _format_glyph_name, _scale_path
 from anima.latex.tex_object import TeXObject
 from anima.primitives.chains import CurveLoop
 from anima.primitives.group import Group
 from anima.primitives.mesh import Mesh
 from anima.primitives.object import Object
-from tests.test_utils import create_rect_path, create_rect_with_hole_path
+from anima.scene.profile import FRAME_16X9_V1
+from anima.scene.state import reset_profile, set_profile
+from tests.utils.test_utils import create_rect_path, create_rect_with_hole_path
 
 
 class TestGlyphBBox:
@@ -194,12 +198,66 @@ class TestGlyphGroup:
         assert [glyph.name for glyph in group] == ["01-A", "02-rule", "03-summationtext"]
         assert [glyph.text for glyph in group] == ["A", "", "\ue050"]
         assert group.text == "A\ue050"
+        factor = FRAME_16X9_V1.tex_point_size / (72 / 72.27)
         assert [tuple(glyph.location) for glyph in group] == [
-            pytest.approx((1.0, 2.0, 0.0)),
+            pytest.approx((factor, 2 * factor, 0.0)),
             pytest.approx((0.0, 0.0, 0.0)),
-            pytest.approx((3.0, 4.0, 0.0)),
+            pytest.approx((3 * factor, 4 * factor, 0.0)),
         ]
+        assert group[0].bbox.x_max == pytest.approx(self.path1.bbox()[1] * factor)
+        assert group[1].bbox.x_min == pytest.approx(self.path2.bbox()[0] * factor)
+        assert tuple(group.scale) == pytest.approx((1, 1, 1))
         assert all(glyph in group.children for glyph in group)
+
+    def test_from_tex_string_typesets_font_size_and_uses_fixed_scene_conversion(self, monkeypatch):
+        processor = MagicMock()
+        processor.return_value.__enter__.return_value = (
+            {"a": self.path1},
+            [("a", (3, 4), "A", None)],
+        )
+        monkeypatch.setattr("anima.latex.glyph_group.TeXDocumentProcessor", processor)
+        small = GlyphGroup.from_tex_string("A", font_size=7.5)
+        large = GlyphGroup.from_tex_string("A", font_size=15)
+        small_document = str(processor.call_args_list[0].args[0])
+        large_document = str(processor.call_args_list[1].args[0])
+        assert r"\fontsize{7.5}{9.0}\selectfont" in small_document
+        assert r"\fontsize{15}{18.0}\selectfont" in large_document
+        assert tuple(large[0].location) == pytest.approx(tuple(small[0].location))
+        assert large[0].bbox.x_max == pytest.approx(small[0].bbox.x_max)
+
+    def test_from_tex_string_uses_supplied_profile(self, monkeypatch):
+        processor = MagicMock()
+        processor.return_value.__enter__.return_value = ({"a": self.path1}, [("a", (3, 4), "A", None)])
+        monkeypatch.setattr("anima.latex.glyph_group.TeXDocumentProcessor", processor)
+        profile = replace(FRAME_16X9_V1, body_font_size=12.5, tex_point_size=0.16)
+
+        set_profile(profile)
+        try:
+            group = GlyphGroup.from_tex_string("A")
+            assert r"\fontsize{12.5}{15.0}\selectfont" in str(processor.call_args.args[0])
+            factor = profile.tex_point_size / (72 / 72.27)
+            assert tuple(group[0].location) == pytest.approx((3 * factor, 4 * factor, 0))
+            GlyphGroup.from_tex_string("A", font_size=20)
+            assert r"\fontsize{20}{24.0}\selectfont" in str(processor.call_args.args[0])
+        finally:
+            reset_profile()
+
+    def test_scale_path_preserves_exact_closure_for_cubic_curves(self):
+        start = complex(6.8242, -3.3276)
+        path = svgtools.Path(
+            svgtools.CubicBezier(start, 5.1 - 4.2j, 3.2 - 2.4j, 2.3 - 1.7j),
+            svgtools.CubicBezier(2.3 - 1.7j, 1.7 - 0.1j, 4.9 - 5.2j, start),
+        )
+        scaled = _scale_path(path, 0.12045)
+        assert scaled.isclosed()
+        assert scaled[0].end == scaled[1].start
+        assert scaled[0].start == scaled[1].end
+        assert scaled[0].control1 == path[0].control1 * 0.12045
+
+    @pytest.mark.parametrize("font_size", [0, -1, float("inf"), float("nan")])
+    def test_from_tex_string_rejects_invalid_font_size(self, font_size):
+        with pytest.raises(ValueError, match="font_size"):
+            GlyphGroup.from_tex_string("A", font_size=font_size)
 
     def setup_method(self):
         """Set up test fixtures."""

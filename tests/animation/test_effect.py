@@ -13,7 +13,7 @@ from anima.primitives.chains import CurveLoop
 from anima.primitives.group import Group
 from anima.primitives.lines import Segment
 from anima.primitives.mesh import Mesh
-from tests.test_utils import create_rect_path, create_rect_with_hole_path
+from tests.utils.test_utils import create_rect_path, create_rect_with_hole_path
 
 
 def shown(obj) -> bool:

@@ -1,8 +1,11 @@
 """Tests for PBR texture sets and their application to materials."""
 
+from types import SimpleNamespace
+
 import bpy
 import pytest
 
+import anima.materials.texture as texture_module
 from anima.materials.texture import (
     NODE_PREFIX,
     TextureSet,
@@ -56,6 +59,48 @@ def test_from_directory_detects_maps(texture_dir):
 def test_from_directory_missing_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         TextureSet.from_directory(tmp_path / "nope")
+
+
+def test_load_image_only_changes_colorspace_when_needed(tmp_path, monkeypatch):
+    class ColorSpace:
+        def __init__(self):
+            self.value = "sRGB"
+            self.assignments = []
+
+        @property
+        def name(self):
+            return self.value
+
+        @name.setter
+        def name(self, value):
+            self.assignments.append(value)
+            self.value = value
+
+    class Images:
+        def __init__(self, image):
+            self.image = image
+            self.calls = []
+
+        def load(self, path, *, check_existing):
+            self.calls.append((path, check_existing))
+            return self.image
+
+    path = tmp_path / "texture.png"
+    path.touch()
+    colorspace = ColorSpace()
+    image = SimpleNamespace(colorspace_settings=colorspace)
+    images = Images(image)
+    monkeypatch.setattr(texture_module, "bpy", SimpleNamespace(data=SimpleNamespace(images=images)))
+
+    assert texture_module._load_image(path, "sRGB") is image
+    assert texture_module._load_image(path, "Non-Color") is image
+    assert texture_module._load_image(path, "Non-Color") is image
+    assert texture_module._load_image(path, "sRGB") is image
+    assert colorspace.assignments == ["Non-Color", "sRGB"]
+    assert images.calls == [(str(path), True)] * 4
+    path.unlink()
+    with pytest.raises(FileNotFoundError, match="Texture map not found"):
+        texture_module._load_image(path, "sRGB")
 
 
 def test_replace_links_all_maps_with_correct_colorspaces(texture_dir):

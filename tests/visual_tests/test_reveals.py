@@ -9,6 +9,7 @@ from anima.latex.glyph_body import MeshQuality
 from anima.latex.glyph_group import GlyphGroup
 from anima.primitives.group import Group
 from anima.primitives.lines import Segment
+from anima.scene.background import get_background
 
 
 def test_latex_write_on(duration: timedelta):
@@ -17,9 +18,13 @@ def test_latex_write_on(duration: timedelta):
     Schedules at the scheduler's cursor, so it runs after anything already scheduled.
     """
     group = GlyphGroup.from_tex_string("o08AaB", name="WriteOn", mesh_quality=MeshQuality.high())
+    group.translate(y=2)
+    for index, glyph in enumerate(group):
+        glyph.set_palette_color("byrne_euclid", ("red1", "blue1", "yellow1")[index % 3])
+    group.inherit_textures_from(get_background(), mottling_strength=0.5)
     effect = Stagger(group, child_effect=glyph_write_on)
     scheduler = Scheduler()
-    scheduler.add_action(Enter(effect, duration / 2, preset=FCurvePreset.EASE_IN_OUT))
+    scheduler.add_action(Enter(effect, duration / 2, preset=FCurvePreset.EASE_IN_OUT), with_previous=True)
     scheduler.wait(duration / 8)
     scheduler.add_action(
         Exit(Stagger(group, child_effect=glyph_write_on), duration * 3 / 8, preset=FCurvePreset.EASE_IN_OUT)
@@ -39,7 +44,9 @@ def test_curves_reveal(duration: timedelta):
         xs[id(bar)] = x
         bars.append(bar)
     group = Group(bars, name="Bars")
-    group.location = (0, -10, 0)
+    group.location = (0, -4.5, 0)
+    group.set_palette_color("byrne_euclid", "blue1")
+    group.inherit_textures_from(get_background(), mottling_strength=0.5)
     effect = Stagger(group, lag_ratio=0.3, order=by_key(lambda bar: abs(xs[id(bar)])), child_effect=Draw)
 
     sched = Scheduler()

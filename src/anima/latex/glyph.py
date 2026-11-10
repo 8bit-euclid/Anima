@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class GlyphBBox:
-    """Bounding box for a glyph. Units are in SVG points."""
+    """Bounding box for a glyph in its local path coordinates."""
 
     x_min: float = 0
     x_max: float = 0
