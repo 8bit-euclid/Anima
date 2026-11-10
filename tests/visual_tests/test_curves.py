@@ -5,8 +5,8 @@ from anima.animation.scheduler import Scheduler
 from anima.diagnostics import profiler
 from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.bezier_spline import BezierSpline
-from anima.primitives.chains import CurveChain
-from anima.primitives.curves import DEFAULT_LINE_WIDTH
+from anima.primitives.chains import CurveChain, CurveLoop
+from anima.primitives.curves import DEFAULT_LINE_WIDTH, NORMAL_LINE_WIDTH
 from anima.primitives.dashed_curves import DashedCurve
 from anima.primitives.endcaps import ArrowEndcap, PointEndcap, RoundEndcap
 from anima.primitives.group import Group
@@ -164,6 +164,34 @@ def test_curve_joints(duration: timedelta, color: str | None = None):
         p.location = chain.point(t1)
 
     sched.add_callback(update, duration=duration, name="CurveJointsProgress", with_previous=True)
+
+
+def test_curve_loop(duration: timedelta, color: str | None = None) -> None:
+    root = Group(name="CurveLoop")
+    curves = [
+        Segment((-1, -1), (1, -1)),
+        Segment((1, -1), (1, 1)),
+        Segment((1, 1), (-1, 1)),
+        Segment((-1, 1), (-1, -1)),
+    ]
+    loop = CurveLoop(curves, width=NORMAL_LINE_WIDTH, create_joints=True)
+    point = Point(radius=NORMAL_LINE_WIDTH * 1.2)
+    if color is not None:
+        loop.set_palette_color("byrne_euclid", color)
+        point.set_palette_color("byrne_euclid", "yellow1")
+    Group([loop, point], name=f"{root.name}_overlays", parent=root).inherit_textures_from(
+        get_background(), albedo_mode="modulate", mottling_strength=0.5, ao_strength=1
+    ).translate(y=3.5)
+
+    sched = Scheduler()
+
+    def update(u: float) -> None:
+        start = u * 2.0
+        loop.param_0 = start
+        loop.param_1 = start + 0.3
+        point.location = loop.point(start + 0.3)
+
+    sched.add_callback(update, duration=duration, name="CurveLoopProgress", with_previous=True)
 
 
 def test_dashed_curves(duration: timedelta, color: str | None = None) -> None:

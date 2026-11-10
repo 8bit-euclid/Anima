@@ -18,6 +18,28 @@ def make_chain(create_joints: bool = False) -> CurveChain:
     return CurveChain(curves, create_joints=create_joints, width=0.1)
 
 
+def make_loop() -> CurveLoop:
+    """Build a square loop from four unit-length segments."""
+    curves = [
+        Segment((0, 0), (1, 0)),
+        Segment((1, 0), (1, 1)),
+        Segment((1, 1), (0, 1)),
+        Segment((0, 1), (0, 0)),
+    ]
+    return CurveLoop(curves, create_joints=False, width=0.1)
+
+
+def make_loop_with_joints() -> CurveLoop:
+    """Build a square loop with a joint at every corner, including the closure."""
+    curves = [
+        Segment((0, 0), (1, 0)),
+        Segment((1, 0), (1, 1)),
+        Segment((1, 1), (0, 1)),
+        Segment((0, 1), (0, 0)),
+    ]
+    return CurveLoop(curves, create_joints=True, width=0.1)
+
+
 def bevel_factors(chain: CurveChain, end_idx: int) -> list[float]:
     """Return the Blender bevel factor of each segment (joints are meshes and have none)."""
     attr = f"bevel_factor_{'end' if end_idx else 'start'}"
@@ -152,3 +174,70 @@ class TestLoopParamPropagation:
             loop.param_1 = rng.choice([0.0, 1.0, 0.25, 0.5, rng.random()])
             loop.param_0 = rng.random() * 0.2
         loop.validate_param_state()
+
+    def test_unwrapped_params_draw_across_the_seam(self):
+        loop = make_loop()
+
+        loop.param_0 = 0.8
+        loop.param_1 = 1.2
+
+        assert loop.param_0 == 0.8
+        assert loop.param_1 == 1.2
+        assert child_params(loop, 0) == pytest.approx([0.0, 0.0, 0.0, 0.2], abs=TOL)
+        assert child_params(loop, 1) == pytest.approx([0.8, 0.0, 0.0, 1.0], abs=TOL)
+        assert [curve.object.data.bevel_factor_start for curve in loop.curves] == pytest.approx(
+            [0.0, 0.0, 0.0, 0.2], abs=TOL
+        )
+        assert [curve.object.data.bevel_factor_end for curve in loop.curves] == pytest.approx(
+            [0.8, 0.0, 0.0, 1.0], abs=TOL
+        )
+
+    def test_negative_and_multi_turn_params_wrap(self):
+        loop = make_loop()
+
+        loop.param_0 = -0.2
+        loop.param_1 = 0.2
+        expected_start = child_params(loop, 0)
+        expected_end = child_params(loop, 1)
+        assert expected_start == pytest.approx([0.0, 0.0, 0.0, 0.2], abs=TOL)
+        assert expected_end == pytest.approx([0.8, 0.0, 0.0, 1.0], abs=TOL)
+
+        loop.param_0 = 1.8
+        loop.param_1 = 2.2
+        assert child_params(loop, 0) == pytest.approx(expected_start, abs=TOL)
+        assert child_params(loop, 1) == pytest.approx(expected_end, abs=TOL)
+
+    def test_loop_points_wrap_and_debug_validation_tracks_wrapped_params(self):
+        loop = make_loop()
+        loop.debug_on()
+
+        assert tuple(loop.point(1.25)) == pytest.approx(tuple(loop.point(0.25)))
+        loop.param_0 = 0.8
+        loop.param_1 = 1.2
+        loop.validate_param_state()
+
+    def test_joints_are_visible_only_when_the_segment_crosses_their_corner(self):
+        loop = make_loop_with_joints()
+
+        assert len(loop._all_entities) == 2 * len(loop.curves)
+        assert len(loop._joints) == len(loop.curves)
+
+        loop.param_0 = 0.05
+        loop.param_1 = 0.2
+        assert [len(joint.object.data.polygons) for joint in loop._joints] == [0, 0, 0, 0]
+
+        loop.param_1 = 0.3
+        assert [len(joint.object.data.polygons) > 0 for joint in loop._joints] == [True, False, False, False]
+
+        loop.param_0 = 0.8
+        loop.param_1 = 1.2
+        assert [len(joint.object.data.polygons) > 0 for joint in loop._joints] == [False, False, False, True]
+
+        loop.param_0 = -0.2
+        loop.param_1 = 0.2
+        assert [len(joint.object.data.polygons) > 0 for joint in loop._joints] == [False, False, False, True]
+
+        loop.set_width(0.2)
+        assert [len(joint.object.data.polygons) > 0 for joint in loop._joints] == [False, False, False, True]
+        loop.set_bias(0.0)
+        assert [len(joint.object.data.polygons) > 0 for joint in loop._joints] == [False, False, False, True]

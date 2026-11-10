@@ -306,7 +306,8 @@ class CurveLoop(CurveChain):
 
     Used for representing closed paths like glyph subpath borders. Inherits all
     functionality from CurveChain but validates closure and optionally adds a
-    closing joint between the last and first curves.
+    closing joint between the last and first curves. Its endpoint parameters may
+    be unwrapped beyond [0, 1]; the visible interval then wraps around the loop.
     """
 
     def __init__(
@@ -346,8 +347,144 @@ class CurveLoop(CurveChain):
         # Add closing joint between last and first curve if requested
         if create_joints and len(curves) > 1:
             closing_joint = RoundJoint(curves[-1], curves[0])
+            closing_joint.set_width(width)
+            closing_joint.set_bias(bias)
             self._joints.append(closing_joint)
             self.add_child(closing_joint)
+            self._curve_0_idx = 0
+            self._curve_1_idx = len(self._all_entities) - 1
+            self._update_length()
+        self._apply_loop_params()
+
+    def set_width(self, width: float):
+        """Set loop width and restore joint visibility for the current parameter interval."""
+        super().set_width(width)
+        self._apply_loop_params()
+
+    def set_bias(self, bias: float):
+        """Set loop bias and restore joint visibility for the current parameter interval."""
+        super().set_bias(bias)
+        self._apply_loop_params()
+
+    @property
+    def _all_entities(self) -> list[type[Curve]]:
+        """Return loop curves interleaved with their joints, including the closing joint."""
+        entities = []
+        for i, curve in enumerate(self._curves):
+            entities.append(curve)
+            if i < len(self._joints):
+                entities.append(self._joints[i])
+        return entities
+
+    def _compute_curve_info(self, param: float) -> tuple[type[Curve], int, float]:
+        """Map any parameter to a location on the closed loop, wrapping by one turn."""
+        wrapped_param = param if 0.0 < param <= 1.0 else param % 1.0
+        return super()._compute_curve_info(wrapped_param)
+
+    def _set_param(self, param: float, end_idx: int):
+        """Set an unwrapped endpoint and update the loop's visible curve segment."""
+        Curve._set_param(self, param, end_idx)
+        _, idx, _ = self._compute_curve_info(param)
+        setattr(self, f"_curve_{end_idx}_idx", idx)
+        self._apply_loop_params()
+        if self.debug():
+            self.validate_param_state()
+
+    def _loop_curve_params(self) -> dict[int, tuple[float, float]]:
+        """Return each curve's local visible interval for the current loop endpoints."""
+        curves = self._curves
+        if not curves:
+            return {}
+
+        total_length = sum(curve._length for curve in curves)
+        if total_length <= 0.0:
+            return {i: (0.0, 0.0) for i in range(len(curves))}
+
+        delta = self._param_1 - self._param_0
+        if delta == 0.0:
+            span = 0.0
+        elif abs(delta) >= 1.0:
+            span = 1.0
+        else:
+            span = delta % 1.0
+
+        if span == 0.0:
+            return {i: (0.0, 0.0) for i in range(len(curves))}
+        if span == 1.0:
+            return {i: (0.0, 1.0) for i in range(len(curves))}
+
+        start = self._param_0 % 1.0
+        result = {}
+        curve_start = 0.0
+        for i, curve in enumerate(curves):
+            curve_end = curve_start + curve._length / total_length
+            overlaps = []
+            for offset in (-1.0, 0.0):
+                overlap_start = max(curve_start, start + offset)
+                overlap_end = min(curve_end, start + span + offset)
+                if overlap_end > overlap_start:
+                    overlaps.append(
+                        (
+                            (overlap_start - curve_start) * total_length / curve._length,
+                            (overlap_end - curve_start) * total_length / curve._length,
+                        )
+                    )
+
+            if overlaps:
+                result[i] = (max(0.0, overlaps[0][0]), min(1.0, overlaps[-1][1]))
+            else:
+                result[i] = (0.0, 0.0)
+            curve_start = curve_end
+        return result
+
+    def _loop_joint_visibility(self) -> list[bool]:
+        """Return whether each joint's corner lies inside the visible loop interval."""
+        curves = self._curves
+        if not self._joints or not curves:
+            return []
+
+        delta = self._param_1 - self._param_0
+        if delta == 0.0:
+            return [False] * len(self._joints)
+        if abs(delta) >= 1.0:
+            return [True] * len(self._joints)
+
+        span = delta % 1.0
+        total_length = sum(curve._length for curve in curves)
+        if total_length <= 0.0:
+            return [False] * len(self._joints)
+        start = self._param_0 % 1.0
+        visibility = []
+        boundary = 0.0
+        for i in range(len(self._joints)):
+            boundary += curves[i]._length / total_length
+            distance = (boundary - start) % 1.0
+            visibility.append(distance <= span or math.isclose(distance, span, abs_tol=1e-9))
+        return visibility
+
+    def _apply_loop_params(self) -> None:
+        """Apply the visible interval to child curves and joints."""
+        params = self._loop_curve_params()
+        for i, curve in enumerate(self._curves):
+            start, end = params[i]
+            curve._set_param(start, 0)
+            curve._set_param(end, 1)
+        for joint, visible in zip(self._joints, self._loop_joint_visibility()):
+            face_count = len(joint.object.data.polygons)
+            if visible and face_count != len(joint._frame_faces):
+                joint.set_mesh(joint._frame_points, joint._frame_faces)
+            elif not visible and face_count:
+                joint.set_mesh([], [])
+
+    def validate_param_state(self, tol: float = 1e-6) -> None:
+        """Assert that child curve parameters match the loop's wrapped visible interval."""
+        for i, curve in enumerate(self._curves):
+            expected_start, expected_end = self._loop_curve_params()[i]
+            for end_idx, expected in enumerate((expected_start, expected_end)):
+                actual = getattr(curve, f"_param_{end_idx}")
+                assert abs(actual - expected) <= tol, (
+                    f"{self.name}: child {i} has param_{end_idx}={actual}, expected {expected}."
+                )
 
     @property
     def closed(self) -> bool:

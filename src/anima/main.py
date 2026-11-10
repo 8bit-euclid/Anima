@@ -13,7 +13,12 @@ for path in paths_to_add:
         sys.path.insert(0, path)
 
 # Now import modules as usual
-from tests.visual_tests.test_curves import test_bezier_splines, test_curve_joints, test_dashed_curves
+from tests.visual_tests.test_curves import (
+    test_bezier_splines,
+    test_curve_joints,
+    test_curve_loop,
+    test_dashed_curves,
+)
 from tests.visual_tests.test_latex import test_text_to_glyphs
 from tests.visual_tests.test_reveals import test_curves_reveal, test_latex_write_on
 from tests.visual_tests.test_textures import render_gallery, test_paper_textures
@@ -49,6 +54,7 @@ def build_scene(start_time: str, end_time: str):
     half = duration / 2
     test_bezier_splines(half, color="red1")
     test_curve_joints(half, color="yellow1")
+    test_curve_loop(half, color="blue1")
     test_dashed_curves(half, color="blue1")
     test_curves_reveal(half)
     test_text_to_glyphs()
