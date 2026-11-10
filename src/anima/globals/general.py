@@ -79,12 +79,11 @@ def are_vectors_close(
 
 
 def clear_scene():
-    """Clears and deletes all current screen elements."""
+    """Delete all Blender objects and forget registered backgrounds."""
     from anima.scene.state import clear_backgrounds
 
     clear_backgrounds()
-    for obj in bpy.data.objects:
-        bpy.data.objects.remove(obj, do_unlink=True)
+    bpy.data.batch_remove(ids=tuple(bpy.data.objects))
 
 
 def create_mesh(name: str, verts, faces=None, edges=None):

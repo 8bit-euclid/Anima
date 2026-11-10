@@ -30,7 +30,7 @@ def test_profile_is_scoped_to_scene_and_survives_reload_and_clear(monkeypatch):
         set_profile(profile)
         assert get_profile() == profile
         assert importlib.reload(state).get_profile() == profile
-        monkeypatch.setattr(general, "bpy", SimpleNamespace(data=SimpleNamespace(objects=[])))
+        monkeypatch.setattr(general, "bpy", SimpleNamespace(data=SimpleNamespace(objects=[], batch_remove=MagicMock())))
         general.clear_scene()
         assert get_profile() == profile
         window.scene = scene_b

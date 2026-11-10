@@ -212,7 +212,9 @@ def test_clear_scene_forgets_active_background(monkeypatch):
 
     background = Rectangle(1, 1, name="pytest_background")
     register_background(background)
-    monkeypatch.setattr(general, "bpy", SimpleNamespace(data=SimpleNamespace(objects=[])))
+    monkeypatch.setattr(
+        general, "bpy", SimpleNamespace(data=SimpleNamespace(objects=[], batch_remove=lambda **_: None))
+    )
     try:
         general.clear_scene()
         with pytest.raises(RuntimeError, match="No active background"):
