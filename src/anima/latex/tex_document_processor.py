@@ -2,6 +2,7 @@ import re
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
 
@@ -46,11 +47,14 @@ class TeXDocumentProcessor:
         self._temp_dir = tempfile.TemporaryDirectory()
         self._tex_path = Path(self._temp_dir.name)
 
-        # Keep outline geometry and font/text metadata in separate SVG outputs.
-        self._convert_tex_to_dvi()
-        self._convert_dvi_to_svg()
-
-        return self._extract_glyph_data()
+        try:
+            # Keep outline geometry and font/text metadata in separate SVG outputs.
+            self._convert_tex_to_dvi()
+            self._convert_dvi_to_svg()
+            return self._extract_glyph_data()
+        except BaseException:
+            self._temp_dir.cleanup()
+            raise
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Cleanup temporary files after processing."""
@@ -89,7 +93,7 @@ class TeXDocumentProcessor:
             raise RuntimeError("LaTeX compilation failed.") from err
 
     def _convert_dvi_to_svg(self):
-        """Convert the DVI file to SVG format using dvisvgm.
+        """Convert the DVI to outline and font SVGs concurrently, waiting for both.
 
         Raises:
             RuntimeError: If the DVI to SVG conversion fails.
@@ -113,23 +117,22 @@ class TeXDocumentProcessor:
             (self._get_svg_path(), ["--no-fonts"]),
             (self._get_svg_path("_text"), []),
         )
-        for svg_file, options in outputs:
-            try:
-                res = run_proc(
-                    [
-                        cmd,
-                        *options,
-                        "--exact-bbox",
-                        "--precision=6",
-                        str(dvi_file),
-                        "-o",
-                        str(svg_file),
-                    ]
-                )
-                print_logs(cmd, res)
-            except subprocess.CalledProcessError as err:
-                print_logs(cmd, err)
-                raise RuntimeError("DVI to SVG conversion failed.") from err
+        commands = [
+            [cmd, *options, "--exact-bbox", "--precision=6", str(dvi_file), "-o", str(svg_file)]
+            for svg_file, options in outputs
+        ]
+        failures = []
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [executor.submit(run_proc, command) for command in commands]
+            for (svg_file, _), future in zip(outputs, futures):
+                try:
+                    print_logs(cmd, future.result())
+                except subprocess.CalledProcessError as err:
+                    print_logs(cmd, err)
+                    failures.append((svg_file, err))
+        if failures:
+            names = ", ".join(path.name for path, _ in failures)
+            raise RuntimeError(f"DVI to SVG conversion failed for: {names}.") from failures[0][1]
 
     def _get_svg_file(self) -> Path:
         """Get the SVG file generated from the LaTeX document.
