@@ -7,6 +7,8 @@ UVs, and keeps doing so while it moves or animates. This assumes the textured su
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, fields
 from functools import cache
 from pathlib import Path
@@ -23,6 +25,8 @@ _MEAN_SAMPLE_SIZE = 64  # Side length of the downscaled copy used to estimate th
 
 NODE_PREFIX = "anima_texture_"
 NATIVE_COLOR_NODE = NODE_PREFIX + "native_color"
+TEXTURE_GROUP_NODE = NODE_PREFIX + "group"
+_GROUP_VERSION = 1
 
 # Filename suffixes (case-insensitive, without extension) recognised by TextureSet.from_directory().
 _SUFFIXES = {
@@ -122,7 +126,7 @@ def apply_texture_set(
     bump_distance: float = 0.01,
     normal_strength: float = 1.0,
 ) -> None:
-    """Build the texture node graph on a material's Principled BSDF, replacing any earlier one.
+    """Apply a shared texture node group to a material, replacing any earlier texture graph.
 
     Args:
         mat: The material to texture.
@@ -143,19 +147,109 @@ def apply_texture_set(
         bump_distance: Distance (scene units) a full-intensity height value represents for bump shading.
         normal_strength: Strength of the normal map.
     """
-    remove_texture_nodes(mat)
     tree = mat.node_tree
     if tree is None:
         return
     bsdf = tree.nodes.get("Principled BSDF")
     if bsdf is None:
         return
+
+    options = {
+        "albedo_mode": albedo_mode,
+        "albedo_strength": albedo_strength,
+        "mottling_strength": mottling_strength,
+        "ao_strength": ao_strength,
+        "use_ao": use_ao,
+        "use_transmission": use_transmission,
+        "bump_strength": bump_strength,
+        "bump_distance": bump_distance,
+        "normal_strength": normal_strength,
+    }
+    used_maps = {
+        key: str(Path(path).resolve())
+        for key, path in textures.maps().items()
+        if (key != "albedo" or albedo_mode != "ignore")
+        and (key != "ao" or (use_ao and albedo_mode != "ignore"))
+        and (key != "transmission" or use_transmission)
+    }
+    for path in used_maps.values():
+        if not Path(path).is_file():
+            raise FileNotFoundError(f"Texture map not found: {path}")
+    signature = json.dumps(
+        {"version": _GROUP_VERSION, "maps": used_maps, "size": textures.physical_size, "options": options},
+        sort_keys=True,
+    )
+    name = "AnimaTexture_" + hashlib.sha256(signature.encode()).hexdigest()[:40]
+    group = bpy.data.node_groups.get(name)
+    if group is not None and group.get("anima_texture_signature") != signature:
+        raise RuntimeError(f"Texture node group name is already in use: {name}")
+    if group is not None:
+        for key, path in used_maps.items():
+            image_node = group.nodes.get(NODE_PREFIX + key)
+            if image_node is None or image_node.type != "TEX_IMAGE":
+                raise RuntimeError(f"Texture node group {name} is missing the {key} image node.")
+            if image_node.image is None:
+                image_node.image = _load_image(Path(path), "sRGB" if key == "albedo" else "Non-Color")
+    if group is None:
+        group = bpy.data.node_groups.new(name, "ShaderNodeTree")
+        complete = False
+        try:
+            _build_texture_group(
+                group,
+                textures,
+                albedo_mode=albedo_mode,
+                albedo_strength=albedo_strength,
+                mottling_strength=mottling_strength,
+                ao_strength=ao_strength,
+                use_ao=use_ao,
+                use_transmission=use_transmission,
+                bump_strength=bump_strength,
+                bump_distance=bump_distance,
+                normal_strength=normal_strength,
+            )
+            group["anima_texture_signature"] = signature
+            complete = True
+        finally:
+            if not complete:
+                bpy.data.node_groups.remove(group)
+
+    remove_texture_nodes(mat)
+    node = tree.nodes.new("ShaderNodeGroup")
+    node.name = node.label = TEXTURE_GROUP_NODE
+    node.node_tree = group
+    node.inputs["Native Color"].default_value = tuple(mat.diffuse_color)
+    for output in node.outputs:
+        tree.links.new(output, bsdf.inputs[output.name])
+
+
+def _build_texture_group(
+    tree: bpy.types.ShaderNodeTree,
+    textures: TextureSet,
+    *,
+    albedo_mode: AlbedoMode,
+    albedo_strength: float,
+    mottling_strength: float,
+    ao_strength: float,
+    use_ao: bool,
+    use_transmission: bool,
+    bump_strength: float,
+    bump_distance: float,
+    normal_strength: float,
+) -> None:
+    """Build a reusable texture graph with an independent native-color input."""
+    tree.interface.new_socket(name="Native Color", in_out="INPUT", socket_type="NodeSocketColor")
     nodes, links = tree.nodes, tree.links
+    group_input = nodes.new("NodeGroupInput")
+    group_output = nodes.new("NodeGroupOutput")
+
+    def output(name: str, socket: bpy.types.NodeSocket, socket_type: str) -> None:
+        tree.interface.new_socket(name=name, in_out="OUTPUT", socket_type=socket_type)
+        links.new(socket, group_output.inputs[name])
 
     def new(kind: str, name: str, x: float, y: float) -> bpy.types.Node:
         node = nodes.new(kind)
         node.name = node.label = NODE_PREFIX + name
-        node.location = (bsdf.location.x - x, bsdf.location.y + y)
+        node.location = (-x, y)
         return node
 
     position = new("ShaderNodeNewGeometry", "position", 1400, 0)
@@ -178,8 +272,6 @@ def apply_texture_set(
     if albedo is not None:
         color_out = albedo.outputs["Color"]
         if albedo_mode == "modulate":
-            native = new("ShaderNodeRGB", "native_color", 900, 900)
-            native.outputs[0].default_value = tuple(mat.diffuse_color)
             luminance = new("ShaderNodeRGBToBW", "luminance", 650, 600)
             links.new(albedo.outputs["Color"], luminance.inputs["Color"])
             # variation = 1 + k * (luminance / mean - 1), written as luminance * (k / mean) + (1 - k).
@@ -194,28 +286,24 @@ def apply_texture_set(
             tint.blend_type = "MULTIPLY"
             tint.clamp_result = True
             tint.inputs["Factor"].default_value = 1.0
-            links.new(native.outputs[0], tint.inputs["A"])
+            links.new(group_input.outputs["Native Color"], tint.inputs["A"])
             links.new(variation.outputs["Value"], tint.inputs["B"])
             color_out = tint.outputs["Result"]
         elif albedo_mode == "multiply":
-            native = new("ShaderNodeRGB", "native_color", 900, 900)
-            native.outputs[0].default_value = tuple(mat.diffuse_color)
             luminance = new("ShaderNodeRGBToBW", "luminance", 650, 600)
             links.new(albedo.outputs["Color"], luminance.inputs["Color"])
             tint = new("ShaderNodeMix", "tint", 400, 750)
             tint.data_type = "RGBA"
             tint.blend_type = "MULTIPLY"
             tint.inputs["Factor"].default_value = albedo_strength
-            links.new(native.outputs[0], tint.inputs["A"])
+            links.new(group_input.outputs["Native Color"], tint.inputs["A"])
             links.new(luminance.outputs["Val"], tint.inputs["B"])
             color_out = tint.outputs["Result"]
 
     ao = image("ao", "Non-Color", 900, 300) if use_ao and albedo_mode != "ignore" else None
     if ao is not None:
         if color_out is None:  # Only reached when there is no albedo map, so the base color is the native one.
-            native = new("ShaderNodeRGB", "native_color", 900, 900)
-            native.outputs[0].default_value = tuple(mat.diffuse_color)
-            color_out = native.outputs[0]
+            color_out = group_input.outputs["Native Color"]
         ao_mul = new("ShaderNodeMix", "ao_multiply", 200, 500)
         ao_mul.data_type = "RGBA"
         ao_mul.blend_type = "MULTIPLY"
@@ -236,17 +324,17 @@ def apply_texture_set(
             links.new(ao.outputs["Color"], ao_mul.inputs["B"])
         color_out = ao_mul.outputs["Result"]
     if color_out is not None:
-        links.new(color_out, bsdf.inputs["Base Color"])
+        output("Base Color", color_out, "NodeSocketColor")
 
     for key, socket in (("roughness", "Roughness"), ("metallic", "Metallic")):
         node = image(key, "Non-Color", 900, 0 if key == "roughness" else -300)
         if node is not None:
-            links.new(node.outputs["Color"], bsdf.inputs[socket])
+            output(socket, node.outputs["Color"], "NodeSocketColor")
 
     if use_transmission:
         node = image("transmission", "Non-Color", 900, -600)
         if node is not None:
-            links.new(node.outputs["Color"], bsdf.inputs["Transmission Weight"])
+            output("Transmission Weight", node.outputs["Color"], "NodeSocketColor")
 
     normal_socket = None
     normal_tex = image("normal", "Non-Color", 900, -900)
@@ -268,7 +356,8 @@ def apply_texture_set(
             links.new(normal_socket, bump.inputs["Normal"])
         normal_socket = bump.outputs["Normal"]
     if normal_socket is not None:
-        links.new(normal_socket, bsdf.inputs["Normal"])
+        output("Normal", normal_socket, "NodeSocketVector")
+    tree["anima_uses_native_color"] = group_input.outputs["Native Color"].is_linked
 
 
 def remove_texture_nodes(mat: bpy.types.Material) -> None:
@@ -281,10 +370,17 @@ def remove_texture_nodes(mat: bpy.types.Material) -> None:
         return
     nodes = mat.node_tree.nodes
     native = nodes.get(NATIVE_COLOR_NODE)
-    if native is not None:
+    group = nodes.get(TEXTURE_GROUP_NODE)
+    has_group_color = (
+        group is not None and group.node_tree is not None and group.node_tree.get("anima_uses_native_color")
+    )
+    if native is not None or has_group_color:
         bsdf = nodes.get("Principled BSDF")
         if bsdf is not None:
-            bsdf.inputs["Base Color"].default_value = tuple(native.outputs[0].default_value)
+            color = (
+                native.outputs[0].default_value if native is not None else group.inputs["Native Color"].default_value
+            )
+            bsdf.inputs["Base Color"].default_value = tuple(color)
     for node in [n for n in nodes if n.name.startswith(NODE_PREFIX)]:
         nodes.remove(node)
 
@@ -301,6 +397,9 @@ def set_native_color(mat: bpy.types.Material, color: RGBA) -> None:
     native = mat.node_tree.nodes.get(NATIVE_COLOR_NODE)
     if native is not None:
         native.outputs[0].default_value = to_rgba(color)
+    group = mat.node_tree.nodes.get(TEXTURE_GROUP_NODE)
+    if group is not None:
+        group.inputs["Native Color"].default_value = to_rgba(color)
 
 
 @cache

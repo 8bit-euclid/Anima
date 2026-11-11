@@ -10,7 +10,7 @@ from tests.visual_tests import test_curves as curve_demo, test_latex as latex_de
 
 from anima.animation.scheduler import Scheduler
 from anima.materials.material import get_palette_color
-from anima.materials.texture import NODE_PREFIX
+from anima.materials.texture import NODE_PREFIX, TEXTURE_GROUP_NODE
 from anima.primitives.curves import DEFAULT_LINE_WIDTH, THIN_LINE_WIDTH
 from anima.primitives.object import Object
 from anima.primitives.points import DEFAULT_POINT_RADIUS
@@ -73,14 +73,30 @@ def test_latex_and_reveals_inherit_textures_and_preserve_colors(textured_demo):
     for group, color in zip(gallery, colors):
         glyph = group[0]
         assert glyph.body.color[:3] == pytest.approx(get_palette_color("byrne_euclid", color))
-        assert glyph.body.object.data.materials[0].node_tree.nodes.get(NODE_PREFIX + "albedo") is not None
+        assert (
+            glyph.body.object.data.materials[0]
+            .node_tree.nodes[TEXTURE_GROUP_NODE]
+            .node_tree.nodes.get(NODE_PREFIX + "albedo")
+            is not None
+        )
         for curve in glyph.border.curves:
             assert curve.width == pytest.approx(THIN_LINE_WIDTH)
-            assert curve.object.data.materials[0].node_tree.nodes.get(NODE_PREFIX + "albedo") is not None
+            assert (
+                curve.object.data.materials[0]
+                .node_tree.nodes[TEXTURE_GROUP_NODE]
+                .node_tree.nodes.get(NODE_PREFIX + "albedo")
+                is not None
+            )
 
     write_on, bars = [target for target, _ in inherited[5:]]
     assert write_on[0].body.color[:3] == pytest.approx(get_palette_color("byrne_euclid", "red1"))
-    assert bars.children[0].object.data.materials[0].node_tree.nodes.get(NODE_PREFIX + "albedo") is not None
+    assert (
+        bars.children[0]
+        .object.data.materials[0]
+        .node_tree.nodes[TEXTURE_GROUP_NODE]
+        .node_tree.nodes.get(NODE_PREFIX + "albedo")
+        is not None
+    )
     assert bars.children[0].width == pytest.approx(0.1)
 
 

@@ -157,6 +157,8 @@ scene-specific, and registering another background replaces the active reference
 Call `object.inherit_textures_from(get_background())` to apply the current maps to an object and its descendants.
 This is an explicit snapshot, not a live subscription to later background changes. The default demo applies it to
 its text and curves; creating a primitive elsewhere does not implicitly apply textures.
+Materials with the same texture maps and settings share a shader node group, while keeping their own color and
+opacity. Editing a shared node group in Blender affects every material using it.
 
 `GlyphGroup.from_tex_string(text, font_size=...)` asks LaTeX to typeset at the given base font size in TeX points,
 defaulting to the profile's body size. LaTeX controls font selection, spacing, math styles, and inline size commands.
