@@ -1,4 +1,19 @@
-"""Reference scene for checking the paper profile at the intended delivery size."""
+"""Reference scene for checking the paper profile at the intended delivery size.
+
+Render a single frame from the repository root:
+
+    make render-frame SCRIPT=scripts/calibrate_dimensions.py FRAME=1
+
+This defaults to a 4K (3840x2160) Cycles render. For a 1080p EEVEE preview:
+
+    make render-frame SCRIPT=scripts/calibrate_dimensions.py FRAME=1 PREVIEW=1
+
+Add DEVICE=CPU to use the CPU for Cycles, or DEPTH=16 for 16-bit PNG frames.
+To render the full scene to an MP4, use `make render` with the same SCRIPT
+and settings, for example:
+
+    make render SCRIPT=scripts/calibrate_dimensions.py OUTPUT=out/dimensions.mp4
+"""
 
 from anima.latex.glyph_group import GlyphGroup
 from anima.primitives.curves import DEFAULT_LINE_WIDTH, THICK_LINE_WIDTH, THIN_LINE_WIDTH
