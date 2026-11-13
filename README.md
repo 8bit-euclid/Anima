@@ -180,6 +180,23 @@ title = GlyphGroup.from_tex_string("Geometry", font_size=profile.title_font_size
 custom = GlyphGroup.from_tex_string(r"Text {\large larger text}", font_size=12)
 ```
 
+Generated TeX output is cached across builds under the platform's user cache directory. The cache key uses the
+complete generated TeX document and Anima's TeX pipeline format; it stores the outline and text SVGs together.
+It does not fingerprint installed TeX packages, fonts, external files referenced by TeX, or tool versions. Clear
+the cache after changing those dependencies with `clear_tex_cache()` from
+`anima.latex.tex_document_processor`, or set `ANIMA_DISABLE_TEX_CACHE=1` to disable caching. Set
+`ANIMA_TEX_CACHE_DIR` to choose another cache directory. A cache hit skips TeX execution, so TeX-side effects
+occur only on cache misses. Successful compiler/converter output is replayed on hits, but failures are never
+cached. Time-dependent or otherwise non-deterministic TeX expressions can return previously cached output;
+disable caching for those expressions. The cache is bounded to 256 MiB or 512 entries and evicts older entries;
+an individual entry larger than 16 MiB is not stored.
+
+```python
+from anima.latex.tex_document_processor import clear_tex_cache
+
+clear_tex_cache()
+```
+
 To use a different profile, call `set_profile(profile)` from `anima.scene.state` once for the active Blender scene,
 before obtaining render settings or building the scene. The background, camera, lighting, text, render configuration,
 and default lesson frame rate then use that scene's profile. An unconfigured scene uses `FRAME_16X9_V1`; the selection

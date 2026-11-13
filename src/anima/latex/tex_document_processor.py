@@ -9,6 +9,15 @@ from pathlib import Path
 import svgpathtools as svgtools
 
 from anima.diagnostics import format_output, logger
+from anima.latex.tex_cache import (
+    CachedTexOutputs,
+    clear_tex_cache as clear_tex_cache,
+    read_tex_cache,
+    tex_cache_enabled,
+    tex_cache_key,
+    tex_cache_root,
+    write_tex_cache,
+)
 from anima.latex.tex_document import TeXDocument
 
 TEX_DEBUG_MODE = True  # Print LaTeX and DVI logs to console
@@ -20,44 +29,74 @@ GlyphPositionsType = list[tuple[str, tuple[float, float], str | None, str | None
 
 
 class TeXDocumentProcessor:
-    """Processes LaTeX documents to extract glyph data from SVG output.
-    Compiles LaTeX to DVI, converts to SVG, and extracts glyph metadata."""
+    """Process LaTeX documents to extract glyph data from SVG output.
+
+    The processor compiles LaTeX to DVI, converts the result to SVG, and extracts glyph metadata.
+    """
 
     def __init__(self, texfile: TeXDocument):
-        """Initialize the converter with LaTeX content.
+        """Initialize the processor with LaTeX content.
 
         Args:
-            texfile: A TeXFile object containing LaTeX content.
+            texfile: The TeX document to compile and process.
         """
         assert isinstance(texfile, TeXDocument), "Content must be a TeXFile instance."
         self._content = str(texfile)
         self._temp_dir: tempfile.TemporaryDirectory = None
         self._tex_path: Path = None  # Path to the temporary directory for LaTeX files
         self._tex_name = "doc"  # Base name for .tex, .dvi, .svg, etc.
+        self._command_logs: list[tuple[str, str]] = []
 
     def __enter__(self) -> tuple[GlyphPathsType, GlyphPositionsType]:
-        """Context manager to handle LaTeX compilation, SVG generation, and file cleanup.
+        """Compile the document and extract its glyph data.
+
+        SVG generation uses the persistent cache when enabled and a valid entry is available.
 
         Returns:
-            A tuple containing:
-            - A dictionary mapping glyph IDs to their (unique) SVG paths.
-            - Ordered glyph IDs, positions (x, y), characters, and optional display labels.
+            A pair containing a mapping of SVG path IDs to paths and an ordered list of
+            ``(path_id, (x, y), character, display_label)`` glyph instances.
         """
         # Create a temporary directory to store the LaTeX, SVG, and other generated files
         self._temp_dir = tempfile.TemporaryDirectory()
         self._tex_path = Path(self._temp_dir.name)
 
         try:
-            # Keep outline geometry and font/text metadata in separate SVG outputs.
-            self._convert_tex_to_dvi()
-            self._convert_dvi_to_svg()
-            return self._extract_glyph_data()
+            use_cache = tex_cache_enabled()
+            cache_root = None
+            cache_key = None
+            cached_svgs = None
+            if use_cache:
+                cache_root = tex_cache_root()
+                cache_key = tex_cache_key(self._content)
+                cached_svgs = read_tex_cache(cache_root, cache_key)
+            if cached_svgs is not None:
+                logger.info("Using cached TeX SVG outputs.")
+                self._write_svg_pair(cached_svgs)
+                self._replay_command_logs(cached_svgs.logs)
+            else:
+                # Keep outline geometry and font/text metadata in separate SVG outputs.
+                self._convert_tex_to_dvi()
+                self._convert_dvi_to_svg()
+
+            result = self._extract_glyph_data()
+            if cache_root is not None and cache_key is not None and cached_svgs is None:
+                try:
+                    self._store_svg_pair(cache_root, cache_key)
+                except OSError as error:
+                    logger.warning("Could not write TeX cache entry; continuing without caching: {}", error)
+            return result
         except BaseException:
             self._temp_dir.cleanup()
             raise
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Cleanup temporary files after processing."""
+        """Clean up temporary files after processing.
+
+        Args:
+            exc_type: The exception type raised in the context, if any.
+            exc_value: The exception raised in the context, if any.
+            traceback: The traceback for the context exception, if any.
+        """
         self._temp_dir.cleanup()
 
     def _convert_tex_to_dvi(self):
@@ -87,6 +126,7 @@ class TeXDocumentProcessor:
         cmd = "lualatex"
         try:
             res = run_proc([cmd, "-interaction=nonstopmode", "-output-format=dvi", str(tex_file)])
+            self._command_logs.append((cmd, res.stdout or ""))
             print_logs(cmd, res)
         except subprocess.CalledProcessError as err:
             print_logs(cmd, err)
@@ -126,7 +166,9 @@ class TeXDocumentProcessor:
             futures = [executor.submit(run_proc, command) for command in commands]
             for (svg_file, _), future in zip(outputs, futures):
                 try:
-                    print_logs(cmd, future.result())
+                    result = future.result()
+                    self._command_logs.append((cmd, result.stdout or ""))
+                    print_logs(cmd, result)
                 except subprocess.CalledProcessError as err:
                     print_logs(cmd, err)
                     failures.append((svg_file, err))
@@ -163,6 +205,37 @@ class TeXDocumentProcessor:
             Path: The path to the SVG file.
         """
         return self._tex_path / f"{self._tex_name}{suffix}.svg"
+
+    def _write_svg_pair(self, svgs: CachedTexOutputs) -> None:
+        """Write cached SVG outputs into the processor's temporary directory.
+
+        Args:
+            svgs: The cached outline and text SVG outputs.
+        """
+        self._get_svg_path().write_bytes(svgs.outline_svg)
+        self._get_svg_path("_text").write_bytes(svgs.text_svg)
+
+    def _replay_command_logs(self, logs: tuple[tuple[str, str], ...]) -> None:
+        """Replay successful compiler and converter output on a cache hit.
+
+        Args:
+            logs: The commands and output captured during the successful cache-miss run.
+        """
+        if not TEX_DEBUG_MODE:
+            return
+        for command, output in logs:
+            _print_captured_output(command, output)
+
+    def _store_svg_pair(self, cache_root: Path, cache_key: str) -> None:
+        """Store both generated SVG outputs after successful extraction.
+
+        Args:
+            cache_root: The root directory for the persistent TeX cache.
+            cache_key: The cache key for the generated document and pipeline.
+        """
+        outline = self._get_svg_path().read_bytes()
+        text = self._get_svg_path("_text").read_bytes()
+        write_tex_cache(cache_root, cache_key, outline, text, tuple(self._command_logs))
 
     def _extract_glyph_data(self) -> tuple[GlyphPathsType, GlyphPositionsType]:
         """Extract reusable outlines and ordered glyph instances from the generated SVGs.
@@ -322,7 +395,7 @@ def _is_private_use_character(character: str) -> bool:
     return 0xE000 <= codepoint <= 0xF8FF or 0xF0000 <= codepoint <= 0xFFFFD or 0x100000 <= codepoint <= 0x10FFFD
 
 
-def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.CalledProcessError):
+def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.CalledProcessError) -> None:
     """Print the stdout and stderr result of a subprocess.
 
     Args:
@@ -333,5 +406,10 @@ def print_logs(command: str, result: subprocess.CompletedProcess | subprocess.Ca
         return
 
     output = getattr(result, "stdout", "")
+    _print_captured_output(command, output)
+
+
+def _print_captured_output(command: str, output: str) -> None:
+    """Log captured subprocess output when it is non-empty."""
     if output.rstrip():
         logger.trace(format_output(f"{command.capitalize()} output", output))
