@@ -27,6 +27,47 @@ def test_group_is_dataless_with_hidden_axes():
     assert group.object.empty_display_size < 1e-3
 
 
+def test_visibility_skips_unchanged_writes_but_honors_external_changes(monkeypatch):
+    class VisibilitySpy:
+        def __init__(self):
+            self.writes = []
+            self.hide_viewport = False
+            self.hide_render = False
+            self.writes.clear()
+
+        def __setattr__(self, name, value):
+            if name in ("hide_viewport", "hide_render"):
+                self.writes.append((name, value))
+            super().__setattr__(name, value)
+
+    group = Group(name="pytest_group")
+    spy = VisibilitySpy()
+    monkeypatch.setattr(group, "_bl_object", spy)
+    group.unhide()
+    assert spy.writes == []
+    group.hide()
+    assert spy.writes == [("hide_viewport", True), ("hide_render", True)]
+    spy.writes.clear()
+    spy.hide_viewport = False
+    spy.writes.clear()
+    group.hide()
+    assert spy.writes == [("hide_viewport", True)]
+
+
+def test_visibility_recurses_when_parent_already_has_requested_state():
+    group = Group(name="pytest_group")
+    child = _rect("child")
+    group.add(child)
+    group.hide()
+    child.object.hide_viewport = False
+    child.object.hide_render = False
+    group.hide()
+    assert child.object.hide_viewport and child.object.hide_render
+    group.unhide()
+    assert not group.object.hide_viewport and not group.object.hide_render
+    assert not child.object.hide_viewport and not child.object.hide_render
+
+
 def test_add_child_is_idempotent_for_same_parent():
     group = Group(name="pytest_group")
     a = _rect("a")

@@ -69,6 +69,10 @@ def run_lesson(
     if frame_rate is None:
         frame_rate = get_profile().frame_rate
     ebpy.set_render_fps(frame_rate)
+    if render_settings is None and render_request is not None:
+        if render_request.device not in ("CPU", "GPU"):
+            raise ValueError(f"Unknown Cycles device: {render_request.device!r}")
+        render_settings = RenderSettings(device=render_request.device)
     if render_settings is not None:
         configure_render(render_settings)
 

@@ -99,6 +99,11 @@ make run
 5. Run `anima` in Blender by selecting **Blender: Run Script** from the command palette (`Ctrl+Shift+P` → "Blender: Run Script").
 6. Repeat step 5 to hot-reload recent changes into Blender.
 
+On Linux, Anima requests NVIDIA PRIME offload for both the interactive viewport and headless EEVEE rendering.
+If NVIDIA detection fails or existing GPU environment settings conflict, the launch fails rather than falling back.
+To explicitly use the system graphics device instead, set `ANIMA_VIEWPORT_GPU=system`. This opt-out affects Blender
+graphics, not Cycles device selection or the desktop.
+
 ## Optional: Set a Key Binding for "Blender: Run Script"
 
 To streamline step 5, you can assign a custom key binding (e.g., `Ctrl+Shift+B`) to the **Blender: Run Script** command in VSCode:
@@ -113,6 +118,10 @@ Now, you can quickly hot-reload recent changes in Blender using your chosen shor
 ## Rendering a 4K video
 
 `make render` renders the lesson headlessly with Cycles (OptiX GPU, 3840×2160, 60 fps) to PNG frames in `out/<name>_frames/`, then encodes `out/<name>.mp4` with ffmpeg (H.264, CRF 16, BT.709; requires `ffmpeg`).
+
+Cycles defaults to NVIDIA OptiX, falling back to CUDA, and fails if neither is available. `DEVICE=CPU` explicitly
+selects CPU rendering instead; the Linux graphics-device check still applies unless explicitly opted out. EEVEE
+uses Blender's graphics device rather than the Cycles device setting.
 
 - Frames are resumable: after a crash, overheat or Ctrl+C, re-run the same command to continue. Use `RESTART=1` after changing the scene.
 - Between frames, rendering pauses while the GPU is above 83 °C and resumes at 72 °C. Per-frame time, ETA, GPU temperature and VRAM are logged.

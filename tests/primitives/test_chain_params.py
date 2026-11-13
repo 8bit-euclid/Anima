@@ -3,6 +3,7 @@
 import copy
 import random
 
+import bpy
 import pytest
 
 from anima.primitives.chains import CurveChain, CurveLoop
@@ -115,6 +116,54 @@ class TestChainParamPropagation:
         assert child_params(clone, 1) == pytest.approx(child_params(chain, 1), abs=TOL)
         clone.param_1 = 0.9  # The clone's sweep bookkeeping must still be consistent.
         clone.validate_param_state()
+
+
+@pytest.mark.parametrize("end_idx", [0, 1])
+def test_joint_param_update_reuses_mesh_and_matches_replacement(monkeypatch, end_idx):
+    joint = make_chain(create_joints=True)._joints[0]
+    reference = make_chain(create_joints=True)._joints[0]
+    monkeypatch.setattr(reference, "update_mesh", reference.set_mesh)
+    material = bpy.data.materials.new("pytest_joint_material")
+    joint.object.data.materials.append(material)
+    reference.object.data.materials.append(material)
+    mesh = joint.object.data
+
+    for param in (0.0, 0.2, 0.5, 0.8, 1.0, 0.0):
+        joint._set_param(param, end_idx)
+        reference._set_param(param, end_idx)
+        actual = joint.object.data
+        expected = reference.object.data
+        assert actual == mesh
+        assert [tuple(vertex.co) for vertex in actual.vertices] == pytest.approx(
+            [tuple(vertex.co) for vertex in expected.vertices]
+        )
+        assert [tuple(face.vertices) for face in actual.polygons] == [
+            tuple(face.vertices) for face in expected.polygons
+        ]
+        assert list(actual.materials) == [material]
+
+
+@pytest.mark.parametrize("shared", [True, False])
+def test_joint_param_update_preserves_shared_mesh_or_shape_keys(shared):
+    joint = make_chain(create_joints=True)._joints[0]
+    mesh = joint.object.data
+    if shared:
+        other = bpy.data.objects.new("pytest_shared_joint", mesh)
+    else:
+        joint.object.shape_key_add(name="Basis")
+        other = None
+    original_vertices = [tuple(vertex.co) for vertex in mesh.vertices]
+    try:
+        joint._set_param(0.5, 1)
+        assert joint.object.data != mesh
+        assert [tuple(vertex.co) for vertex in mesh.vertices] == original_vertices
+        if shared:
+            assert other.data == mesh
+        else:
+            assert mesh.shape_keys is not None
+    finally:
+        if other is not None:
+            bpy.data.objects.remove(other)
 
 
 class TestChainParamStateValidation:

@@ -36,7 +36,7 @@ class RenderSettings:
     engine: Engine = "CYCLES"
     samples: int = 64
     resolution: tuple[int, int] = (1920, 1080)
-    device: Literal["CPU", "GPU"] = "CPU"
+    device: Literal["CPU", "GPU"] = "GPU"
     denoise: bool = True
     denoiser: Literal["OPTIX", "OPENIMAGEDENOISE"] = "OPTIX"
     tile_size: int = 1024

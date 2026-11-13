@@ -967,7 +967,8 @@ class Object(ABC):
         Args:
             val (bool): True if the object should be visible in the viewport, else False.
         """
-        self._bl_object.hide_viewport = not val
+        if self._bl_object.hide_viewport != (not val):
+            self._bl_object.hide_viewport = not val
 
     def _set_render_visibility(self, val: bool) -> None:
         """Sets the object's visibility in the render.
@@ -975,7 +976,8 @@ class Object(ABC):
         Args:
             val (bool): True if the object should be visible in the render, else False.
         """
-        self._bl_object.hide_render = not val
+        if self._bl_object.hide_render != (not val):
+            self._bl_object.hide_render = not val
 
     def _log_info(self, visitor: Callable[[Object], Any]) -> None:
         """Logs information about the object using the provided visitor function.

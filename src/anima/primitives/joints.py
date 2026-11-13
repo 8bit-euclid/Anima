@@ -327,8 +327,11 @@ class Joint(Attachment, Curve, Mesh):
             verts = [p1, pt] + verts_init[vert_idx_1:] if cw_turn else verts_init[:vert_idx_1] + [pt]
             faces = faces_init[: len(verts) - 2]
 
-        # Update mesh
-        self.set_mesh(verts, faces)
+        mesh = self.object.data
+        if mesh.users == 1 and mesh.shape_keys is None and mesh.is_editable and not mesh.is_editmode:
+            self.update_mesh(verts, faces)
+        else:
+            self.set_mesh(verts, faces)
 
     def _update_attachment(self, end_index: int):
         return  # Joints have no attachments to update
