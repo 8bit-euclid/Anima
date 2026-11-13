@@ -4,12 +4,11 @@ import math
 from dataclasses import dataclass, replace
 
 import numpy as np
+import svgpathtools as svgtools
 
 from anima.diagnostics import logger
 from anima.globals.general import Vector
-from anima.latex.glyph_border import GlyphBorder
 from anima.latex.triangulation import DEFAULT_TRIANGULATOR, get_triangulator
-from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.mesh import Mesh
 from anima.utils.geometry import compute_signed_area, flatten_cubic_bezier, point_in_polygon
 
@@ -58,18 +57,24 @@ class MeshQuality:
 class GlyphBody(Mesh):
     def __init__(
         self,
-        border: GlyphBorder,
+        outline: svgtools.Path,
         name: str = "GlyphBody",
         mesh_quality: MeshQuality | None = None,
     ):
-        """Initialize a GlyphBody with a given GlyphBorder object.
+        """Initialize a GlyphBody from an SVG outline.
 
         Args:
-            border: A GlyphBorder object representing the border of the glyph.
+            outline: SVG outline to flatten.
             name: Name for this GlyphBody object.
             mesh_quality: Boundary resolution and triangulator. Defaults to MeshQuality.minimal().
+
+        Raises:
+            TypeError: If ``outline`` is not an ``svgpathtools.Path``.
         """
-        self._border: GlyphBorder = border
+        if not isinstance(outline, svgtools.Path):
+            raise TypeError("outline must be an svgpathtools.Path.")
+
+        self._outline = outline
         self._mesh_quality: MeshQuality = mesh_quality or MeshQuality.minimal()
         self._vertices: list[Vector] = []  # 2D vertices
         self._faces: list[tuple[int, int, int]] = []  # Triangular faces
@@ -84,8 +89,8 @@ class GlyphBody(Mesh):
         return self._mesh_quality
 
     def _construct(self):
-        """Flatten the border, triangulate each outer contour with its holes, and build the mesh."""
-        outers, owned = self._nest_contours(self._flatten_border())
+        """Flatten the outline, triangulate each outer contour with its holes, and build the mesh."""
+        outers, owned = self._nest_contours(self._flatten_outline())
         triangulator = get_triangulator(self._mesh_quality.triangulator)
 
         points: list[np.ndarray] = []
@@ -140,8 +145,8 @@ class GlyphBody(Mesh):
                 holes[outer_index[parent]].append(contours[i])
         return outers, holes
 
-    def _flatten_border(self) -> list[np.ndarray]:
-        """Flatten every border subpath into a polygon.
+    def _flatten_outline(self) -> list[np.ndarray]:
+        """Flatten SVG subpaths into polygons.
 
         Returns:
             One (N, 2) float array per subpath with at least three distinct vertices.
@@ -149,25 +154,30 @@ class GlyphBody(Mesh):
         max_angle = math.radians(self._mesh_quality.max_turning_angle)
         contours: list[np.ndarray] = []
 
-        for subpath in self._border.subpaths:
-            pts: list[tuple[float, float]] = []
-            for curve in subpath.curves:
-                p0 = curve.spline_point(0).co
-                if isinstance(curve, BezierCurve):
-                    p1 = curve.spline_point(1).co
-                    h0 = curve._get_handle(side="RIGHT", point_index=0, relative=False)
-                    h1 = curve._get_handle(side="LEFT", point_index=1, relative=False)
-                    pts.extend(flatten_cubic_bezier((p0.x, p0.y), (h0.x, h0.y), (h1.x, h1.y), (p1.x, p1.y), max_angle))
-                else:
-                    pts.append((p0.x, p0.y))
+        def blender_point(point: complex) -> tuple[float, float]:
+            # Keep SVG-derived fill coordinates at the same precision as Blender curve coordinates.
+            return float(np.float32(point.real)), float(np.float32(-point.imag))
 
-            polygon = np.array(pts, dtype=np.float64)
-            # Drop consecutive duplicates (including the wrap-around one), which degenerate triangulation.
+        for subpath in self._outline.continuous_subpaths():
+            pts: list[tuple[float, float]] = []
+            for segment in subpath:
+                p0 = blender_point(segment.start)
+                if isinstance(segment, svgtools.CubicBezier):
+                    h0 = blender_point(segment.control1)
+                    h1 = blender_point(segment.control2)
+                    p1 = blender_point(segment.end)
+                    pts.extend(flatten_cubic_bezier(p0, h0, h1, p1, max_angle))
+                elif isinstance(segment, svgtools.Line):
+                    pts.append(p0)
+                else:
+                    raise ValueError(f"Unsupported SVG segment type: {type(segment)}")
+
+            if not pts:
+                continue
+            polygon = np.asarray(pts, dtype=np.float64)
             keep = np.any(polygon != np.roll(polygon, 1, axis=0), axis=1)
             polygon = polygon[keep]
-            if len(polygon) < 3:
-                continue
-
-            contours.append(polygon)
+            if len(polygon) >= 3:
+                contours.append(polygon)
 
         return contours

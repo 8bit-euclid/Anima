@@ -67,10 +67,11 @@ class GlyphGroup(Group):
         mesh_quality: MeshQuality | None = None,
         *,
         font_size: float | None = None,
+        with_borders: bool = False,
     ) -> GlyphGroup:
         """Create a GlyphGroup from a LaTeX string, with glyphs correctly positioned.
 
-        Compiles the LaTeX string to SVG via dvisvgm, extracts glyph paths and
+        Compiles the LaTeX string to SVG via dvisvgm, extracts glyph outlines and
         typographic positions, and constructs a Glyph for each character instance
         placed at its correct location in Blender space. Names use rendered order
         and label characters, private-use font glyphs, and standalone shapes.
@@ -82,6 +83,7 @@ class GlyphGroup(Group):
                 body in the group. Defaults to MeshQuality.minimal().
             font_size: Base font size in TeX points. Defaults to the profile's body size.
                 LaTeX sizing commands in text can override this size.
+            with_borders: Whether to create animatable outlines for each glyph. Defaults to False.
 
         Returns:
             A GlyphGroup containing all positioned Glyph instances.
@@ -98,10 +100,15 @@ class GlyphGroup(Group):
         content = TeXDocument().set_defaults().add_to_body(text, font_size=font_size)
         group = cls(name=name)
 
-        with TeXDocumentProcessor(content) as (glyph_paths, positions):
+        with TeXDocumentProcessor(content) as (glyph_outlines, positions):
             for index, (gid, (x, y), char, shape_label) in enumerate(positions, start=1):
                 glyph_name = _format_glyph_name(index, char, len(positions), shape_label)
-                glyph = Glyph(_scale_path(glyph_paths[gid], svg_scale), name=glyph_name, mesh_quality=mesh_quality)
+                glyph = Glyph(
+                    _scale_outline(glyph_outlines[gid], svg_scale),
+                    name=glyph_name,
+                    mesh_quality=mesh_quality,
+                    with_border=with_borders,
+                )
                 glyph.text = char or ""
                 glyph.location = (x * svg_scale, y * svg_scale, 0)
                 group.add(glyph)
@@ -154,18 +161,18 @@ class GlyphGroup(Group):
         return self.glyphs[index]
 
 
-def _scale_path(path: svgtools.Path, factor: float) -> svgtools.Path:
+def _scale_outline(outline: svgtools.Path, factor: float) -> svgtools.Path:
     """Scale Bézier control points directly, preserving exact shared endpoints.
 
     Args:
-        path: The SVG path to scale.
+        outline: The SVG outline to scale.
         factor: The scaling factor.
 
     Returns:
-        A new SVG path with all control points scaled.
+        A new SVG outline with all control points scaled.
     """
     segments = []
-    for segment in path:
+    for segment in outline:
         if isinstance(segment, svgtools.Line):
             segments.append(svgtools.Line(segment.start * factor, segment.end * factor))
         elif isinstance(segment, svgtools.CubicBezier):

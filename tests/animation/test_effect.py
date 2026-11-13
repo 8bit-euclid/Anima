@@ -274,7 +274,7 @@ class TestPhase:
 
 class TestGlyphWriteOn:
     def test_outline_is_drawn_before_the_fill_fades_in(self):
-        glyph = Glyph(create_rect_path(), name="G")
+        glyph = Glyph(create_rect_path(), name="G", with_border=True)
         effect = glyph_write_on(glyph)
         loops = list(glyph.border.children)
         assert all(isinstance(loop, CurveLoop) for loop in loops)
@@ -296,7 +296,7 @@ class TestGlyphWriteOn:
         assert shown(glyph.body)
 
     def test_loops_of_a_glyph_with_a_hole_are_drawn_together(self):
-        glyph = Glyph(create_rect_with_hole_path(), name="H")
+        glyph = Glyph(create_rect_with_hole_path(), name="H", with_border=True)
         loops = list(glyph.border.children)
         assert len(loops) == 2
         glyph_write_on(glyph).apply(0.35)
@@ -304,7 +304,7 @@ class TestGlyphWriteOn:
         assert 0.0 < loops[0].param_1 < 1.0
 
     def test_glyph_group_staggers_its_glyphs(self):
-        glyphs = [Glyph(create_rect_path(), name=f"G{i}") for i in range(3)]
+        glyphs = [Glyph(create_rect_path(), name=f"G{i}", with_border=True) for i in range(3)]
         reveal = Stagger(GlyphGroup(glyphs), child_effect=glyph_write_on)
         assert isinstance(reveal, Stagger)
         reveal.apply(0.0)

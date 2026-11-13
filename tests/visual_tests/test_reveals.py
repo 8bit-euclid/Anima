@@ -17,7 +17,12 @@ def test_latex_write_on(duration: timedelta):
 
     Schedules at the scheduler's cursor, so it runs after anything already scheduled.
     """
-    group = GlyphGroup.from_tex_string("o08AaB", name="WriteOn", mesh_quality=MeshQuality.high())
+    group = GlyphGroup.from_tex_string(
+        "o08AaB",
+        name="WriteOn",
+        mesh_quality=MeshQuality.high(),
+        with_borders=True,
+    )
     group.translate(y=2)
     for index, glyph in enumerate(group):
         glyph.set_palette_color("byrne_euclid", ("red1", "blue1", "yellow1")[index % 3])

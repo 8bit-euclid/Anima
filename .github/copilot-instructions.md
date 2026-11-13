@@ -41,3 +41,8 @@ Communicate concisely and directly, but never at the expense of completeness, ac
 - Choose `feat` for new functionality, `fix` for bug fixes, `format` for formatting-only changes, and `ci` for CI/workflow changes.
 - Always provide a concise but descriptive summary in the commit message.
 - Use the imperative mood in the summary (e.g., "Add feature" instead of "Added feature").
+
+## API Compatibility 
+- Treat the checked-in repository as the complete usage surface. 
+- Do not preserve old signatures or add compatibility shims for hypothetical external callers; update in-repository call sites and tests when simplifying APIs. 
+- Prioritize backward compatibility only when the user explicitly requests it.

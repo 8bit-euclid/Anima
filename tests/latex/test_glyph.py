@@ -6,10 +6,10 @@ from unittest.mock import MagicMock
 import pytest
 import svgpathtools as svgtools
 
-from anima.latex.glyph import Glyph, GlyphBBox
+from anima.latex.glyph import Glyph, GlyphBBox, glyph_write_on
 from anima.latex.glyph_body import GlyphBody
 from anima.latex.glyph_border import GlyphBorder
-from anima.latex.glyph_group import GlyphGroup, _format_glyph_name, _scale_path
+from anima.latex.glyph_group import GlyphGroup, _format_glyph_name, _scale_outline
 from anima.latex.tex_object import TeXObject
 from anima.primitives.chains import CurveLoop
 from anima.primitives.group import Group
@@ -45,36 +45,36 @@ class TestGlyphBorder:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.simple_path = create_rect_path()
-        self.path_with_hole = create_rect_with_hole_path()
+        self.simple_outline = create_rect_path()
+        self.outline_with_hole = create_rect_with_hole_path()
 
     def test_inheritance(self):
         """Test that GlyphBorder inherits from Object."""
-        border = GlyphBorder(self.simple_path, name="TestBorder")
+        border = GlyphBorder(self.simple_outline, name="TestBorder")
         assert isinstance(border, Object)
 
-    def test_simple_path_creates_one_subpath(self):
-        """Test that a simple path creates one CurveLoop subpath."""
-        border = GlyphBorder(self.simple_path, name="TestBorder")
+    def test_simple_outline_creates_one_subpath(self):
+        """Test that a simple outline creates one CurveLoop subpath."""
+        border = GlyphBorder(self.simple_outline, name="TestBorder")
         assert len(border.subpaths) == 1
         assert isinstance(border.subpaths[0], CurveLoop)
 
-    def test_path_with_hole_creates_two_subpaths(self):
-        """Test that a path with a hole creates two CurveLoop subpaths."""
-        border = GlyphBorder(self.path_with_hole, name="TestBorder")
+    def test_outline_with_hole_creates_two_subpaths(self):
+        """Test that an outline with a hole creates two CurveLoop subpaths."""
+        border = GlyphBorder(self.outline_with_hole, name="TestBorder")
         assert len(border.subpaths) == 2
         assert all(isinstance(sp, CurveLoop) for sp in border.subpaths)
 
     def test_subpaths_are_children(self):
         """Test that subpaths are added as children of the border."""
-        border = GlyphBorder(self.simple_path, name="TestBorder")
+        border = GlyphBorder(self.simple_outline, name="TestBorder")
         children = border.children
         assert len(children) == 1
         assert children[0] == border.subpaths[0]
 
     def test_curves_property(self):
         """Test that the curves property returns all curves from all subpaths."""
-        border = GlyphBorder(self.simple_path, name="TestBorder")
+        border = GlyphBorder(self.simple_outline, name="TestBorder")
         curves = border.curves
         assert len(curves) > 0
         # A rectangle has 4 sides
@@ -82,14 +82,14 @@ class TestGlyphBorder:
 
     def test_name_propagation(self):
         """Test that name is propagated to subpaths."""
-        border = GlyphBorder(self.simple_path, name="MyBorder")
+        border = GlyphBorder(self.simple_outline, name="MyBorder")
         assert border.name == "MyBorder"
         assert border.subpaths[0].name == "MyBorder_loop_0"
 
-    def test_invalid_path_raises(self):
-        """Test that invalid path type raises assertion error."""
+    def test_invalid_outline_raises(self):
+        """Test that an invalid outline type raises assertion error."""
         with pytest.raises(AssertionError):
-            GlyphBorder("not a path")
+            GlyphBorder("not an outline")
 
 
 class TestGlyph:
@@ -97,34 +97,42 @@ class TestGlyph:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.path = create_rect_path()
+        self.outline = create_rect_path()
 
     def test_inheritance(self):
         """Test that Glyph inherits from Object."""
-        glyph = Glyph(self.path, name="TestGlyph")
+        glyph = Glyph(self.outline, name="TestGlyph")
         assert isinstance(glyph, Object)
 
     def test_border_and_body_created(self):
-        """Test that border and body are created."""
-        glyph = Glyph(self.path, name="TestGlyph")
-        assert glyph.border is not None
+        """Test that the filled body is created by default without a border."""
+        glyph = Glyph(self.outline, name="TestGlyph")
+        assert glyph.border is None
         assert glyph.body is not None
-        assert isinstance(glyph.border, GlyphBorder)
         assert isinstance(glyph.body, GlyphBody)
 
     def test_border_and_body_are_children(self):
-        """Test that border and body are added as children."""
-        glyph = Glyph(self.path, name="TestGlyph")
+        """Test that an explicitly requested border and the body are children."""
+        glyph = Glyph(self.outline, name="TestGlyph", with_border=True)
         children = glyph.children
         assert len(children) == 2
         assert glyph.border in children
         assert glyph.body in children
 
+    def test_default_body_matches_border_backed_body(self):
+        body_only = Glyph(self.outline, name="BodyOnly")
+        outlined = Glyph(self.outline, name="Outlined", with_border=True)
+
+        assert [tuple(vertex) for vertex in body_only.body._vertices] == [
+            tuple(vertex) for vertex in outlined.body._vertices
+        ]
+        assert body_only.body._faces == outlined.body._faces
+
     def test_bbox_y_inverted(self):
         """Test that bbox y-coordinates are inverted for Blender."""
-        path = create_rect_path(x=2, y=3, width=7, height=11)
+        outline = create_rect_path(x=2, y=3, width=7, height=11)
 
-        glyph = Glyph(path, name="TestGlyph")
+        glyph = Glyph(outline, name="TestGlyph")
 
         assert glyph.bbox.x_min == 2
         assert glyph.bbox.x_max == 9
@@ -133,23 +141,27 @@ class TestGlyph:
 
     def test_default_text_empty(self):
         """Test that text property defaults to empty string."""
-        glyph = Glyph(self.path, name="TestGlyph")
+        glyph = Glyph(self.outline, name="TestGlyph")
         assert glyph.text == ""
 
     def test_name_propagation(self):
         """Test that name is propagated to border and body."""
-        glyph = Glyph(self.path, name="MyGlyph")
+        glyph = Glyph(self.outline, name="MyGlyph", with_border=True)
         assert glyph.name == "MyGlyph"
         assert glyph.border.name == "MyGlyph_border"
         assert glyph.body.name == "MyGlyph_body"
 
     def test_copy_has_independent_glyph_materials(self):
-        glyph = Glyph(self.path, name="pytest_glyph_copy")
+        glyph = Glyph(self.outline, name="pytest_glyph_copy", with_border=True)
         glyph.set_color((1.0, 0.0, 0.0, 1.0))
         copied = glyph.copy()
 
         assert copied.body.object.data.materials[0] != glyph.body.object.data.materials[0]
         assert copied.border.curves[0].object.data.materials[0] != glyph.border.curves[0].object.data.materials[0]
+        assert all(
+            curve.object.data.materials[0] == copied.border.curves[0].object.data.materials[0]
+            for curve in copied.border.curves
+        )
         copied.set_color((0.0, 0.0, 1.0, 1.0))
         copied.set_opacity(0.25)
         assert glyph.body.color == pytest.approx((1.0, 0.0, 0.0, 1.0))
@@ -160,10 +172,23 @@ class TestGlyph:
         assert copied.body.color == pytest.approx((0.0, 0.0, 1.0, 0.25))
         assert copied.border.curves[0].color == pytest.approx((0.0, 0.0, 1.0, 0.25))
 
-    def test_invalid_path_raises(self):
-        """Test that invalid path type raises assertion error."""
+    def test_border_curves_share_material_and_style_as_one_border(self):
+        glyph = Glyph(self.outline, name="SharedBorder", with_border=True)
+        glyph.set_color((1.0, 0.0, 0.0, 1.0))
+
+        materials = [curve.object.data.materials[0] for curve in glyph.border.curves]
+        assert all(material == materials[0] for material in materials)
+        glyph.border.curves[0].set_color((0.0, 0.0, 1.0, 1.0))
+        assert all(curve.color == pytest.approx((0.0, 0.0, 1.0, 1.0)) for curve in glyph.border.curves)
+
+    def test_invalid_outline_raises(self):
+        """Test that an invalid outline type raises assertion error."""
         with pytest.raises(AssertionError):
-            Glyph("not a path")
+            Glyph("not an outline")
+
+    def test_write_on_requires_an_explicit_border(self):
+        with pytest.raises(ValueError, match="with_border=True"):
+            glyph_write_on(Glyph(self.outline))
 
 
 class TestGlyphBody:
@@ -171,19 +196,23 @@ class TestGlyphBody:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.path = create_rect_path()
-        self.border = GlyphBorder(self.path, name="TestBorder")
+        self.outline = create_rect_path()
 
     def test_inheritance(self):
         """Test that GlyphBody inherits from Mesh."""
-        body = GlyphBody(self.border, name="TestBody")
+        body = GlyphBody(self.outline, name="TestBody")
         assert isinstance(body, Mesh)
         assert isinstance(body, Object)
 
     def test_name(self):
         """Test that name is set correctly."""
-        body = GlyphBody(self.border, name="MyBody")
+        body = GlyphBody(self.outline, name="MyBody")
         assert body.name == "MyBody"
+
+    def test_outline_creates_mesh(self):
+        body = GlyphBody(self.outline)
+        assert body._vertices
+        assert body._faces
 
 
 class TestGlyphGroup:
@@ -204,7 +233,7 @@ class TestGlyphGroup:
         ]
         processor = MagicMock()
         processor.return_value.__enter__.return_value = (
-            {"g0-65": self.path1, "rule-1": self.path2, "g1-private": self.path1},
+            {"g0-65": self.outline1, "rule-1": self.outline2, "g1-private": self.outline1},
             positions,
         )
         monkeypatch.setattr("anima.latex.glyph_group.TeXDocumentProcessor", processor)
@@ -221,15 +250,25 @@ class TestGlyphGroup:
             pytest.approx((0.0, 0.0, 0.0)),
             pytest.approx((3 * factor, 4 * factor, 0.0)),
         ]
-        assert group[0].bbox.x_max == pytest.approx(self.path1.bbox()[1] * factor)
-        assert group[1].bbox.x_min == pytest.approx(self.path2.bbox()[0] * factor)
+        assert group[0].bbox.x_max == pytest.approx(self.outline1.bbox()[1] * factor)
+        assert group[1].bbox.x_min == pytest.approx(self.outline2.bbox()[0] * factor)
         assert tuple(group.scale) == pytest.approx((1, 1, 1))
         assert all(glyph in group.children for glyph in group)
+        assert all(glyph.border is None for glyph in group)
+
+    def test_from_tex_string_can_create_borders(self, monkeypatch):
+        processor = MagicMock()
+        processor.return_value.__enter__.return_value = ({"a": self.outline1}, [("a", (0, 0), "A", None)])
+        monkeypatch.setattr("anima.latex.glyph_group.TeXDocumentProcessor", processor)
+
+        group = GlyphGroup.from_tex_string("A", with_borders=True)
+
+        assert isinstance(group[0].border, GlyphBorder)
 
     def test_from_tex_string_typesets_font_size_and_uses_fixed_scene_conversion(self, monkeypatch):
         processor = MagicMock()
         processor.return_value.__enter__.return_value = (
-            {"a": self.path1},
+            {"a": self.outline1},
             [("a", (3, 4), "A", None)],
         )
         monkeypatch.setattr("anima.latex.glyph_group.TeXDocumentProcessor", processor)
@@ -244,7 +283,7 @@ class TestGlyphGroup:
 
     def test_from_tex_string_uses_supplied_profile(self, monkeypatch):
         processor = MagicMock()
-        processor.return_value.__enter__.return_value = ({"a": self.path1}, [("a", (3, 4), "A", None)])
+        processor.return_value.__enter__.return_value = ({"a": self.outline1}, [("a", (3, 4), "A", None)])
         monkeypatch.setattr("anima.latex.glyph_group.TeXDocumentProcessor", processor)
         profile = replace(FRAME_16X9_V1, body_font_size=12.5, tex_point_size=0.16)
 
@@ -259,17 +298,17 @@ class TestGlyphGroup:
         finally:
             reset_profile()
 
-    def test_scale_path_preserves_exact_closure_for_cubic_curves(self):
+    def test_scale_outline_preserves_exact_closure_for_cubic_curves(self):
         start = complex(6.8242, -3.3276)
-        path = svgtools.Path(
+        outline = svgtools.Path(
             svgtools.CubicBezier(start, 5.1 - 4.2j, 3.2 - 2.4j, 2.3 - 1.7j),
             svgtools.CubicBezier(2.3 - 1.7j, 1.7 - 0.1j, 4.9 - 5.2j, start),
         )
-        scaled = _scale_path(path, 0.12045)
+        scaled = _scale_outline(outline, 0.12045)
         assert scaled.isclosed()
         assert scaled[0].end == scaled[1].start
         assert scaled[0].start == scaled[1].end
-        assert scaled[0].control1 == path[0].control1 * 0.12045
+        assert scaled[0].control1 == outline[0].control1 * 0.12045
 
     @pytest.mark.parametrize("font_size", [0, -1, float("inf"), float("nan")])
     def test_from_tex_string_rejects_invalid_font_size(self, font_size):
@@ -278,10 +317,10 @@ class TestGlyphGroup:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.path1 = create_rect_path(x=0, y=0)
-        self.path2 = create_rect_path(x=20, y=0)
-        self.glyph1 = Glyph(self.path1, name="Glyph_A")
-        self.glyph2 = Glyph(self.path2, name="Glyph_B")
+        self.outline1 = create_rect_path(x=0, y=0)
+        self.outline2 = create_rect_path(x=20, y=0)
+        self.glyph1 = Glyph(self.outline1, name="Glyph_A")
+        self.glyph2 = Glyph(self.outline2, name="Glyph_B")
         self.glyph1.text = "A"
         self.glyph2.text = "B"
 

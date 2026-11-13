@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class GlyphBBox:
-    """Bounding box for a glyph in its local path coordinates."""
+    """Bounding box for a glyph in its local outline coordinates."""
 
     x_min: float = 0
     x_max: float = 0
@@ -26,14 +26,14 @@ class GlyphBBox:
 class Glyph(Object):
     """A Glyph is a single character rendered from LaTeX/SVG.
 
-    It composes a GlyphBorder (the outline curves) and a GlyphBody (the filled mesh)
-    as animable children. This enables hierarchical animation and transformation of
-    the entire glyph as a single unit.
+    It always creates a GlyphBody (the filled mesh) and optionally creates a GlyphBorder
+    (the outline curves) as animable children. This enables hierarchical animation and
+    transformation of the entire glyph as a single unit.
 
     Attributes:
         text: The character this glyph represents.
         bbox: The bounding box of the glyph.
-        border: The GlyphBorder containing the outline curves.
+        border: The optional GlyphBorder containing the outline curves; None when omitted.
         body: The GlyphBody containing the filled mesh.
     """
 
@@ -44,45 +44,48 @@ class Glyph(Object):
 
     def __init__(
         self,
-        path: svgtools.Path,
+        outline: svgtools.Path,
         name: str = None,
         mesh_quality: MeshQuality | None = None,
+        *,
+        with_border: bool = False,
     ):
-        """Initialize a Glyph from an SVG path.
+        """Initialize a Glyph from an SVG outline.
 
         Args:
-            path: The SVG path object representing the glyph.
+            outline: The SVG outline representing the glyph.
             name: Optional name for this glyph (defaults to "Glyph").
             mesh_quality: Triangulation density/quality for the glyph body.
                 Defaults to MeshQuality.minimal().
+            with_border: Whether to create an animatable outline. Defaults to False.
         """
-        assert isinstance(path, svgtools.Path), "Path must be an instance of svgpathtools.Path"
+        assert isinstance(outline, svgtools.Path), "Outline must be an instance of svgpathtools.Path"
 
         name = name or "Glyph"
         super().__init__(name=name)
 
         # Invert bbox y-coordinates to match Blender's coordinate system
-        bbox = GlyphBBox(*path.bbox())
+        bbox = GlyphBBox(*outline.bbox())
         bbox.y_min *= -1
         bbox.y_max *= -1
 
         self.text: str = ""
         self.bbox: GlyphBBox = bbox
 
-        # Create border and add as child
-        self._border = GlyphBorder(path, name=f"{name}_border")
-        self.add_child(self._border)
+        self._border: GlyphBorder | None = None
+        if with_border:
+            self._border = GlyphBorder(outline, name=f"{name}_border")
+            self.add_child(self._border)
 
-        # Create body and add as child
-        self._body = GlyphBody(self._border, name=f"{name}_body", mesh_quality=mesh_quality)
+        self._body = GlyphBody(name=f"{name}_body", mesh_quality=mesh_quality, outline=outline)
         self.add_child(self._body)
 
     @property
-    def border(self) -> GlyphBorder:
-        """Get the glyph's border (outline curves).
+    def border(self) -> GlyphBorder | None:
+        """Get the glyph's optional border (outline curves).
 
         Returns:
-            The GlyphBorder containing the outline curves.
+            The GlyphBorder, or None when the glyph was created without an outline.
         """
         return self._border
 
@@ -107,13 +110,20 @@ def glyph_write_on(glyph: Glyph) -> Effect:
 
     Returns:
         A phase effect for drawing the outline and fading in the body.
+
+    Raises:
+        ValueError: If the glyph was created without a border.
     """
     from anima.animation.effects import Draw, Fade, Phase, Stagger
+
+    border = glyph.border
+    if border is None:
+        raise ValueError("Glyph write-on requires with_border=True.")
 
     return Phase(
         glyph,
         [
-            (Stagger(glyph.border, lag_ratio=0.0, child_effect=Draw), *glyph.BORDER_REVEAL_WINDOW),
+            (Stagger(border, lag_ratio=0.0, child_effect=Draw), *glyph.BORDER_REVEAL_WINDOW),
             (Fade(glyph.body), *glyph.BODY_REVEAL_WINDOW),
         ],
     )

@@ -176,9 +176,13 @@ profile = get_profile()
 
 body = GlyphGroup.from_tex_string(r"$E = mc^2$")
 label = GlyphGroup.from_tex_string("Radius", font_size=profile.label_font_size)
-title = GlyphGroup.from_tex_string("Geometry", font_size=profile.title_font_size)
+title = GlyphGroup.from_tex_string("Geometry", font_size=profile.title_font_size, with_borders=True)
 custom = GlyphGroup.from_tex_string(r"Text {\large larger text}", font_size=12)
 ```
+
+Glyphs are border-free by default. Set `with_borders=True` on `GlyphGroup.from_tex_string()` when the outline is
+needed for display or `glyph_write_on()`. Each glyph border uses one shared material, so styling any one of its
+curves styles the whole border.
 
 Generated TeX output is cached across builds under the platform's user cache directory. The cache key uses the
 complete generated TeX document and Anima's TeX pipeline format; it stores the outline and text SVGs together.
