@@ -231,7 +231,11 @@ class Object(ABC):
             child.unhide()
 
     def copy(self) -> Object:
-        """Get a deep copy of this object.
+        """Get a deep copy of this object and its descendants.
+
+        Materials and their animation actions are copied independently from the original,
+        preserving material sharing within the copied hierarchy. Referenced shader node groups
+        and images remain shared.
 
         Returns:
             Object: A deep copy of this object.
@@ -912,7 +916,7 @@ class Object(ABC):
             setattr(new_copy, attr, None)
 
         # Copy Blender object manually.
-        new_copy._bl_object = deepcopy_object(self.object)
+        new_copy._bl_object = deepcopy_object(self.object, memo=memo)
         Object._registry.add(new_copy)
 
         # The copy starts detached, and its copied children must hang off the copy, not the original.

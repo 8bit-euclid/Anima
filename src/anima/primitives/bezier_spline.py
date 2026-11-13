@@ -375,9 +375,11 @@ class BezierSpline(Curve):
         Returns:
             A deep copy of this spline.
         """
+        if memo is None:
+            memo = {}
         new_copy = super().__deepcopy__(memo)
         new_bl_obj = new_copy.object
-        new_bl_obj.data.bevel_object = deepcopy_object(self.object.data.bevel_object)
+        new_bl_obj.data.bevel_object = deepcopy_object(self.object.data.bevel_object, memo=memo)
         new_bl_obj.data.bevel_object.parent = new_bl_obj
         return new_copy
 

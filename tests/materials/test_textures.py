@@ -240,6 +240,32 @@ def test_shared_group_keeps_material_color_and_opacity_independent(texture_dir):
     assert _texture_group(mat_b).node_tree == group_b.node_tree
 
 
+def test_copy_textured_material_keeps_per_material_state_independent(texture_dir):
+    textures = TextureSet.from_directory(texture_dir)
+    original = Rectangle(1, 1, name="pytest_textured_copy")
+    original.set_color((1.0, 0.0, 0.0, 1.0))
+    original.set_textures(textures, albedo_mode="modulate")
+    copied = original.copy()
+    source_mat = original.object.data.materials[0]
+    copy_mat = copied.object.data.materials[0]
+    source_group = _texture_group(source_mat)
+    copy_group = _texture_group(copy_mat)
+    assert copy_mat != source_mat
+    assert copy_mat.node_tree != source_mat.node_tree
+    assert source_group.node_tree == copy_group.node_tree
+
+    copied.set_color((0.0, 0.0, 1.0, 1.0))
+    copied.set_opacity(0.25)
+    assert tuple(source_group.inputs["Native Color"].default_value) == pytest.approx((1, 0, 0, 1))
+    assert tuple(copy_group.inputs["Native Color"].default_value) == pytest.approx((0, 0, 1, 1))
+    assert original.opacity == pytest.approx(1)
+    copied.set_textures(textures, albedo_mode="ignore")
+    assert _texture_group(source_mat).node_tree == source_group.node_tree
+    assert _texture_group(copy_mat).node_tree != source_group.node_tree
+    original.set_color((0.0, 1.0, 0.0, 1.0))
+    assert copied.color == pytest.approx((0, 0, 1, 0.25))
+
+
 def test_group_reused_after_module_reload_and_options_change(texture_dir):
     textures = TextureSet.from_directory(texture_dir)
     a = Rectangle(1, 1, name="pytest_a")

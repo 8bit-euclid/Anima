@@ -4,6 +4,7 @@ import sys
 from collections.abc import Iterable
 from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
 import bpy
 from mathutils import Euler as Euler, Matrix, Vector
@@ -17,6 +18,8 @@ UnitZ = Vector((0.0, 0.0, 1.0))
 LAYER_SPACING = 1e-4
 DEFAULT_ABSOLUTE_SMALL = 1e-7
 DEFAULT_RELATIVE_SMALL = 1e-8
+_MATERIAL_COPY_MEMO = object()
+_MATERIAL_ACTION_COPY_MEMO = object()
 
 
 def clip(val: int | float, min_val: int | float, max_val: int | float):
@@ -111,13 +114,55 @@ def add_object(name: str = "Object", data=None, parent=None):
     return obj
 
 
-def deepcopy_object(obj, name=None):
+def deepcopy_object(obj, name=None, *, memo: dict[int, Any] | None = None):
     if obj is None:
         return None
+    if memo is None:
+        memo = {}
+    material_copies: dict[bpy.types.Material, bpy.types.Material] = memo.setdefault(id(_MATERIAL_COPY_MEMO), {})
+    action_copies: dict[bpy.types.Action, bpy.types.Action] = memo.setdefault(id(_MATERIAL_ACTION_COPY_MEMO), {})
+
+    def copy_action(action: bpy.types.Action) -> bpy.types.Action:
+        if action not in action_copies:
+            action_copies[action] = action.copy()
+        return action_copies[action]
+
+    def copy_animation_actions(data: bpy.types.ID) -> None:
+        animation = data.animation_data
+        if animation is None:
+            return
+        if animation.action is not None:
+            animation.action = copy_action(animation.action)
+
+        def copy_strip_actions(strips) -> None:
+            for strip in strips:
+                if strip.action is not None:
+                    strip.action = copy_action(strip.action)
+                copy_strip_actions(strip.strips)
+
+        for track in animation.nla_tracks:
+            copy_strip_actions(track.strips)
+
+    def copy_material(material: bpy.types.Material) -> bpy.types.Material:
+        if material not in material_copies:
+            copied = material.copy()
+            copy_animation_actions(copied)
+            if copied.node_tree is not None:
+                copy_animation_actions(copied.node_tree)
+            material_copies[material] = copied
+        return material_copies[material]
+
     new_obj = obj.copy()
     new_obj.name = deepcopy(obj.name) if name is None else name
     if obj.data is not None:
         new_obj.data = obj.data.copy()
+        if hasattr(obj.data, "materials"):
+            for index, material in enumerate(obj.data.materials):
+                if material is not None:
+                    new_obj.data.materials[index] = copy_material(material)
+        for index, slot in enumerate(obj.material_slots):
+            if slot.link == "OBJECT" and slot.material is not None:
+                new_obj.material_slots[index].material = copy_material(slot.material)
     link_object(new_obj)
     return new_obj
 

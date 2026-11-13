@@ -143,6 +143,23 @@ class TestGlyph:
         assert glyph.border.name == "MyGlyph_border"
         assert glyph.body.name == "MyGlyph_body"
 
+    def test_copy_has_independent_glyph_materials(self):
+        glyph = Glyph(self.path, name="pytest_glyph_copy")
+        glyph.set_color((1.0, 0.0, 0.0, 1.0))
+        copied = glyph.copy()
+
+        assert copied.body.object.data.materials[0] != glyph.body.object.data.materials[0]
+        assert copied.border.curves[0].object.data.materials[0] != glyph.border.curves[0].object.data.materials[0]
+        copied.set_color((0.0, 0.0, 1.0, 1.0))
+        copied.set_opacity(0.25)
+        assert glyph.body.color == pytest.approx((1.0, 0.0, 0.0, 1.0))
+        assert glyph.border.curves[0].color == pytest.approx((1.0, 0.0, 0.0, 1.0))
+        assert copied.body.color == pytest.approx((0.0, 0.0, 1.0, 0.25))
+        assert copied.border.curves[0].color == pytest.approx((0.0, 0.0, 1.0, 0.25))
+        glyph.set_color((0.0, 1.0, 0.0, 1.0))
+        assert copied.body.color == pytest.approx((0.0, 0.0, 1.0, 0.25))
+        assert copied.border.curves[0].color == pytest.approx((0.0, 0.0, 1.0, 0.25))
+
     def test_invalid_path_raises(self):
         """Test that invalid path type raises assertion error."""
         with pytest.raises(AssertionError):
