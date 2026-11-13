@@ -464,7 +464,13 @@ class BezierSpline(Curve):
         return loc - pt.co if relative else loc
 
     def _set_handle(
-        self, side: str, point_index: int, location: Vector | Iterable[float], relative: bool = True
+        self,
+        side: str,
+        point_index: int,
+        location: Vector | Iterable[float],
+        relative: bool = True,
+        *,
+        update_length: bool = True,
     ) -> None:
         """Set a free handle and refresh cached length information.
 
@@ -473,6 +479,7 @@ class BezierSpline(Curve):
             point_index: The index of the anchor point.
             location: The new handle location.
             relative: Whether the location is relative to the anchor.
+            update_length: Whether to refresh the cached length after setting the handle.
         """
         loc = make_3d_vector(location)
         pt = self.spline_point(point_index)
@@ -482,7 +489,8 @@ class BezierSpline(Curve):
             self._set_handle_type(side, point_index, "FREE", update_length=False)
             setattr(pt, handle_str, pt.co + loc if relative else loc)
         finally:
-            self._update_length()
+            if update_length:
+                self._update_length()
 
     def _set_handle_type(self, side: str, point_index: int, type: str, update_length: bool = True) -> None:
         """Set a handle type, optionally deferring the length update.
@@ -528,17 +536,12 @@ class BezierSpline(Curve):
         Args:
             end_idx: The index of the endpoint (0 for start, 1 for end).
         """
-        if end_idx == 0:
-            param = self._param_0
-            attmt = self._attachment_0
-            param_offs = self._compute_offset_param_0(param)
-        else:
-            param = self.param_1
-            attmt = self._attachment_1
-            param_offs = self._compute_offset_param_1(param)
-
+        attmt = getattr(self, f"_attachment_{end_idx}")
         if attmt is None:
             return
+
+        param = getattr(self, f"param_{end_idx}")
+        param_offs = getattr(self, f"_compute_offset_param_{end_idx}")(param)
 
         if isinstance(attmt, Endcap):
             # Set location

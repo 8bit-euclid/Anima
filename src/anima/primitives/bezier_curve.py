@@ -33,8 +33,11 @@ class BezierCurve(BezierSpline):
         )
         if control_pts is not None:
             assert len(control_pts) == 2, "Only cubic Bezier curves are currently supported."
-            self.set_handle_0(control_pts[0], relative=False)
-            self.set_handle_1(control_pts[1], relative=False)
+            try:
+                self._set_handle("RIGHT", 0, control_pts[0], relative=False, update_length=False)
+                self._set_handle("LEFT", 1, control_pts[1], relative=False, update_length=False)
+            finally:
+                self._update_length()
 
     def set_handle_0(self, position, relative=True):
         """Set the handle position at point 0.

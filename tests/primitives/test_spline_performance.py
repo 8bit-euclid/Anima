@@ -11,6 +11,7 @@ from anima.primitives import bezier_spline
 from anima.primitives.bezier_curve import BezierCurve
 from anima.primitives.bezier_spline import BezierSpline
 from anima.primitives.chains import CurveChain
+from anima.primitives.endcaps import PointEndcap
 from anima.primitives.lines import Segment
 
 
@@ -42,6 +43,56 @@ def test_arc_length_matches_reference(start, end, handles):
     curve = BezierCurve(start, end, control_pts=handles)
     for t in (0, 0.1, 0.5, 0.9, 1):
         assert curve.length(t) == pytest.approx(reference_length(curve, 0, t), rel=2e-6, abs=1e-8)
+
+
+def test_constructor_batches_control_point_length_update(monkeypatch):
+    calls = []
+    real_quad = bezier_spline.integrate.quad
+    monkeypatch.setattr(
+        bezier_spline.integrate, "quad", lambda *args, **kwargs: calls.append(1) or real_quad(*args, **kwargs)
+    )
+
+    BezierCurve((0, 0), (4, 0))
+    assert len(calls) == 1
+    calls.clear()
+    curve = BezierCurve((0, 0), (4, 0), control_pts=[(0, 4), (3, 1)])
+
+    assert len(calls) == 2
+    assert curve._length == pytest.approx(reference_length(curve, 0, 1), rel=2e-6)
+
+    curve.set_handle_0((0, 5), relative=False)
+    assert len(calls) == 3
+    assert curve._length == pytest.approx(reference_length(curve, 0, 1), rel=2e-6)
+
+
+def test_attachment_update_skips_offset_calculation_without_attachment(monkeypatch):
+    curve = BezierCurve((0, 0), (4, 0), control_pts=[(0, 4), (3, 1)])
+    calls = []
+    monkeypatch.setattr(curve, "_compute_offset_param_0", lambda param: calls.append((0, param)) or param)
+    monkeypatch.setattr(curve, "_compute_offset_param_1", lambda param: calls.append((1, param)) or param)
+
+    curve._update_attachment(0)
+    curve._update_attachment(1)
+
+    assert calls == []
+
+
+def test_attachment_update_keeps_offset_calculation_for_attached_endcap(monkeypatch):
+    curve = BezierCurve((0, 0), (4, 0), control_pts=[(0, 4), (3, 1)])
+    endcap = PointEndcap()
+    curve.set_attachment_1(endcap)
+    calls = []
+    compute_offset = curve._compute_offset_param_1
+
+    def track_offset(param):
+        calls.append(param)
+        return compute_offset(param)
+
+    monkeypatch.setattr(curve, "_compute_offset_param_1", track_offset)
+    curve._update_attachment(1)
+
+    assert calls == [curve.param_1]
+    assert tuple(endcap.location) == pytest.approx(tuple(curve.point(curve.param_1)))
 
 
 def test_lookup_is_lazy_and_reused_until_geometry_changes():
