@@ -79,17 +79,22 @@ def test_latex_and_reveals_inherit_textures_and_preserve_colors(textured_demo):
             .node_tree.nodes.get(NODE_PREFIX + "albedo")
             is not None
         )
-        for curve in glyph.border.curves:
-            assert curve.width == pytest.approx(THIN_LINE_WIDTH)
-            assert (
-                curve.object.data.materials[0]
-                .node_tree.nodes[TEXTURE_GROUP_NODE]
-                .node_tree.nodes.get(NODE_PREFIX + "albedo")
-                is not None
-            )
+        assert glyph.border is None
 
     write_on, bars = [target for target, _ in inherited[5:]]
-    assert write_on[0].body.color[:3] == pytest.approx(get_palette_color("byrne_euclid", "red1"))
+    write_on_glyph = write_on[0]
+    assert write_on_glyph.body.color[:3] == pytest.approx(get_palette_color("byrne_euclid", "red1"))
+    border = write_on_glyph.border
+    assert border is not None
+    for curve in border.curves:
+        assert curve.width == pytest.approx(THIN_LINE_WIDTH)
+        assert curve.color[:3] == pytest.approx(get_palette_color("byrne_euclid", "red1"))
+        assert (
+            curve.object.data.materials[0]
+            .node_tree.nodes[TEXTURE_GROUP_NODE]
+            .node_tree.nodes.get(NODE_PREFIX + "albedo")
+            is not None
+        )
     assert (
         bars.children[0]
         .object.data.materials[0]

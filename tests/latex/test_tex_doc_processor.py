@@ -4,9 +4,9 @@ import threading
 
 import pytest
 
-import anima.latex.tex_document_processor as processor_module
+import anima.latex.tex_doc_processor as processor_module
+from anima.latex.tex_doc_processor import TeXDocumentProcessor, _extract_text_glyphs
 from anima.latex.tex_document import TeXDocument
-from anima.latex.tex_document_processor import TeXDocumentProcessor, _extract_text_glyphs
 
 
 def test_dvi_conversions_run_concurrently_and_wait_for_both(tmp_path, monkeypatch):

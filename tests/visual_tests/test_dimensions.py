@@ -3,8 +3,8 @@
 import pytest
 
 from anima.latex.glyph_group import GlyphGroup
+from anima.latex.tex_doc_processor import TeXDocumentProcessor
 from anima.latex.tex_document import TeXDocument
-from anima.latex.tex_document_processor import TeXDocumentProcessor
 from anima.scene.profile import FRAME_16X9_V1
 
 

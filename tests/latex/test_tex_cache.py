@@ -4,7 +4,7 @@ from threading import Barrier
 
 import pytest
 
-import anima.latex.tex_document_processor as processor_module
+import anima.latex.tex_doc_processor as processor_module
 from anima.latex.tex_cache import (
     CachedTexOutputs,
     clear_tex_cache,
@@ -14,8 +14,8 @@ from anima.latex.tex_cache import (
     tex_cache_root,
     write_tex_cache,
 )
+from anima.latex.tex_doc_processor import TeXDocumentProcessor
 from anima.latex.tex_document import TeXDocument
-from anima.latex.tex_document_processor import TeXDocumentProcessor
 
 OUTLINE_SVG = b"<svg>outline</svg>"
 TEXT_SVG = b"<svg>text</svg>"

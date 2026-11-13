@@ -8,8 +8,8 @@ import svgpathtools as svgtools
 
 from anima.latex.glyph import Glyph
 from anima.latex.glyph_body import MeshQuality
+from anima.latex.tex_doc_processor import TeXDocumentProcessor
 from anima.latex.tex_document import TeXDocument
-from anima.latex.tex_document_processor import TeXDocumentProcessor
 from anima.primitives.group import Group
 from anima.primitives.object import Object
 from anima.scene.state import get_profile
