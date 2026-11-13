@@ -30,7 +30,7 @@ from anima.materials.material import (
     get_palette_color,
     set_material_properties,
 )
-from anima.materials.texture import AlbedoMode, TextureSet, apply_texture_set
+from anima.materials.texture import AlbedoMode, TextureSet, _texture_application, apply_texture_set
 
 
 class Object(ABC):
@@ -681,15 +681,16 @@ class Object(ABC):
         Returns:
             Object: This object.
         """
-        self._texture_set = textures
-        self._texture_options = {"albedo_mode": albedo_mode, **options}
-        if self._has_data():
-            materials = self._bl_object.data.materials
-            if not materials:
-                materials.append(get_or_create_material(f"{self.name}_material"))
-            apply_texture_set(materials[0], textures, albedo_mode=albedo_mode, **options)
-        for child in self.children:
-            child.set_textures(textures, albedo_mode=albedo_mode, **options)
+        with _texture_application():
+            self._texture_set = textures
+            self._texture_options = {"albedo_mode": albedo_mode, **options}
+            if self._has_data():
+                materials = self._bl_object.data.materials
+                if not materials:
+                    materials.append(get_or_create_material(f"{self.name}_material"))
+                apply_texture_set(materials[0], textures, albedo_mode=albedo_mode, **options)
+            for child in self.children:
+                child.set_textures(textures, albedo_mode=albedo_mode, **options)
         return self
 
     def inherit_textures_from(self, other: Object, *, albedo_mode: AlbedoMode = "modulate", **options: Any) -> Object:

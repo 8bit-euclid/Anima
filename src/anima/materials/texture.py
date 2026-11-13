@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Generator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, fields
 from functools import cache
 from pathlib import Path
@@ -112,6 +115,39 @@ class TextureSet:
         }
 
 
+@dataclass(frozen=True)
+class _PreparedTextureSet:
+    textures: TextureSet
+    used_maps: tuple[tuple[str, str], ...]
+    options: tuple[tuple[str, str | float | bool], ...]
+    signature: str
+    name: str
+
+
+@dataclass
+class _TextureApplication:
+    prepared: _PreparedTextureSet | None = None
+
+
+_CURRENT_TEXTURE_APPLICATION: ContextVar[_TextureApplication | None] = ContextVar(
+    "anima_texture_application", default=None
+)
+
+
+@contextmanager
+def _texture_application() -> Generator[None, None, None]:
+    """Share prepared texture data through one synchronous recursive application."""
+    if _CURRENT_TEXTURE_APPLICATION.get() is not None:
+        yield
+        return
+
+    token = _CURRENT_TEXTURE_APPLICATION.set(_TextureApplication())
+    try:
+        yield
+    finally:
+        _CURRENT_TEXTURE_APPLICATION.reset(token)
+
+
 def apply_texture_set(
     mat: bpy.types.Material,
     textures: TextureSet,
@@ -154,60 +190,68 @@ def apply_texture_set(
     if bsdf is None:
         return
 
-    options = {
-        "albedo_mode": albedo_mode,
-        "albedo_strength": albedo_strength,
-        "mottling_strength": mottling_strength,
-        "ao_strength": ao_strength,
-        "use_ao": use_ao,
-        "use_transmission": use_transmission,
-        "bump_strength": bump_strength,
-        "bump_distance": bump_distance,
-        "normal_strength": normal_strength,
-    }
-    used_maps = {
-        key: str(Path(path).resolve())
-        for key, path in textures.maps().items()
-        if (key != "albedo" or albedo_mode != "ignore")
-        and (key != "ao" or (use_ao and albedo_mode != "ignore"))
-        and (key != "transmission" or use_transmission)
-    }
-    for path in used_maps.values():
-        if not Path(path).is_file():
-            raise FileNotFoundError(f"Texture map not found: {path}")
-    signature = json.dumps(
-        {"version": _GROUP_VERSION, "maps": used_maps, "size": textures.physical_size, "options": options},
-        sort_keys=True,
+    options_tuple = (
+        ("albedo_mode", albedo_mode),
+        ("albedo_strength", albedo_strength),
+        ("mottling_strength", mottling_strength),
+        ("ao_strength", ao_strength),
+        ("use_ao", use_ao),
+        ("use_transmission", use_transmission),
+        ("bump_strength", bump_strength),
+        ("bump_distance", bump_distance),
+        ("normal_strength", normal_strength),
     )
-    name = "AnimaTexture_" + hashlib.sha256(signature.encode()).hexdigest()[:40]
-    group = bpy.data.node_groups.get(name)
-    if group is not None and group.get("anima_texture_signature") != signature:
-        raise RuntimeError(f"Texture node group name is already in use: {name}")
+    application = _CURRENT_TEXTURE_APPLICATION.get()
+    prepared = None
+    if application is not None and application.prepared is not None:
+        candidate = application.prepared
+        if candidate.textures is textures and candidate.options == options_tuple:
+            prepared = candidate
+    if prepared is None:
+        used_maps = tuple(
+            (key, str(Path(path).resolve()))
+            for key, path in textures.maps().items()
+            if (key != "albedo" or albedo_mode != "ignore")
+            and (key != "ao" or (use_ao and albedo_mode != "ignore"))
+            and (key != "transmission" or use_transmission)
+        )
+        for _, path in used_maps:
+            if not Path(path).is_file():
+                raise FileNotFoundError(f"Texture map not found: {path}")
+        signature = json.dumps(
+            {
+                "version": _GROUP_VERSION,
+                "maps": dict(used_maps),
+                "size": textures.physical_size,
+                "options": dict(options_tuple),
+            },
+            sort_keys=True,
+        )
+        name = "AnimaTexture_" + hashlib.sha256(signature.encode()).hexdigest()[:40]
+        prepared = _PreparedTextureSet(textures, used_maps, options_tuple, signature, name)
+        if application is not None:
+            application.prepared = prepared
+
+    group = bpy.data.node_groups.get(prepared.name)
+    if group is not None and group.get("anima_texture_signature") != prepared.signature:
+        raise RuntimeError(f"Texture node group name is already in use: {prepared.name}")
     if group is not None:
-        for key, path in used_maps.items():
+        for key, path in prepared.used_maps:
             image_node = group.nodes.get(NODE_PREFIX + key)
             if image_node is None or image_node.type != "TEX_IMAGE":
-                raise RuntimeError(f"Texture node group {name} is missing the {key} image node.")
+                raise RuntimeError(f"Texture node group {prepared.name} is missing the {key} image node.")
             if image_node.image is None:
                 image_node.image = _load_image(Path(path), "sRGB" if key == "albedo" else "Non-Color")
     if group is None:
-        group = bpy.data.node_groups.new(name, "ShaderNodeTree")
+        group = bpy.data.node_groups.new(prepared.name, "ShaderNodeTree")
         complete = False
         try:
             _build_texture_group(
                 group,
                 textures,
-                albedo_mode=albedo_mode,
-                albedo_strength=albedo_strength,
-                mottling_strength=mottling_strength,
-                ao_strength=ao_strength,
-                use_ao=use_ao,
-                use_transmission=use_transmission,
-                bump_strength=bump_strength,
-                bump_distance=bump_distance,
-                normal_strength=normal_strength,
+                **dict(prepared.options),
             )
-            group["anima_texture_signature"] = signature
+            group["anima_texture_signature"] = prepared.signature
             complete = True
         finally:
             if not complete:

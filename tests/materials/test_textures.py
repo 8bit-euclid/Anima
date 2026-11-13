@@ -240,6 +240,37 @@ def test_shared_group_keeps_material_color_and_opacity_independent(texture_dir):
     assert _texture_group(mat_b).node_tree == group_b.node_tree
 
 
+def test_recursive_texture_application_prepares_maps_once_per_root(texture_dir, monkeypatch):
+    from anima.primitives.group import Group
+
+    textures = TextureSet.from_directory(texture_dir)
+    roots = [
+        Group([Rectangle(1, 1, name=f"pytest_{root}_{child}") for child in range(2)], name=f"pytest_root_{root}")
+        for root in range(2)
+    ]
+    calls = 0
+    original_maps = TextureSet.maps
+
+    def count_maps(self):
+        nonlocal calls
+        calls += 1
+        return original_maps(self)
+
+    monkeypatch.setattr(TextureSet, "maps", count_maps)
+
+    roots[0].set_textures(textures, albedo_mode="modulate", mottling_strength=0.5)
+    assert calls == 1
+    roots[1].set_textures(textures, albedo_mode="modulate", mottling_strength=0.5)
+    assert calls == 2
+
+    roots[0].set_textures(textures, albedo_mode="modulate", mottling_strength=0.8)
+    assert calls == 3
+    assert (
+        _texture_group(roots[0].children[0].object.data.materials[0]).node_tree
+        != _texture_group(roots[1].children[0].object.data.materials[0]).node_tree
+    )
+
+
 def test_copy_textured_material_keeps_per_material_state_independent(texture_dir):
     textures = TextureSet.from_directory(texture_dir)
     original = Rectangle(1, 1, name="pytest_textured_copy")
