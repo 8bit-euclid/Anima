@@ -8,7 +8,7 @@ from mathutils import Matrix, Vector
 from anima.animation.effects import Callback, Draw, Effect, Fade, Phase, Scale, Stagger, Together
 from anima.animation.stagger import reversed_order
 from anima.latex.glyph import Glyph, glyph_write_on
-from anima.latex.glyph_group import GlyphGroup
+from anima.latex.glyph_group import GlyphGroup, glyph_group_write_on
 from anima.primitives.chains import CurveLoop
 from anima.primitives.group import Group
 from anima.primitives.lines import Segment
@@ -311,3 +311,50 @@ class TestGlyphWriteOn:
         assert all(not shown(g.body) for g in glyphs)
         reveal.apply(1.0)
         assert all(shown(g.body) and g.body.opacity == pytest.approx(1.0) for g in glyphs)
+
+    def test_group_write_on_uses_stagger_lag_and_order(self):
+        glyphs = [Glyph(create_rect_path(), name=f"Ordered{i}", with_border=True) for i in range(3)]
+        group = GlyphGroup(glyphs)
+        reveal = glyph_group_write_on(group, lag_ratio=1.0, order=reversed_order)
+
+        assert isinstance(reveal, Stagger)
+        assert reveal.target is group
+        assert reveal.lag_ratio == 1.0
+        assert [effect.target for effect in reveal.effects] == glyphs
+        reveal.apply(0.5)
+        assert [effect.progress for effect in reveal.effects] == pytest.approx([0.0, 0.5, 1.0])
+
+    def test_group_write_on_fades_borderless_bodies_alongside_bordered_glyphs(self):
+        body_only = Glyph(create_rect_path(), name="BodyOnly")
+        outlined = Glyph(create_rect_path(), name="Outlined", with_border=True)
+        reveal = glyph_group_write_on(GlyphGroup([body_only, outlined]), lag_ratio=0.0)
+
+        reveal.apply(0.0)
+        assert not shown(body_only.body)
+        assert not shown(outlined.body)
+        assert outlined.border.subpaths[0].param_1 == pytest.approx(0.0)
+
+        reveal.apply(0.5)
+        assert shown(body_only.body)
+        assert body_only.body.opacity == pytest.approx(0.5)
+        assert 0.0 < outlined.border.subpaths[0].param_1 < 1.0
+        assert not shown(outlined.body)
+
+        reveal.apply(1.0)
+        assert body_only.body.opacity == pytest.approx(1.0)
+        assert outlined.body.opacity == pytest.approx(1.0)
+        assert shown(outlined.body)
+        assert outlined.border.subpaths[0].param_1 == pytest.approx(1.0)
+
+    def test_group_write_on_staggers_borderless_glyphs_in_requested_order(self):
+        first = Glyph(create_rect_path(), name="First")
+        second = Glyph(create_rect_path(), name="Second")
+        reveal = glyph_group_write_on(GlyphGroup([first, second]), lag_ratio=1.0, order=reversed_order)
+
+        reveal.apply(0.25)
+        assert not shown(first.body)
+        assert second.body.opacity == pytest.approx(0.5)
+
+        reveal.apply(0.75)
+        assert first.body.opacity == pytest.approx(0.5)
+        assert second.body.opacity == pytest.approx(1.0)

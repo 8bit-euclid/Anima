@@ -2,17 +2,21 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 from math import isfinite
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import svgpathtools as svgtools
 
-from anima.latex.glyph import Glyph
+from anima.latex.glyph import Glyph, glyph_write_on
 from anima.latex.glyph_body import MeshQuality
 from anima.latex.tex_doc_processor import TeXDocumentProcessor
 from anima.latex.tex_document import TeXDocument
 from anima.primitives.group import Group
 from anima.primitives.object import Object
 from anima.scene.state import get_profile
+
+if TYPE_CHECKING:
+    from anima.animation.effects import Effect, Stagger
+    from anima.animation.stagger import Ordering
 
 # dvisvgm's coordinates are in big points (1/72 inch); TeX points are 1/72.27 inch.
 _TEX_POINT_IN_SVG_UNITS = 72 / 72.27
@@ -159,6 +163,38 @@ class GlyphGroup(Group):
             The Glyph at the given index.
         """
         return self.glyphs[index]
+
+
+def glyph_group_write_on(
+    group: GlyphGroup,
+    *,
+    lag_ratio: float = 0.5,
+    order: Ordering | None = None,
+) -> Stagger:
+    """Create a staggered write-on effect for every glyph in a group.
+
+    Glyphs with borders use :func:`glyph_write_on`; glyphs without borders fade in their bodies
+    over their staggered windows. Borders are not created implicitly.
+
+    Args:
+        group: The glyph group to reveal.
+        lag_ratio: Delay between glyph reveal windows, as a fraction of each window.
+        order: Ordering for the glyphs. Defaults to their natural order.
+
+    Returns:
+        A staggered effect that reveals each glyph.
+
+    Raises:
+        ValueError: If `lag_ratio` or `order` is invalid.
+    """
+    from anima.animation.effects import Fade, Stagger
+
+    def reveal_glyph(child: Object) -> Effect:
+        if not isinstance(child, Glyph):
+            raise TypeError(f"Expected Glyph instance, got {type(child).__name__}")
+        return glyph_write_on(child) if child.border is not None else Fade(child.body)
+
+    return Stagger(group, lag_ratio=lag_ratio, order=order, children=group.glyphs, child_effect=reveal_glyph)
 
 
 def _scale_outline(outline: svgtools.Path, factor: float) -> svgtools.Path:

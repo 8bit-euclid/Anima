@@ -193,6 +193,16 @@ Glyphs are border-free by default. Set `with_borders=True` on `GlyphGroup.from_t
 needed for display or `glyph_write_on()`. Each glyph border uses one shared material, so styling any one of its
 curves styles the whole border.
 
+For a staggered write-on across a whole group, use the standalone effect builder. It returns a `Stagger` effect;
+pass that effect to an `Enter` or `Exit` action as usual. Bordered glyphs use the per-glyph `glyph_write_on()`
+recipe, while borderless glyph bodies fade in over their staggered windows. No borders are created implicitly.
+
+```python
+from anima.latex.glyph_group import glyph_group_write_on
+
+reveal = glyph_group_write_on(title, lag_ratio=0.3)
+```
+
 Generated TeX output is cached across builds under the platform's user cache directory. The cache key uses the
 complete generated TeX document and Anima's TeX pipeline format; it stores the outline and text SVGs together.
 It does not fingerprint installed TeX packages, fonts, external files referenced by TeX, or tool versions. Clear
