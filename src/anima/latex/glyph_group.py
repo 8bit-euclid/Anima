@@ -72,6 +72,7 @@ class GlyphGroup(Group):
         *,
         font_size: float | None = None,
         with_borders: bool = False,
+        tex_template: TeXDocument | None = None,
     ) -> GlyphGroup:
         """Create a GlyphGroup from a LaTeX string, with glyphs correctly positioned.
 
@@ -88,12 +89,14 @@ class GlyphGroup(Group):
             font_size: Base font size in TeX points. Defaults to the profile's body size.
                 LaTeX sizing commands in text can override this size.
             with_borders: Whether to create animatable outlines for each glyph. Defaults to False.
+            tex_template: Preamble-only TeX document to use without modifying it. Defaults to Anima's
+                standalone document with TeX Gyre Termes, amsmath, and amssymb.
 
         Returns:
             A GlyphGroup containing all positioned Glyph instances.
 
         Raises:
-            ValueError: If font_size is not finite and positive.
+            ValueError: If font_size is not finite and positive or the template already has body content.
         """
         profile = get_profile()
         if font_size is None:
@@ -101,7 +104,8 @@ class GlyphGroup(Group):
         if not isfinite(font_size) or font_size <= 0:
             raise ValueError("font_size must be finite and positive.")
         svg_scale = profile.tex_point_size / _TEX_POINT_IN_SVG_UNITS
-        content = TeXDocument().set_defaults().add_to_body(text, font_size=font_size)
+        template = TeXDocument().set_defaults() if tex_template is None else tex_template
+        content = template.with_body(text, font_size=font_size)
         group = cls(name=name)
 
         with TeXDocumentProcessor(content) as (glyph_outlines, positions):

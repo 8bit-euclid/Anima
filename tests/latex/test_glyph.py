@@ -1,5 +1,6 @@
 """Unit tests for Glyph, GlyphBorder, GlyphBody, and GlyphGroup classes."""
 
+import shutil
 from dataclasses import replace
 from unittest.mock import MagicMock
 
@@ -10,6 +11,7 @@ from anima.latex.glyph import Glyph, GlyphBBox, glyph_write_on
 from anima.latex.glyph_body import GlyphBody
 from anima.latex.glyph_border import GlyphBorder
 from anima.latex.glyph_group import GlyphGroup, _format_glyph_name, _scale_outline
+from anima.latex.tex_document import TeXDocument
 from anima.latex.tex_object import TeXObject
 from anima.primitives.chains import CurveLoop
 from anima.primitives.group import Group
@@ -240,6 +242,9 @@ class TestGlyphGroup:
 
         group = GlyphGroup.from_tex_string("A+?", name="Equation")
 
+        assert str(processor.call_args.args[0]) == str(
+            TeXDocument().set_defaults().add_to_body("A+?", font_size=FRAME_16X9_V1.body_font_size)
+        )
         assert group.name == "Equation"
         assert [glyph.name for glyph in group] == ["01-A", "02-rule", "03-summationtext"]
         assert [glyph.text for glyph in group] == ["A", "", "\ue050"]
@@ -264,6 +269,63 @@ class TestGlyphGroup:
         group = GlyphGroup.from_tex_string("A", with_borders=True)
 
         assert isinstance(group[0].border, GlyphBorder)
+
+    def test_from_tex_string_uses_reusable_template_without_mutating_it(self, monkeypatch):
+        processor = MagicMock()
+        processor.return_value.__enter__.return_value = ({"a": self.outline1}, [("a", (0, 0), "A", None)])
+        monkeypatch.setattr("anima.latex.glyph_group.TeXDocumentProcessor", processor)
+        template = (
+            TeXDocument()
+            .set_defaults()
+            .set_main_font("Latin Modern Roman")
+            .add_package("mathtools")
+            .add_new_command("myfrac", r"\frac{#1}{2}")
+            .add_to_preamble(r"\newcommand{\mytext}{hello}")
+        )
+
+        GlyphGroup.from_tex_string(r"$\myfrac{x}$", tex_template=template, font_size=12.5)
+        GlyphGroup.from_tex_string(r"$\myfrac{y}$", tex_template=template, font_size=12.5)
+
+        first, second = (str(call.args[0]) for call in processor.call_args_list)
+        assert r"\usepackage{mathtools}" in first
+        assert r"\setmainfont{Latin Modern Roman}" in first
+        assert r"\newcommand{\myfrac}[1]{\frac{#1}{2}}" in first
+        assert r"\newcommand{\mytext}{hello}" in first
+        assert r"\fontsize{12.5}{15.0}\selectfont" in first
+        assert r"\myfrac{x}" in first and r"\myfrac{y}" not in first
+        assert r"\myfrac{y}" in second and r"\myfrac{x}" not in second
+        assert template._body == []
+
+    def test_from_tex_string_rejects_template_with_existing_body(self, monkeypatch):
+        processor = MagicMock()
+        monkeypatch.setattr("anima.latex.glyph_group.TeXDocumentProcessor", processor)
+        template = TeXDocument().set_defaults().add_to_body("existing")
+
+        with pytest.raises(ValueError, match="template must not already contain body"):
+            GlyphGroup.from_tex_string("new", tex_template=template)
+
+        assert template.to_string(body_only=True) == "existing"
+        processor.assert_not_called()
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_from_tex_string_compiles_custom_template_and_maps_font_glyphs(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        template = (
+            TeXDocument()
+            .set_defaults()
+            .set_main_font("Latin Modern Roman")
+            .add_package("mathtools")
+            .add_new_command("myfrac", r"\frac{#1}{2}")
+        )
+
+        group = GlyphGroup.from_tex_string(r"H $\myfrac{x}+\sum_{i=1}^{2}x_i$", tex_template=template)
+
+        assert group[0].text == "H"
+        assert any(glyph.name.endswith("-rule") for glyph in group)
+        assert any(glyph.name.endswith("-summationtext") for glyph in group)
+        assert template._body == []
 
     def test_from_tex_string_typesets_font_size_and_uses_fixed_scene_conversion(self, monkeypatch):
         processor = MagicMock()

@@ -189,6 +189,30 @@ title = GlyphGroup.from_tex_string("Geometry", font_size=profile.title_font_size
 custom = GlyphGroup.from_tex_string(r"Text {\large larger text}", font_size=12)
 ```
 
+For custom packages, macros, or fonts, pass a reusable preamble-only `TeXDocument` as `tex_template`.
+Start with `set_defaults()` to retain Anima's standalone document and default packages, then customize it:
+
+```python
+from anima.latex.tex_document import TeXDocument
+
+template = (
+    TeXDocument()
+    .set_defaults()
+    .add_package("mathtools")
+    .add_new_command("half", r"\frac{#1}{2}")
+    .set_main_font("Latin Modern Roman")
+)
+formula = GlyphGroup.from_tex_string(r"$\half{x}$", tex_template=template)
+```
+
+Each call copies the template before adding its body, so it can be reused. Templates with existing body content are
+rejected. Templates must work with LuaLaTeX in DVI mode and dvisvgm; other compilers are not configurable.
+Character labels depend on font metadata supplied by dvisvgm and may be unavailable for some fonts or expressions.
+Packages, macros, and raw preamble entries are emitted in the order they are added. Adding the same package or macro
+twice through the corresponding method raises `ValueError`; raw preamble entries are not checked for duplicates.
+`set_main_font()` replaces its previous font and size declarations in place. The requested `font_size` on
+`from_tex_string()` sets the size of the rendered body independently of the template's default font size.
+
 Glyphs are border-free by default. Set `with_borders=True` on `GlyphGroup.from_tex_string()` when the outline is
 needed for display or `glyph_write_on()`. Each glyph border uses one shared material, so styling any one of its
 curves styles the whole border.

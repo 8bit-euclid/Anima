@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from copy import deepcopy
+
 DEFAULT_FONT = "TeX Gyre Termes"
 DEFAULT_FONT_SIZE = 10  # Font size in points (LaTeX default is 10pt)
 
@@ -14,21 +18,22 @@ class TeXDocument:
         font: str | None = None,
         font_size: int | float | None = None,
     ):
-        self._document_class: str = None
-        self._other_commands: list[str] = []
-        self._packages: dict[str, str] = {}
-        self._new_commands: dict[str, str] = {}
+        self._document_class: str | None = None
+        self._preamble: list[str] = []
+        self._packages: set[str] = set()
+        self._new_commands: set[str] = set()
+        self._font_index: int | None = None
         self._body: list[str] = []
         if body:
             self.add_to_body(body)
         if font:
-            self.set_main_font(font, font_size)
+            self.set_main_font(font, DEFAULT_FONT_SIZE if font_size is None else font_size)
 
-    def set_defaults(self):
+    def set_defaults(self) -> TeXDocument:
         """Set default document class and font."""
-        self.set_document_class("standalone", ["preview"]).set_main_font(DEFAULT_FONT, DEFAULT_FONT_SIZE).add_package(
-            "amsmath"
-        ).add_package("amssymb")
+        self.set_document_class("standalone", ["preview"])
+        self.add_package("fontspec").add_package("amsmath").add_package("amssymb")
+        self.set_main_font(DEFAULT_FONT, DEFAULT_FONT_SIZE)
         return self
 
     def set_document_class(self, name: str, options: str | list[str] | None = None):
@@ -45,47 +50,66 @@ class TeXDocument:
             self._document_class = rf"\documentclass{{{name}}}"
         return self
 
-    def set_main_font(self, name: str, font_size: int | float = DEFAULT_FONT_SIZE):
-        """Set the main font for the document. Adds the fontspec package if not already added.
-        Optionally sets the default font size.
+    def set_main_font(self, name: str, font_size: int | float = DEFAULT_FONT_SIZE) -> TeXDocument:
+        """Set the main font and default font size for the document.
+
+        Adds fontspec if needed. Subsequent calls replace this method's previous
+        font and size declarations in place.
 
         Args:
             name: Name of the font package (e.g. 'Times New Roman', 'TeX Gyre Termes', etc.)
             font_size: Optional font size in points (e.g., 12)
         """
+        disable_ligatures = "Ligatures=NoCommon"
+        commands = [
+            rf"\setmainfont{{{name}}}[{disable_ligatures}]",
+            rf"\fontsize{{{font_size}}}{{{1.2 * float(font_size)}}}\selectfont",
+        ]
         if "fontspec" not in self._packages:
             self.add_package("fontspec")
-        disable_ligatures = "Ligatures=NoCommon"
-        self.add_to_preamble(rf"\setmainfont{{{name}}}[{disable_ligatures}]")
-        self.add_to_preamble(rf"\fontsize{{{font_size}}}{{{1.2 * float(font_size)}}}\selectfont")
+        if self._font_index is None:
+            self._font_index = len(self._preamble)
+            self._preamble.extend(commands)
+        else:
+            self._preamble[self._font_index : self._font_index + len(commands)] = commands
         return self
 
-    def add_package(self, name: str, options: str | list[str] | None = None):
+    def add_package(self, name: str, options: str | list[str] | None = None) -> TeXDocument:
         """Add a LaTeX package to the preamble.
 
         Args:
             name: Name of the package
             options: Package options
+
+        Raises:
+            ValueError: If the package was already added through this method.
         """
-        packages = self._packages
-        assert name not in packages, f"Package '{name}' is already added."
+        if name in self._packages:
+            raise ValueError(f"Package '{name}' is already added.")
 
         if options:
             options_str = get_options_str(options)
-            packages[name] = rf"\usepackage[{options_str}]{{{name}}}"
+            command = rf"\usepackage[{options_str}]{{{name}}}"
         else:
-            packages[name] = rf"\usepackage{{{name}}}"
+            command = rf"\usepackage{{{name}}}"
+        self._packages.add(name)
+        self._preamble.append(command)
         return self
 
-    def add_new_command(self, name: str, definition: str):
+    def add_new_command(self, name: str, definition: str) -> TeXDocument:
         """Add a \\newcommand to the preamble.
 
         Args:
             name: Command name (with or without leading backslash)
             definition: Command definition
+
+        Raises:
+            ValueError: If the command was already added through this method.
         """
         if not name.startswith("\\"):
             name = "\\" + name
+        if name in self._new_commands:
+            raise ValueError(f"Command '{name}' is already added.")
 
         # Find all argument placeholders (#1, #2, etc.) if any exist
         import re
@@ -99,16 +123,17 @@ class TeXDocument:
             num_args = max(int(arg) for arg in args)
             cmd = rf"\newcommand{{{name}}}[{num_args}]{{{definition}}}"
 
-        self._new_commands[name] = cmd
+        self._new_commands.add(name)
+        self._preamble.append(cmd)
         return self
 
-    def add_to_preamble(self, entry: str):
+    def add_to_preamble(self, entry: str) -> TeXDocument:
         """Add a generic line to the preamble.
 
         Args:
             entry: Generic LaTeX entry to add
         """
-        self._other_commands.append(entry)
+        self._preamble.append(entry)
         return self
 
     def add_to_body(self, text: str, font: str | None = None, font_size: int | float | None = None):
@@ -128,6 +153,27 @@ class TeXDocument:
             text = f"{{{' '.join(parts)} {text}}}"
         self._body.append(text)
         return self
+
+    def with_body(self, text: str, *, font_size: int | float | None = None) -> TeXDocument:
+        """Create a document from this preamble-only template and the supplied body.
+
+        The template is not modified and can be reused for other bodies.
+
+        Args:
+            text: LaTeX content for the new document.
+            font_size: Optional base font size in TeX points.
+
+        Returns:
+            A separate document with the supplied body.
+
+        Raises:
+            ValueError: If this template already contains body content.
+        """
+        if self._body:
+            raise ValueError("A TeX document template must not already contain body content.")
+        document = deepcopy(self)
+        document.add_to_body(text, font_size=font_size)
+        return document
 
     def to_string(self, body_only: bool = False) -> str:
         """Return the string representation of the LaTeX document or its body.
@@ -153,12 +199,7 @@ class TeXDocument:
             parts.append(self._document_class)
 
             # Document preamble
-            if self._packages:
-                parts.extend(list(self._packages.values()))
-            if self._other_commands:
-                parts.extend(self._other_commands)
-            if self._new_commands:
-                parts.extend(list(self._new_commands.values()))
+            parts.extend(self._preamble)
 
             # Document body
             parts.append(r"\begin{document}")
@@ -171,8 +212,9 @@ class TeXDocument:
         """Clear all packages and commands."""
         self._document_class = None
         self._packages.clear()
-        self._other_commands.clear()
+        self._preamble.clear()
         self._new_commands.clear()
+        self._font_index = None
         self._body.clear()
         return self
 

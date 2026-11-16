@@ -96,6 +96,23 @@ def test_processor_cache_key_includes_complete_document(tmp_path, monkeypatch):
     assert len(_cached_entries(tmp_path)) == 2
 
 
+def test_template_content_changes_cache_key_and_reuses_identical_document(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANIMA_TEX_CACHE_DIR", str(tmp_path))
+    monkeypatch.delenv("ANIMA_DISABLE_TEX_CACHE", raising=False)
+    calls = _install_fake_pipeline(monkeypatch)
+    template = TeXDocument().set_defaults().add_new_command("value", "x")
+
+    for _ in range(2):
+        with TeXDocumentProcessor(template.with_body(r"$\value$", font_size=10)):
+            pass
+    changed_template = TeXDocument().set_defaults().add_new_command("value", "y")
+    with TeXDocumentProcessor(changed_template.with_body(r"$\value$", font_size=10)):
+        pass
+
+    assert calls == ["lualatex", "dvisvgm", "lualatex", "dvisvgm"]
+    assert len(_cached_entries(tmp_path)) == 2
+
+
 def test_disabled_cache_does_not_read_or_write_entries(tmp_path, monkeypatch):
     monkeypatch.setenv("ANIMA_TEX_CACHE_DIR", str(tmp_path))
     monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")

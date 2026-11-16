@@ -9,6 +9,108 @@ from anima.latex.tex_doc_processor import TeXDocumentProcessor, _extract_text_gl
 from anima.latex.tex_document import TeXDocument
 
 
+def test_document_preamble_preserves_package_command_and_raw_entry_order():
+    document = (
+        TeXDocument()
+        .set_defaults()
+        .add_to_preamble(r"\PassOptionsToPackage{dvipsnames}{xcolor}")
+        .add_package("xcolor")
+        .add_new_command("first", "x")
+        .add_to_preamble(r"\newcommand{\second}{\first}")
+        .add_to_body("text")
+    )
+
+    source = str(document)
+    assert (
+        source.index(r"\PassOptionsToPackage{dvipsnames}{xcolor}")
+        < source.index(r"\usepackage{xcolor}")
+        < source.index(r"\newcommand{\first}{x}")
+        < source.index(r"\newcommand{\second}{\first}")
+    )
+
+
+def test_default_document_preserves_original_preamble():
+    source = str(TeXDocument().set_defaults().add_to_body("text"))
+    assert source == "\n".join(
+        [
+            r"\documentclass[preview]{standalone}",
+            r"\usepackage{fontspec}",
+            r"\usepackage{amsmath}",
+            r"\usepackage{amssymb}",
+            r"\setmainfont{TeX Gyre Termes}[Ligatures=NoCommon]",
+            r"\fontsize{10}{12.0}\selectfont",
+            r"\begin{document}",
+            "text",
+            r"\end{document}",
+        ]
+    )
+
+
+def test_document_font_constructor_and_replacement_use_one_declaration():
+    document = TeXDocument(font="Latin Modern Roman").set_document_class("standalone").add_to_body("text")
+    document.add_to_preamble(r"\newcommand{\afterfont}{x}")
+    document.set_main_font("TeX Gyre Heros", 12.5)
+
+    source = str(document)
+    assert source.count(r"\setmainfont") == 1
+    assert r"\setmainfont{TeX Gyre Heros}" in source
+    assert "Latin Modern Roman" not in source
+    assert source.count(r"\fontsize") == 1
+    assert r"\fontsize{12.5}{15.0}\selectfont" in source
+    assert source.index(r"\fontsize") < source.index(r"\newcommand{\afterfont}")
+
+
+def test_document_font_constructor_uses_default_or_explicit_size():
+    default = TeXDocument(font="Latin Modern Roman").set_document_class("standalone").add_to_body("text")
+    explicit = (
+        TeXDocument(font="Latin Modern Roman", font_size=12.5).set_document_class("standalone").add_to_body("text")
+    )
+
+    assert r"\fontsize{10}{12.0}\selectfont" in str(default)
+    assert r"\fontsize{12.5}{15.0}\selectfont" in str(explicit)
+
+
+def test_document_rejects_duplicate_packages_and_normalized_macro_names():
+    document = TeXDocument().set_defaults().add_package("xcolor").add_new_command("testmacro", "x")
+    with pytest.raises(ValueError, match="xcolor"):
+        document.add_package("xcolor")
+    with pytest.raises(ValueError, match="testmacro"):
+        document.add_new_command(r"\testmacro", "y")
+
+
+def test_clear_resets_preamble_and_duplicate_tracking():
+    document = TeXDocument().set_defaults().add_new_command("testmacro", "x")
+    document.clear().set_defaults().add_new_command("testmacro", "y").add_to_body("text")
+
+    source = str(document)
+    assert source.count(r"\setmainfont") == 1
+    assert r"\newcommand{\testmacro}{y}" in source
+    assert r"\newcommand{\testmacro}{x}" not in source
+
+
+@pytest.mark.skipif(
+    not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+)
+def test_ordered_preamble_compiles_with_package_options_and_macro_dependency(tmp_path):
+    document = (
+        TeXDocument()
+        .set_defaults()
+        .add_to_preamble(r"\PassOptionsToPackage{dvipsnames}{xcolor}")
+        .add_package("xcolor")
+        .add_new_command("first", "text")
+        .add_to_preamble(r"\newcommand{\second}{\first}")
+        .add_to_body(r"\textcolor{BurntOrange}{\second}")
+    )
+    processor = TeXDocumentProcessor(document)
+    processor._tex_path = tmp_path
+    processor._convert_tex_to_dvi()
+    processor._convert_dvi_to_svg()
+
+    glyphs, positions = processor._extract_glyph_data()
+    assert glyphs
+    assert "".join(character or "" for _, _, character, _ in positions) == "text"
+
+
 def test_dvi_conversions_run_concurrently_and_wait_for_both(tmp_path, monkeypatch):
     processor = TeXDocumentProcessor(TeXDocument().set_defaults().add_to_body("test"))
     processor._tex_path = tmp_path
