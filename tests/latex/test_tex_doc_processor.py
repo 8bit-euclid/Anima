@@ -5,7 +5,7 @@ import threading
 import pytest
 
 import anima.latex.tex_doc_processor as processor_module
-from anima.latex.tex_doc_processor import TeXDocumentProcessor, _extract_text_glyphs
+from anima.latex.tex_doc_processor import TeXDocumentProcessor, TeXPartMappingError, _extract_text_glyphs
 from anima.latex.tex_document import TeXDocument
 
 
@@ -86,6 +86,95 @@ def test_clear_resets_preamble_and_duplicate_tracking():
     assert source.count(r"\setmainfont") == 1
     assert r"\newcommand{\testmacro}{y}" in source
     assert r"\newcommand{\testmacro}{x}" not in source
+
+
+def test_part_mapping_assigns_glyphs_rules_and_empty_parts(tmp_path):
+    outline = """<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <defs><path id="a" d="M0 0 L1 0 L1 1 Z"/></defs><g id="page1">
+    <g id="anima-part-0-sentinel"/><g id="anima-part-1-sentinel"/><g id="anima-part-2-sentinel"/>
+    <g id="anima-part-0-item-0"><use xlink:href="#a"/><rect x="1" y="1" width="2" height=".1"/></g>
+    <g id="anima-part-2-item-1"><use xlink:href="#a"/></g>
+    </g></svg>"""
+    text = """<svg xmlns="http://www.w3.org/2000/svg"><g id="page1">
+    <g id="anima-part-0-sentinel"/><g id="anima-part-1-sentinel"/><g id="anima-part-2-sentinel"/>
+    <g id="anima-part-0-item-0"><text>A</text><rect x="1" y="1" width="2" height=".1"/></g>
+    <g id="anima-part-2-item-1"><text>A</text></g>
+    </g></svg>"""
+    (tmp_path / "doc.svg").write_text(outline)
+    (tmp_path / "doc_text.svg").write_text(text)
+    processor = TeXDocumentProcessor(
+        TeXDocument().set_defaults().add_to_body("text"), part_names=("first", "empty", "last")
+    )
+    processor._tex_path = tmp_path
+
+    _, positions = processor._extract_glyph_data()
+
+    assert [position[2] for position in positions] == ["A", None, "A"]
+    assert processor.part_indices == {"first": (0, 1), "empty": (), "last": (2,)}
+
+
+@pytest.mark.parametrize(
+    ("outline_group", "text_group", "reason"),
+    [
+        ("<g id='anima-part-0-item-0'><use xlink:href='#a'/></g>", "<g id='anima-part-0-item-0'/>", "ownership"),
+        ("<g id='anima-part-0-item-0'/>", "<g id='anima-part-0-item-0'><text>A</text></g>", "ownership"),
+        ("<g id='anima-part-0-item-0'><path d='M0 0 L1 1'/></g>", "", "unsupported"),
+        ("<g id='anima-part-0-item-0'><foreignObject/></g>", "", "unsupported"),
+        ("<use xlink:href='#a'/>", "", "outside"),
+        ("<g id='anima-part-0-sentinel'/>", "", "duplicate"),
+        (
+            "<g id='anima-part-0-item-0'><rect x='1' y='1' width='2' height='.1'/></g>",
+            "<g id='anima-part-0-item-0'/>",
+            "shapes",
+        ),
+        ("<g id='anima-part-0-unsupported-renderer'/>", "", "renderer"),
+    ],
+)
+def test_part_mapping_rejects_ambiguous_svg(tmp_path, outline_group, text_group, reason):
+    (tmp_path / "doc.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        '<defs><path id="a" d="M0 0 L1 0 L1 1 Z"/></defs>'
+        f"<g><g id='anima-part-0-sentinel'/>{outline_group}</g></svg>"
+    )
+    (tmp_path / "doc_text.svg").write_text(
+        f'<svg xmlns="http://www.w3.org/2000/svg"><g><g id="anima-part-0-sentinel"/>{text_group}</g></svg>'
+    )
+    processor = TeXDocumentProcessor(TeXDocument().set_defaults().add_to_body("text"), part_names=("term",))
+    processor._tex_path = tmp_path
+
+    with pytest.raises(TeXPartMappingError, match=rf"term.*{reason}"):
+        processor._extract_glyph_data()
+
+
+def test_part_mapping_rejects_mismatched_ownership_even_when_glyph_counts_match(tmp_path):
+    (tmp_path / "doc.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        '<defs><path id="a" d="M0 0 L1 0 L1 1 Z"/></defs><g>'
+        '<g id="anima-part-0-sentinel"/><g id="anima-part-1-sentinel"/>'
+        '<g id="anima-part-0-item-0"><use xlink:href="#a"/></g><g id="anima-part-1-item-1"/></g></svg>'
+    )
+    (tmp_path / "doc_text.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg"><g>'
+        '<g id="anima-part-0-sentinel"/><g id="anima-part-1-sentinel"/>'
+        '<g id="anima-part-0-item-0"/><g id="anima-part-1-item-1"><text>A</text></g></g></svg>'
+    )
+    processor = TeXDocumentProcessor(TeXDocument().set_defaults().add_to_body("text"), part_names=("left", "right"))
+    processor._tex_path = tmp_path
+
+    with pytest.raises(TeXPartMappingError, match="left.*right.*ownership"):
+        processor._extract_glyph_data()
+
+
+def test_part_mapping_rejects_missing_marker(tmp_path):
+    (tmp_path / "doc.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><g/></svg>')
+    (tmp_path / "doc_text.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg"><g id="anima-part-0-sentinel"/></svg>'
+    )
+    processor = TeXDocumentProcessor(TeXDocument().set_defaults().add_to_body("text"), part_names=("term",))
+    processor._tex_path = tmp_path
+
+    with pytest.raises(TeXPartMappingError, match="term.*missing"):
+        processor._extract_glyph_data()
 
 
 @pytest.mark.skipif(
@@ -286,6 +375,78 @@ def test_extract_glyph_data_includes_fraction_rule_in_svg_order(tmp_path):
         ("rule-2", (0, 0), None, "rule"),
         ("g0-50", (3, 0), "2", None),
     ]
+
+
+@pytest.mark.parametrize("with_parts", [False, True])
+def test_extract_glyph_data_resolves_scaled_definition_uses_without_rendering_them(tmp_path, with_parts):
+    outline_contents = '<use x="10" y="20" xlink:href="#chained"/><use x="30" xlink:href="#base"/>'
+    text_contents = "<text>AB</text>"
+    if with_parts:
+        outline_contents = (
+            '<g id="anima-part-0-sentinel"/>'
+            '<g id="anima-part-0-item-0"><use x="10" y="20" xlink:href="#chained"/></g>'
+            '<g id="anima-part-0-item-1"><use x="30" xlink:href="#base"/></g>'
+        )
+        text_contents = (
+            '<g id="anima-part-0-sentinel"/>'
+            '<g id="anima-part-0-item-0"><text>A</text></g>'
+            '<g id="anima-part-0-item-1"><text>B</text></g>'
+        )
+    (tmp_path / "doc.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        '<defs><use id="chained" xlink:href="#scaled" x="1" y="2" transform="scale(.5)"/>'
+        '<use id="scaled" xlink:href="#base" transform="translate(2 3) scale(2)"/>'
+        '<use id="unused" xlink:href="#missing"/>'
+        '<path id="base" d="M0 0 L2 0 L2 1 Z"/></defs>'
+        f"<g>{outline_contents}</g></svg>"
+    )
+    (tmp_path / "doc_text.svg").write_text(
+        f'<svg xmlns="http://www.w3.org/2000/svg"><defs><text>ignored</text></defs><g>{text_contents}</g></svg>'
+    )
+    processor = TeXDocumentProcessor(
+        TeXDocument().set_defaults().add_to_body("text"), part_names=("term",) if with_parts else None
+    )
+    processor._tex_path = tmp_path
+
+    glyph_paths, positions = processor._extract_glyph_data()
+
+    assert positions == [("chained", (10, -20), "A", None), ("base", (30, 0), "B", None)]
+    assert glyph_paths["base"].bbox() == pytest.approx((0, 2, 0, 1))
+    assert glyph_paths["scaled"].bbox() == pytest.approx((2, 6, 3, 5))
+    assert glyph_paths["chained"].bbox() == pytest.approx((1.5, 3.5, 2.5, 3.5))
+    if with_parts:
+        assert processor.part_indices == {"term": (0, 1)}
+
+
+@pytest.mark.parametrize(
+    ("definitions", "message"),
+    [
+        pytest.param('<use id="a" xlink:href="#missing"/>', "missing", id="missing"),
+        pytest.param('<use id="a" xlink:href="#b"/><use id="b" xlink:href="#a"/>', "Cyclic", id="cycle"),
+        pytest.param('<use id="a" xlink:href="#base" transform="scale(bad)"/>', "transform", id="transform"),
+    ],
+)
+@pytest.mark.parametrize("with_parts", [False, True], ids=["plain", "parts"])
+def test_extract_glyph_data_rejects_invalid_glyph_definitions(tmp_path, definitions, message, with_parts):
+    outline_contents = '<use xlink:href="#a"/>'
+    text_contents = "<text>A</text>"
+    if with_parts:
+        outline_contents = f'<g id="anima-part-0-sentinel"/><g id="anima-part-0-item-0">{outline_contents}</g>'
+        text_contents = f'<g id="anima-part-0-sentinel"/><g id="anima-part-0-item-0">{text_contents}</g>'
+    (tmp_path / "doc.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        f'<defs><path id="base" d="M0 0 L1 0 L1 1 Z"/>{definitions}</defs>'
+        f"<g>{outline_contents}</g></svg>"
+    )
+    (tmp_path / "doc_text.svg").write_text(f'<svg xmlns="http://www.w3.org/2000/svg"><g>{text_contents}</g></svg>')
+    processor = TeXDocumentProcessor(
+        TeXDocument().set_defaults().add_to_body("text"), part_names=("term",) if with_parts else None
+    )
+    processor._tex_path = tmp_path
+
+    error = TeXPartMappingError if with_parts else RuntimeError
+    with pytest.raises(error, match=rf"term.*{message}" if with_parts else message):
+        processor._extract_glyph_data()
 
 
 def test_extract_glyph_data_leaves_characters_unmatched_when_counts_differ(tmp_path):

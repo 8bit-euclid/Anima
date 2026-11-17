@@ -2,11 +2,15 @@ import re
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
+from math import isfinite
 from pathlib import Path
 
 import svgpathtools as svgtools
+from svgpathtools.parser import parse_transform
+from svgpathtools.path import transform as transform_svg_path
 
 from anima.diagnostics import format_output, logger
 from anima.latex.tex_cache import (
@@ -22,10 +26,15 @@ from anima.latex.tex_document import TeXDocument
 
 TEX_DEBUG_MODE = True  # Print LaTeX and DVI logs to console
 SVG_NAMESPACE = {"svg": "http://www.w3.org/2000/svg"}  # Namespace for SVG elements in XML
+_PART_MARKER_PREFIX = "anima-part-"
 
 GlyphPathsType = dict[str, svgtools.Path]  # Maps glyph IDs to their SVG paths
 GlyphPositionsType = list[tuple[str, tuple[float, float], str | None, str | None]]
 # (glyph ID, (x, y), character, optional display label)
+
+
+class TeXPartMappingError(ValueError):
+    """Raised when rendered SVG content cannot be reliably assigned to TeX parts."""
 
 
 class TeXDocumentProcessor:
@@ -34,11 +43,12 @@ class TeXDocumentProcessor:
     The processor compiles LaTeX to DVI, converts the result to SVG, and extracts glyph metadata.
     """
 
-    def __init__(self, texfile: TeXDocument):
+    def __init__(self, texfile: TeXDocument, *, part_names: Sequence[str] | None = None):
         """Initialize the processor with LaTeX content.
 
         Args:
             texfile: The TeX document to compile and process.
+            part_names: Names corresponding to the internal SVG markers in the document.
         """
         assert isinstance(texfile, TeXDocument), "Content must be a TeXFile instance."
         self._content = str(texfile)
@@ -46,6 +56,8 @@ class TeXDocumentProcessor:
         self._tex_path: Path = None  # Path to the temporary directory for LaTeX files
         self._tex_name = "doc"  # Base name for .tex, .dvi, .svg, etc.
         self._command_logs: list[tuple[str, str]] = []
+        self._part_names = tuple(part_names) if part_names is not None else None
+        self.part_indices: dict[str, tuple[int, ...]] | None = None
 
     def __enter__(self) -> tuple[GlyphPathsType, GlyphPositionsType]:
         """Compile the document and extract its glyph data.
@@ -130,6 +142,15 @@ class TeXDocumentProcessor:
             print_logs(cmd, res)
         except subprocess.CalledProcessError as err:
             print_logs(cmd, err)
+            if self._part_names is not None:
+                names = ", ".join(repr(name) for name in self._part_names)
+                if "ANIMA-SEMANTIC-PARTS-MULTIPAGE" in (err.output or ""):
+                    raise TeXPartMappingError(
+                        f"Cannot map TeX part(s) {names}: multiple pages are not supported."
+                    ) from err
+                raise TeXPartMappingError(
+                    f"Cannot map TeX part(s) {names}: LaTeX compilation failed; check the fragments and boundaries."
+                ) from err
             raise RuntimeError("LaTeX compilation failed.") from err
 
     def _convert_dvi_to_svg(self):
@@ -278,7 +299,46 @@ class TeXDocumentProcessor:
         tree = ET.parse(svg_file)
         root = tree.getroot()
 
-        uses = root.findall(".//svg:use", SVG_NAMESPACE)
+        definitions = {
+            element.attrib["id"]: element
+            for defs in root.findall(".//svg:defs", SVG_NAMESPACE)
+            for element in defs.findall("svg:use", SVG_NAMESPACE)
+            if "id" in element.attrib
+        }
+        rendered_elements = list(_iter_rendered_elements(root))
+        uses = [element for element in rendered_elements if element.tag.rsplit("}", 1)[-1] == "use"]
+        outline_parts = None
+        if self._part_names is not None:
+            outline_parts, outline_uses, outline_rules, outline_markers = _extract_part_elements(
+                root, self._part_names, text=False
+            )
+            text_root = ET.parse(self._get_svg_path("_text")).getroot()
+            _, text_characters, text_rules, text_markers = _extract_part_elements(
+                text_root, self._part_names, text=True
+            )
+            if outline_markers != text_markers:
+                raise TeXPartMappingError(
+                    f"Cannot map TeX part(s) {', '.join(repr(name) for name in self._part_names)}: "
+                    "outline and text SVG markers differ."
+                )
+            if outline_uses != text_characters:
+                mismatch = next(
+                    (i for i, (a, b) in enumerate(zip(outline_uses, text_characters)) if a != b),
+                    min(len(outline_uses), len(text_characters)),
+                )
+                affected = {
+                    name for name, _ in outline_uses[mismatch : mismatch + 1] + text_characters[mismatch : mismatch + 1]
+                }
+                raise TeXPartMappingError(
+                    f"Cannot map TeX part(s) {', '.join(repr(name) for name in sorted(affected))}: "
+                    "outline and text glyph ownership differs."
+                )
+            if outline_rules != text_rules:
+                affected = set(name for name, _, _ in outline_rules + text_rules)
+                raise TeXPartMappingError(
+                    f"Cannot map TeX part(s) {', '.join(repr(name) for name in sorted(affected))}: "
+                    "outline and text shapes differ."
+                )
         text_glyphs = _extract_text_glyphs(self._get_svg_path("_text"))
         if len(text_glyphs) == len(uses):
             text_glyphs_by_use = text_glyphs
@@ -295,16 +355,26 @@ class TeXDocumentProcessor:
         # Walk the outline SVG, rather than grouping uses and rectangles, to keep
         # generated Blender object order consistent with the rendered expression.
         glyph_positions = GlyphPositionsType()
+        part_indices: dict[str, list[int]] = {name: [] for name in self._part_names or ()}
         use_index = 0
-        for element in root.iter():
+        for element in rendered_elements:
             tag = element.tag.rsplit("}", 1)[-1]
             if tag == "use":
-                gid = element.attrib["{http://www.w3.org/1999/xlink}href"][1:]
-                assert gid in glyph_paths, f"Glyph with ID '{gid}' not found."
+                if outline_parts is not None and element not in outline_parts:
+                    raise TeXPartMappingError("Cannot map TeX parts: an SVG use is outside rendered part markers.")
+                try:
+                    gid = _svg_use_reference(element)
+                    _resolve_glyph_path(gid, glyph_paths, definitions, set())
+                except RuntimeError as error:
+                    if outline_parts is not None:
+                        raise TeXPartMappingError(f"Cannot map TeX part {outline_parts[element]!r}: {error}") from error
+                    raise
 
                 x = float(element.attrib.get("x", 0))
                 y = float(element.attrib.get("y", 0))
                 character, display_label = text_glyphs_by_use[use_index]
+                if outline_parts is not None:
+                    part_indices[outline_parts[element]].append(len(glyph_positions))
                 glyph_positions.append((gid, (x, -y), character, display_label))
                 use_index += 1
             elif tag == "rect":
@@ -312,9 +382,231 @@ class TeXDocumentProcessor:
                 matching_rules = rule_paths.get(signature)
                 if matching_rules:
                     rule_id = matching_rules.pop(0)
+                    if outline_parts is not None:
+                        if element not in outline_parts:
+                            raise TeXPartMappingError("Cannot map TeX parts: an SVG rule is outside part markers.")
+                        part_indices[outline_parts[element]].append(len(glyph_positions))
                     glyph_positions.append((rule_id, (0, 0), None, "rule"))
+                elif outline_parts is not None and element in outline_parts:
+                    raise TeXPartMappingError(f"Cannot map TeX part {outline_parts[element]!r}: unsupported SVG rule.")
 
+        if outline_parts is not None:
+            self.part_indices = {name: tuple(indices) for name, indices in part_indices.items()}
         return glyph_paths, glyph_positions
+
+
+def _iter_rendered_elements(element: ET.Element) -> Iterator[ET.Element]:
+    """Walk SVG content in order, excluding reusable definitions."""
+    if element.tag.rsplit("}", 1)[-1] == "defs":
+        return
+    yield element
+    for child in element:
+        yield from _iter_rendered_elements(child)
+
+
+def _svg_use_reference(element: ET.Element) -> str:
+    href = element.attrib.get("{http://www.w3.org/1999/xlink}href") or element.attrib.get("href", "")
+    if not href.startswith("#") or len(href) == 1:
+        raise RuntimeError(f"Invalid SVG glyph reference {href!r}.")
+    return href[1:]
+
+
+def _part_preamble(part_count: int) -> str:
+    """Create shipout markers after shaping, without splitting kerning or ligatures."""
+    return r"""
+\newattribute\AnimaSemanticPartAttribute
+\directlua{
+local attribute = \the\allocationnumber;
+local sequence = 0;
+local count = PART_COUNT;
+local boundaries = {};
+local next_boundary = 0;
+local pages = 0;
+function anima_semantic_boundary(index)
+    if tex.attribute[attribute] == index and index == next_boundary then
+        boundaries[index] = true;
+        next_boundary = next_boundary + 1
+    else
+        boundaries[index] = false
+    end
+end
+local function special(data)
+    local result = node.new('whatsit', 'special');
+    result.data = 'dvisvgm:raw ' .. data;
+    return result
+end
+local function empty_marker(id)
+    return special('<g id="' .. id .. '"/>')
+end
+local function wrap(head)
+    for current in node.traverse(head) do
+        local kind = node.type(current.id);
+        if kind == 'hlist' or kind == 'vlist' then
+            current.list = wrap(current.list)
+        end
+        if kind == 'glyph' or kind == 'rule' then
+            local owner = node.has_attribute(current, attribute);
+            if owner and owner >= 0 and owner < count then
+                if kind == 'glyph' then
+                    local font_data = font.getfont(current.font);
+                    if font_data.hb or (font_data.properties and
+                            (font_data.properties.mode == 'plug' or font_data.properties.mode == 'harf')) then
+                        head = node.insert_before(head, current,
+                            empty_marker('anima-part-' .. owner .. '-unsupported-renderer'))
+                    end
+                    if current.components then
+                        for component in node.traverse(current.components) do
+                            if node.type(component.id) == 'glyph' then
+                                local other = node.has_attribute(component, attribute);
+                                if not (other == owner) then
+                                    head = node.insert_before(head, current,
+                                        empty_marker('anima-part-' .. owner .. '-ambiguous-' .. (other or -1)))
+                                end
+                            end
+                        end
+                    end
+                end
+                local marker = 'anima-part-' .. owner .. '-item-' .. sequence;
+                sequence = sequence + 1;
+                head = node.insert_before(head, current, special('<g id="' .. marker .. '">'));
+                head = node.insert_after(head, current, special('</g>'))
+            end
+        end
+    end
+    return head
+end
+function anima_semantic_shipout(box)
+    pages = pages + 1;
+    if pages > 1 then
+        tex.error('ANIMA-SEMANTIC-PARTS-MULTIPAGE')
+    end
+    box.list = wrap(box.list);
+    for i = 0, count - 1 do
+        if boundaries[i] then
+            box.list = node.insert_before(box.list, box.list, empty_marker('anima-part-' .. i .. '-sentinel'))
+        end
+    end
+end
+}
+\AddToHook{shipout/before}{\directlua{anima_semantic_shipout(tex.box[\number\ShipoutBox])}}
+""".strip().replace("PART_COUNT", str(part_count))
+
+
+def _resolve_glyph_path(
+    gid: str, glyph_paths: GlyphPathsType, definitions: dict[str, ET.Element], visiting: set[str]
+) -> svgtools.Path:
+    """Resolve and cache a glyph outline, including transformed SVG use aliases."""
+    if gid in glyph_paths:
+        return glyph_paths[gid]
+    if gid in visiting:
+        raise RuntimeError(f"Cyclic SVG glyph definition involving {gid!r}.")
+    element = definitions.get(gid)
+    if element is None:
+        raise RuntimeError(f"SVG glyph definition {gid!r} is missing.")
+    visiting.add(gid)
+    try:
+        path = _resolve_glyph_path(_svg_use_reference(element), glyph_paths, definitions, visiting)
+        try:
+            x = float(element.attrib.get("x", 0))
+            y = float(element.attrib.get("y", 0))
+            matrix = parse_transform(element.attrib.get("transform"), strict=True)
+            if not all(isfinite(value) for value in (x, y, *matrix.flat)):
+                raise ValueError("non-finite SVG transform")
+        except ValueError as error:
+            raise RuntimeError(f"Invalid SVG transform in glyph definition {gid!r}: {error}") from error
+        if x or y:
+            path = path.translated(complex(x, y))
+        glyph_paths[gid] = transform_svg_path(path, matrix)
+        return glyph_paths[gid]
+    finally:
+        visiting.remove(gid)
+
+
+def _extract_part_elements(
+    root: ET.Element, part_names: tuple[str, ...], *, text: bool
+) -> tuple[
+    dict[ET.Element, str],
+    list[tuple[str, str]],
+    list[tuple[str, str, tuple[str, ...]]],
+    set[str],
+]:
+    """Validate marker ownership and collect glyph and rule ownership in SVG order."""
+    seen: set[str] = set()
+    sentinels: set[int] = set()
+    owners: dict[ET.Element, str] = {}
+    glyph_owners: list[tuple[str, str]] = []
+    rules: list[tuple[str, str, tuple[str, ...]]] = []
+    item_markers: set[str] = set()
+    affected = ", ".join(repr(name) for name in part_names)
+    containers = {"svg", "g", "tspan"}
+
+    def visit(element: ET.Element, owner: str | None = None, item: str | None = None, in_text: bool = False) -> None:
+        tag = element.tag.rsplit("}", 1)[-1]
+        if tag in {"defs", "style", "metadata", "title", "desc"}:
+            return
+        marker = element.attrib.get("id", "")
+        if marker.startswith(_PART_MARKER_PREFIX):
+            match = re.fullmatch(r"anima-part-(\d+)-(sentinel|item-\d+|ambiguous--?\d+|unsupported-renderer)", marker)
+            if tag != "g" or match is None or marker in seen or owner is not None or in_text:
+                raise TeXPartMappingError(
+                    f"Cannot map TeX part(s) {affected}: invalid or duplicate SVG marker {marker!r}."
+                )
+            index = int(match.group(1))
+            if index >= len(part_names):
+                raise TeXPartMappingError(f"Cannot map TeX part(s) {affected}: unknown SVG marker {marker!r}.")
+            name = part_names[index]
+            marker_type = match.group(2)
+            if marker_type.startswith("ambiguous-"):
+                other = int(marker_type.removeprefix("ambiguous-"))
+                names = [name]
+                if 0 <= other < len(part_names) and other != index:
+                    names.append(part_names[other])
+                raise TeXPartMappingError(
+                    f"Cannot map TeX part(s) {', '.join(repr(part) for part in names)}: "
+                    "a shaped glyph spans part boundaries."
+                )
+            if marker_type == "unsupported-renderer":
+                raise TeXPartMappingError(
+                    f"Cannot map TeX part {name!r}: the font renderer does not preserve ligature ownership."
+                )
+            seen.add(marker)
+            if marker_type == "sentinel":
+                sentinels.add(index)
+            else:
+                item_markers.add(marker)
+                item = marker
+            owner = name
+        if tag not in containers:
+            if owner is None:
+                raise TeXPartMappingError(
+                    f"Cannot map TeX part(s) {affected}: unsupported SVG {tag} outside a part marker."
+                )
+            if item is None:
+                raise TeXPartMappingError(f"Cannot map TeX part {owner!r}: SVG {tag} outside an item marker.")
+            if tag == "use" and not text:
+                owners[element] = owner
+                glyph_owners.append((owner, item))
+            elif tag == "text" and text and not in_text:
+                glyph_owners.extend(
+                    (owner, item) for chunk in element.itertext() for char in chunk if not char.isspace()
+                )
+            elif tag == "rect":
+                owners[element] = owner
+                rules.append((owner, item, tuple(element.attrib.get(key, "") for key in ("x", "y", "width", "height"))))
+            else:
+                raise TeXPartMappingError(f"Cannot map TeX part {owner!r}: unsupported SVG {tag}.")
+        elif tag == "tspan" and not in_text:
+            raise TeXPartMappingError(f"Cannot map TeX part(s) {affected}: SVG tspan outside text.")
+        for child in element:
+            visit(child, owner, item, in_text or tag == "text")
+
+    visit(root)
+    missing = [name for index, name in enumerate(part_names) if index not in sentinels]
+    if missing:
+        raise TeXPartMappingError(
+            f"Cannot map TeX part(s) {', '.join(repr(name) for name in missing)}: SVG marker missing."
+        )
+    return owners, glyph_owners, rules, item_markers
 
 
 def _extract_text_glyphs(svg_file: Path) -> list[tuple[str | None, str | None]]:
@@ -367,7 +659,7 @@ def _extract_text_glyphs(svg_file: Path) -> list[tuple[str | None, str | None]]:
             text_families[css_class] = family.strip("'\"")
 
     text_glyphs: list[tuple[str, str | None]] = []
-    for element in root.iter():
+    for element in _iter_rendered_elements(root):
         if element.tag.rsplit("}", 1)[-1] == "text":
             css_class = element.attrib.get("class", "")
             family = text_families.get(css_class, "")

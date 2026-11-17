@@ -213,6 +213,28 @@ twice through the corresponding method raises `ValueError`; raw preamble entries
 `set_main_font()` replaces its previous font and size declarations in place. The requested `font_size` on
 `from_tex_string()` sets the size of the rendered body independently of the template's default font size.
 
+For named parts, supply ordered TeX fragments to `from_tex_parts()` and retrieve a non-owning selection:
+
+```python
+equation = GlyphGroup.from_tex_parts({"left": r"$a^2+b^2", "equals": "=", "right": r"c^2$"})
+left = equation.part("left")
+print(left.text)
+for glyph in left:
+    print(glyph.name)
+```
+
+Fragments are concatenated without separators and typeset together. Each fragment must have balanced braces and
+must not end with a control sequence; boundaries cannot occur inside TeX arguments, comments, verbatim content, or
+macro definitions. A fragment that produces no glyphs has an empty selection. Selections are read-only snapshots of
+glyph references, not groups: they do not reparent glyphs and retain their references if the group is later modified.
+Fraction rules are included in selections but contribute no text.
+
+Part mapping uses LuaLaTeX node attributes and post-shaping SVG markers, preserving kerning across boundaries.
+`TeXPartMappingError` from `anima.latex.tex_doc_processor` is raised when a reliable mapping cannot be established,
+including ligatures spanning parts, HarfBuzz-rendered fonts, unsupported SVG shapes, or multiple pages. Custom TeX
+that changes syntax or interferes with the internal attribute and shipout hooks is not supported. Use
+`from_tex_string()` for unrestricted TeX without part mapping.
+
 Glyphs are border-free by default. Set `with_borders=True` on `GlyphGroup.from_tex_string()` when the outline is
 needed for display or `glyph_write_on()`. Each glyph border uses one shared material, so styling any one of its
 curves styles the whole border.

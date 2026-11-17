@@ -10,7 +10,8 @@ import svgpathtools as svgtools
 from anima.latex.glyph import Glyph, GlyphBBox, glyph_write_on
 from anima.latex.glyph_body import GlyphBody
 from anima.latex.glyph_border import GlyphBorder
-from anima.latex.glyph_group import GlyphGroup, _format_glyph_name, _scale_outline
+from anima.latex.glyph_group import GlyphGroup, GlyphSelection, _format_glyph_name, _scale_outline
+from anima.latex.tex_doc_processor import TeXDocumentProcessor, TeXPartMappingError
 from anima.latex.tex_document import TeXDocument
 from anima.latex.tex_object import TeXObject
 from anima.primitives.chains import CurveLoop
@@ -310,6 +311,182 @@ class TestGlyphGroup:
     @pytest.mark.skipif(
         not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
     )
+    def test_from_tex_parts_maps_rules_repeated_characters_and_empty_parts(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        parts = {
+            "left": r"$a+a",
+            "equals": "=",
+            "right": r"\frac{b}{c}+\sum_{i=1}^{2}x_i$",
+            "space": r"\hspace{1em}",
+        }
+
+        group = GlyphGroup.from_tex_parts(parts)
+        plain = GlyphGroup.from_tex_string("".join(parts.values()))
+
+        assert group.part_names == tuple(parts)
+        assert group.part("left").text == "a+a"
+        assert group.part("equals").text == "="
+        assert any(glyph.name.split(".")[0].endswith("-rule") for glyph in group.part("right"))
+        assert any(glyph.name.split(".")[0].endswith("-summationtext") for glyph in group.part("right"))
+        assert not group.part("space")
+        assert [glyph.text for glyph in group] == [glyph.text for glyph in plain]
+        assert [tuple(glyph.location) for glyph in group] == pytest.approx([tuple(glyph.location) for glyph in plain])
+        selected = group.part("left")
+        assert isinstance(selected, GlyphSelection)
+        assert selected[0] is group[0]
+        assert list(selected[1:]) == [group[1], group[2]]
+        assert all(glyph.parent is group for glyph in selected)
+        with pytest.raises(KeyError):
+            group.part("unknown")
+
+    def test_from_tex_parts_rejects_invalid_parts(self):
+        with pytest.raises(ValueError, match="empty"):
+            GlyphGroup.from_tex_parts({})
+        with pytest.raises(ValueError, match="names"):
+            GlyphGroup.from_tex_parts({"": "x"})
+        with pytest.raises(TypeError, match="strings"):
+            GlyphGroup.from_tex_parts({"x": 1})
+        with pytest.raises(TeXPartMappingError, match="first.*control sequence"):
+            GlyphGroup.from_tex_parts({"first": r"$\alpha", "second": "x$"})
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    @pytest.mark.parametrize("parts", [{"space": r"\hspace{1em}", "empty": ""}, {"space": " ", "empty": ""}])
+    def test_from_tex_parts_with_only_spacing_returns_empty_selections(self, monkeypatch, parts):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        group = GlyphGroup.from_tex_parts(parts)
+
+        assert len(group) == 0
+        assert len(group.part("space")) == 0
+        assert len(group.part("empty")) == 0
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_from_tex_parts_preserves_text_kerning(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        group = GlyphGroup.from_tex_parts({"a": "A", "v": "V"})
+        plain = GlyphGroup.from_tex_string("AV")
+
+        assert [tuple(glyph.location) for glyph in group] == pytest.approx([tuple(glyph.location) for glyph in plain])
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_from_tex_parts_preserves_spaces_and_mapping_after_copy(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        group = GlyphGroup.from_tex_parts({"first": "A", "second": " V"})
+        plain = GlyphGroup.from_tex_string("A V")
+        copied = group.copy()
+        assert isinstance(copied, GlyphGroup)
+
+        assert tuple(group[1].location) == pytest.approx(tuple(plain[1].location))
+        assert copied.part("second")[0] is copied[1]
+        assert copied.part("second")[0] is not group[1]
+        assert copied[1].parent is copied
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_from_tex_parts_rejects_ligature_crossing_a_boundary(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        template = TeXDocument().set_defaults().add_to_preamble(r"\setmainfont{TeX Gyre Termes}[Ligatures=Common]")
+
+        with pytest.raises(TeXPartMappingError, match="first.*second.*spans"):
+            GlyphGroup.from_tex_parts({"first": "f", "second": "i"}, tex_template=template)
+
+        group = GlyphGroup.from_tex_parts({"whole": "fi"}, tex_template=template)
+        assert len(group.part("whole")) == 1
+
+    def test_from_tex_parts_rejects_boundary_inside_tex_comment(self):
+        with pytest.raises(TeXPartMappingError, match="first.*comment"):
+            GlyphGroup.from_tex_parts({"first": "A% comment", "second": "\nB"})
+
+    def test_from_tex_parts_rejects_split_fraction_arguments(self):
+        with pytest.raises(TeXPartMappingError, match="open.*group"):
+            GlyphGroup.from_tex_parts(
+                {"open": r"$\frac{", "numerator": "x", "middle": "}{", "denominator": "y", "close": r"}$"}
+            )
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_from_tex_parts_reports_invalid_math_boundary(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        with pytest.raises(TeXPartMappingError, match="base.*power.*boundaries"):
+            GlyphGroup.from_tex_parts({"base": r"$a^", "power": "2$"})
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_from_tex_parts_maps_fraction_before_later_math_part(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        template = TeXDocument().set_defaults().add_new_command("myfrac", r"\frac{#1}{2}")
+        group = GlyphGroup.from_tex_parts({"fraction": r"$\myfrac{x}", "later": "+z$"}, tex_template=template)
+
+        assert any(glyph.name.split(".")[0].endswith("-rule") for glyph in group.part("fraction"))
+        assert all(not glyph.name.split(".")[0].endswith("-rule") for glyph in group.part("later"))
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_scaled_math_glyphs_match_between_plain_and_named_parts(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        template = TeXDocument().set_defaults().add_new_command("demoFrac", r"\frac{#1}{#2}")
+        parts = {"fraction": r"$\demoFrac{x^2-1}{x+1}", "equals": "=", "result": r"x-1$"}
+
+        group = GlyphGroup.from_tex_parts(parts, font_size=22, tex_template=template)
+        plain = GlyphGroup.from_tex_string("".join(parts.values()), font_size=22, tex_template=template)
+
+        assert len(group) == len(plain) == 12
+        assert [glyph.text for glyph in group] == [glyph.text for glyph in plain]
+        assert group.part("result").text == "x−1"
+        assert any(glyph.name.split(".")[0].endswith("-rule") for glyph in group.part("fraction"))
+        for marked_glyph, plain_glyph in zip(group, plain):
+            assert tuple(marked_glyph.location) == pytest.approx(tuple(plain_glyph.location), abs=1e-6)
+            assert marked_glyph.bbox == plain_glyph.bbox
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_from_tex_parts_rejects_multiple_pages(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        template = TeXDocument().set_document_class("article").set_main_font("TeX Gyre Termes")
+
+        with pytest.raises(TeXPartMappingError, match="first.*second.*multiple pages"):
+            GlyphGroup.from_tex_parts({"first": r"first\newpage{}", "second": "second"}, tex_template=template)
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_from_tex_parts_rejects_harfbuzz_renderer(self, monkeypatch):
+        monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
+        template = TeXDocument().set_defaults().add_to_preamble(r"\setmainfont{TeX Gyre Termes}[Renderer=HarfBuzz]")
+
+        with pytest.raises(TeXPartMappingError, match="term.*renderer"):
+            GlyphGroup.from_tex_parts({"term": "text"}, tex_template=template)
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
+    def test_from_tex_parts_reuses_cached_svg_with_different_part_names(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("ANIMA_TEX_CACHE_DIR", str(tmp_path))
+        monkeypatch.delenv("ANIMA_DISABLE_TEX_CACHE", raising=False)
+        first = GlyphGroup.from_tex_parts({"left": "A", "right": "V"})
+
+        def unexpected_compile(self):
+            pytest.fail("A matching SVG cache entry should be reused.")
+
+        monkeypatch.setattr(TeXDocumentProcessor, "_convert_tex_to_dvi", unexpected_compile)
+        second = GlyphGroup.from_tex_parts({"a": "A", "v": "V"})
+
+        assert first.part("left").text == second.part("a").text == "A"
+        assert first.part("right").text == second.part("v").text == "V"
+
+    @pytest.mark.skipif(
+        not shutil.which("lualatex") or not shutil.which("dvisvgm"), reason="LaTeX and dvisvgm are required"
+    )
     def test_from_tex_string_compiles_custom_template_and_maps_font_glyphs(self, monkeypatch):
         monkeypatch.setenv("ANIMA_DISABLE_TEX_CACHE", "1")
         template = (
@@ -391,6 +568,18 @@ class TestGlyphGroup:
         group = GlyphGroup(name="TestGroup")
         assert isinstance(group, Group)
         assert isinstance(group, Object)
+
+    def test_selection_is_a_read_only_snapshot_without_reparenting(self):
+        group = GlyphGroup([self.glyph1, self.glyph2])
+        items = [self.glyph1, self.glyph2]
+        selection = GlyphSelection(items)
+        items.clear()
+
+        assert selection.text == "AB"
+        assert list(selection) == [group[0], group[1]]
+        assert selection[-1] is group[1]
+        assert list(selection[:1]) == [group[0]]
+        assert all(glyph.parent is group for glyph in selection)
 
     def test_inherited_add_stays_consistent(self):
         """Test that Group.add and remove_child keep glyphs in sync with children."""

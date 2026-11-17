@@ -21,6 +21,7 @@ from tests.visual_tests.test_curves import (
 )
 from tests.visual_tests.test_latex import test_text_to_glyphs
 from tests.visual_tests.test_reveals import test_curves_reveal, test_latex_write_on
+from tests.visual_tests.test_tex_parts import test_semantic_parts
 from tests.visual_tests.test_textures import render_gallery, test_paper_textures
 
 from anima.animation.scheduler import Scheduler
@@ -46,19 +47,20 @@ def build_scene(start_time: str, end_time: str):
         start_time (str): The time at which the lesson's animation starts.
         end_time (str): The time at which the lesson's animation ends.
     """
-    duration = as_timedelta(end_time) - as_timedelta(start_time)
+    # duration = as_timedelta(end_time) - as_timedelta(start_time)
 
     create_background(DEFAULT_BACKGROUND_TEXTURE_DIR)
     configure_lighting()
 
-    half = duration / 2
-    test_bezier_splines(half, color="red1")
-    test_curve_joints(half, color="yellow1")
-    test_curve_loop(half, color="blue1")
-    test_dashed_curves(half, color="blue1")
-    test_curves_reveal(half)
-    test_text_to_glyphs()
-    test_latex_write_on(half)
+    # half = duration / 2
+    # test_bezier_splines(half, color="red1")
+    # test_curve_joints(half, color="yellow1")
+    # test_curve_loop(half, color="blue1")
+    # test_dashed_curves(half, color="blue1")
+    # test_curves_reveal(half)
+    # test_text_to_glyphs()
+    # test_latex_write_on(half)
+    test_semantic_parts()
 
     # To use create_raking_sun instead, remove the fixed sun created by configure_lighting first.
 

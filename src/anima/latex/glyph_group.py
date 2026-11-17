@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from math import isfinite
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast, overload
 
 import svgpathtools as svgtools
 
 from anima.latex.glyph import Glyph, glyph_write_on
 from anima.latex.glyph_body import MeshQuality
-from anima.latex.tex_doc_processor import TeXDocumentProcessor
+from anima.latex.tex_doc_processor import TeXDocumentProcessor, TeXPartMappingError, _part_preamble
 from anima.latex.tex_document import TeXDocument
 from anima.primitives.group import Group
 from anima.primitives.object import Object
@@ -20,6 +20,32 @@ if TYPE_CHECKING:
 
 # dvisvgm's coordinates are in big points (1/72 inch); TeX points are 1/72.27 inch.
 _TEX_POINT_IN_SVG_UNITS = 72 / 72.27
+
+
+class GlyphSelection(Sequence[Glyph]):
+    """A read-only snapshot of glyph references that does not change their parents."""
+
+    def __init__(self, glyphs: Iterable[Glyph] = ()) -> None:
+        self._glyphs = tuple(glyphs)
+
+    def __len__(self) -> int:
+        return len(self._glyphs)
+
+    @overload
+    def __getitem__(self, index: int) -> Glyph: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> GlyphSelection: ...
+
+    def __getitem__(self, index: int | slice) -> Glyph | GlyphSelection:
+        if isinstance(index, slice):
+            return GlyphSelection(self._glyphs[index])
+        return self._glyphs[index]
+
+    @property
+    def text(self) -> str:
+        """Return the concatenated rendered text of the selected glyphs."""
+        return "".join(glyph.text for glyph in self._glyphs)
 
 
 class GlyphGroup(Group):
@@ -48,6 +74,7 @@ class GlyphGroup(Group):
             TypeError: If any of the glyphs is not a Glyph instance.
         """
         super().__init__(glyphs, name=name, parent=parent)
+        self._parts: dict[str, tuple[Glyph, ...]] = {}
 
     def add_child(self, object: Object) -> None:
         """Add a glyph as a child of this group.
@@ -98,6 +125,81 @@ class GlyphGroup(Group):
         Raises:
             ValueError: If font_size is not finite and positive or the template already has body content.
         """
+        return cls._from_tex(
+            text, name, mesh_quality, font_size=font_size, with_borders=with_borders, tex_template=tex_template
+        )
+
+    @classmethod
+    def from_tex_parts(
+        cls,
+        parts: Mapping[str, str],
+        name: str = "GlyphGroup",
+        mesh_quality: MeshQuality | None = None,
+        *,
+        font_size: float | None = None,
+        with_borders: bool = False,
+        tex_template: TeXDocument | None = None,
+    ) -> GlyphGroup:
+        """Typeset ordered, named TeX fragments together and record their glyphs.
+
+        Fragments are concatenated without separators. Each fragment must have
+        balanced braces and must not end with a control sequence. Boundaries
+        must not split TeX arguments, comments, verbatim content, or macro
+        definitions.
+
+        Args:
+            parts: Nonempty mapping of unique names to contiguous TeX fragments.
+            name: Name for the resulting group.
+            mesh_quality: Triangulation quality for glyph bodies.
+            font_size: Base font size in TeX points.
+            with_borders: Whether to create animatable glyph outlines.
+            tex_template: Optional reusable preamble-only TeX document.
+
+        Raises:
+            ValueError: If parts is empty, a name is empty, the font size is invalid,
+                or the template already has body content.
+            TypeError: If a name or fragment is not a string.
+            TeXPartMappingError: If SVG output cannot be reliably mapped to the parts.
+        """
+        entries = tuple(parts.items())
+        if not entries:
+            raise ValueError("parts must not be empty.")
+        if any(not isinstance(key, str) or not isinstance(fragment, str) for key, fragment in entries):
+            raise TypeError("Part names and fragments must be strings.")
+        if any(not key for key, _ in entries):
+            raise ValueError("Part names must not be empty.")
+        for key, fragment in entries:
+            _validate_part_fragment(key, fragment)
+        text = (
+            "".join(
+                rf"\global\AnimaSemanticPartAttribute={index}\relax\directlua{{anima_semantic_boundary({index})}}"
+                + fragment
+                for index, (_, fragment) in enumerate(entries)
+            )
+            + r"\global\AnimaSemanticPartAttribute=-1\relax"
+        )
+        return cls._from_tex(
+            text,
+            name,
+            mesh_quality,
+            font_size=font_size,
+            with_borders=with_borders,
+            tex_template=tex_template,
+            part_names=tuple(key for key, _ in entries),
+        )
+
+    @classmethod
+    def _from_tex(
+        cls,
+        text: str,
+        name: str,
+        mesh_quality: MeshQuality | None,
+        *,
+        font_size: float | None,
+        with_borders: bool,
+        tex_template: TeXDocument | None,
+        part_names: tuple[str, ...] | None = None,
+    ) -> GlyphGroup:
         profile = get_profile()
         if font_size is None:
             font_size = profile.body_font_size
@@ -106,9 +208,16 @@ class GlyphGroup(Group):
         svg_scale = profile.tex_point_size / _TEX_POINT_IN_SVG_UNITS
         template = TeXDocument().set_defaults() if tex_template is None else tex_template
         content = template.with_body(text, font_size=font_size)
-        group = cls(name=name)
+        if part_names is not None:
+            content.add_to_preamble(_part_preamble(len(part_names)))
 
-        with TeXDocumentProcessor(content) as (glyph_outlines, positions):
+        processor = (
+            TeXDocumentProcessor(content)
+            if part_names is None
+            else TeXDocumentProcessor(content, part_names=part_names)
+        )
+        with processor as (glyph_outlines, positions):
+            group = cls(name=name)
             for index, (gid, (x, y), char, shape_label) in enumerate(positions, start=1):
                 glyph_name = _format_glyph_name(index, char, len(positions), shape_label)
                 glyph = Glyph(
@@ -121,7 +230,27 @@ class GlyphGroup(Group):
                 glyph.location = (x * svg_scale, y * svg_scale, 0)
                 group.add(glyph)
 
+        if part_names is not None:
+            if processor.part_indices is None:
+                raise RuntimeError("The TeX processor did not return part mappings.")
+            glyphs = group.glyphs
+            group._parts = {
+                name: tuple(glyphs[index] for index in indices) for name, indices in processor.part_indices.items()
+            }
         return group
+
+    @property
+    def part_names(self) -> tuple[str, ...]:
+        """Return the names of explicitly supplied TeX parts in input order."""
+        return tuple(self._parts)
+
+    def part(self, name: str) -> GlyphSelection:
+        """Return a non-owning snapshot of the glyphs rendered for a named part.
+
+        Raises:
+            KeyError: If no part has the given name.
+        """
+        return GlyphSelection(self._parts[name])
 
     @property
     def glyphs(self) -> list[Glyph]:
@@ -199,6 +328,50 @@ def glyph_group_write_on(
         return glyph_write_on(child) if child.border is not None else Fade(child.body)
 
     return Stagger(group, lag_ratio=lag_ratio, order=order, children=group.glyphs, child_effect=reveal_glyph)
+
+
+def _validate_part_fragment(name: str, fragment: str) -> None:
+    """Reject group and comment boundaries that cannot be assigned reliably."""
+    depth = 0
+    index = 0
+    while index < len(fragment):
+        char = fragment[index]
+        if char == "\\":
+            index += 1
+            start = index
+            while index < len(fragment) and fragment[index].isascii() and fragment[index].isalpha():
+                index += 1
+            command = fragment[start:index]
+            if command == "verb":
+                if index < len(fragment) and fragment[index] == "*":
+                    index += 1
+                if index >= len(fragment) or fragment[index] in "\r\n":
+                    raise TeXPartMappingError(f"Cannot map TeX part {name!r}: incomplete verbatim command.")
+                delimiter = fragment[index]
+                end = fragment.find(delimiter, index + 1)
+                if end < 0 or "\n" in fragment[index + 1 : end] or "\r" in fragment[index + 1 : end]:
+                    raise TeXPartMappingError(f"Cannot map TeX part {name!r}: verbatim content crosses a boundary.")
+                index = end + 1
+            elif not command:
+                index += 1
+            if index >= len(fragment) and command != "verb":
+                raise TeXPartMappingError(f"Cannot map TeX part {name!r}: a control sequence ends at a part boundary.")
+            continue
+        if char == "%":
+            end = fragment.find("\n", index + 1)
+            if end < 0:
+                raise TeXPartMappingError(f"Cannot map TeX part {name!r}: a comment crosses a part boundary.")
+            index = end + 1
+            continue
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth < 0:
+                raise TeXPartMappingError(f"Cannot map TeX part {name!r}: a TeX group crosses a part boundary.")
+        index += 1
+    if depth:
+        raise TeXPartMappingError(f"Cannot map TeX part {name!r}: a TeX group crosses a part boundary.")
 
 
 def _scale_outline(outline: svgtools.Path, factor: float) -> svgtools.Path:
