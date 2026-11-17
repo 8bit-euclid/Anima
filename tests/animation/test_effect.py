@@ -8,7 +8,7 @@ from mathutils import Matrix, Vector
 from anima.animation.effects import Callback, Draw, Effect, Fade, Phase, Scale, Stagger, Together
 from anima.animation.stagger import reversed_order
 from anima.latex.glyph import Glyph, glyph_write_on
-from anima.latex.glyph_group import GlyphGroup, glyph_group_write_on
+from anima.latex.glyph_group import GlyphGroup, GlyphSelection, glyph_group_write_on
 from anima.primitives.chains import CurveLoop
 from anima.primitives.group import Group
 from anima.primitives.lines import Segment
@@ -189,6 +189,19 @@ class TestTogether:
 
 
 class TestStagger:
+    def test_selection_children_fade_without_affecting_other_glyphs(self):
+        glyphs = [Glyph(create_rect_path(), name=f"SelectionFade{index}") for index in range(3)]
+        group = GlyphGroup(glyphs)
+        group.set_opacity(1.0)
+        selection = GlyphSelection([glyphs[0], glyphs[2]])
+        effect = Stagger(group, children=selection, lag_ratio=1.0, child_effect=Fade)
+
+        effect.apply(0.25)
+        assert [glyph.body.opacity for glyph in glyphs] == pytest.approx([0.5, 1.0, 0.0])
+        assert all(glyph.parent is group for glyph in glyphs)
+        effect.apply(1.0)
+        assert [glyph.body.opacity for glyph in glyphs] == pytest.approx([1.0, 1.0, 1.0])
+
     def test_reveals_children_in_turn(self):
         segments = make_segments(3)
         group = Group(segments)

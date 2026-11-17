@@ -42,6 +42,21 @@ class GlyphSelection(Sequence[Glyph]):
             return GlyphSelection(self._glyphs[index])
         return self._glyphs[index]
 
+    def set_color(self, color: tuple[float, float, float] | tuple[float, float, float, float] | str) -> GlyphSelection:
+        """Set each selected glyph's color and return this selection.
+
+        RGB preserves opacity; RGBA also sets it. Hex color strings are supported.
+        """
+        for glyph in self:
+            glyph.set_color(color)
+        return self
+
+    def set_opacity(self, opacity: float) -> GlyphSelection:
+        """Set each selected glyph's opacity and return this selection."""
+        for glyph in self:
+            glyph.set_opacity(opacity)
+        return self
+
     @property
     def text(self) -> str:
         """Return the concatenated rendered text of the selected glyphs."""

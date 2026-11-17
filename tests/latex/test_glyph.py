@@ -336,6 +336,10 @@ class TestGlyphGroup:
         assert selected[0] is group[0]
         assert list(selected[1:]) == [group[1], group[2]]
         assert all(glyph.parent is group for glyph in selected)
+        group.set_color((0.0, 0.0, 1.0, 1.0))
+        selected.set_color((1.0, 0.0, 0.0)).set_opacity(0.5)
+        assert all(glyph.body.color == pytest.approx((1.0, 0.0, 0.0, 0.5)) for glyph in selected)
+        assert group.part("equals")[0].body.color == pytest.approx((0.0, 0.0, 1.0, 1.0))
         with pytest.raises(KeyError):
             group.part("unknown")
 
@@ -580,6 +584,29 @@ class TestGlyphGroup:
         assert selection[-1] is group[1]
         assert list(selection[:1]) == [group[0]]
         assert all(glyph.parent is group for glyph in selection)
+
+    def test_selection_styles_only_selected_glyphs_and_their_borders(self):
+        bordered = Glyph(self.outline1, name="SelectionBordered", with_border=True)
+        group = GlyphGroup([bordered, self.glyph1, self.glyph2])
+        group.set_color((0.0, 0.0, 1.0, 0.6))
+        selection = GlyphSelection([bordered, self.glyph2])
+
+        assert selection.set_color((1.0, 0.0, 0.0)) is selection
+        assert bordered.body.color == pytest.approx((1.0, 0.0, 0.0, 0.6))
+        assert selection.set_color((1.0, 0.0, 0.0)).set_opacity(0.25) is selection
+        assert bordered.body.color == pytest.approx((1.0, 0.0, 0.0, 0.25))
+        assert bordered.border is not None
+        assert all(curve.color == pytest.approx((1.0, 0.0, 0.0, 0.25)) for curve in bordered.border.curves)
+        assert self.glyph2.body.color == pytest.approx((1.0, 0.0, 0.0, 0.25))
+        assert self.glyph1.body.color == pytest.approx((0.0, 0.0, 1.0, 0.6))
+        assert all(glyph.parent is group for glyph in selection)
+        assert selection.set_color((0.0, 1.0, 0.0, 0.4)).set_color("#ff0000") is selection
+        assert self.glyph2.body.color == pytest.approx((1.0, 0.0, 0.0, 0.4))
+
+    def test_empty_selection_styling_is_chainable(self):
+        selection = GlyphSelection()
+
+        assert selection.set_color("#ff0000").set_opacity(0.5) is selection
 
     def test_inherited_add_stays_consistent(self):
         """Test that Group.add and remove_child keep glyphs in sync with children."""

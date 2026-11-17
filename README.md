@@ -229,6 +229,18 @@ macro definitions. A fragment that produces no glyphs has an empty selection. Se
 glyph references, not groups: they do not reparent glyphs and retain their references if the group is later modified.
 Fraction rules are included in selections but contribute no text.
 
+Style a selection without affecting other glyphs, or pass it to `Stagger` to animate just those glyphs:
+
+```python
+from anima.animation.effects import Fade, Stagger
+
+left.set_color("#c0392b").set_opacity(0.7)
+reveal = Stagger(equation, children=equation.part("right"), lag_ratio=0.5, child_effect=Fade)
+```
+
+Styling also applies to glyph borders and is a no-op for empty selections. `Fade` animates opacity from 0 to 1,
+replacing any previously set opacity on its selected glyphs.
+
 Part mapping uses LuaLaTeX node attributes and post-shaping SVG markers, preserving kerning across boundaries.
 `TeXPartMappingError` from `anima.latex.tex_doc_processor` is raised when a reliable mapping cannot be established,
 including ligatures spanning parts, HarfBuzz-rendered fonts, unsupported SVG shapes, or multiple pages. Custom TeX
