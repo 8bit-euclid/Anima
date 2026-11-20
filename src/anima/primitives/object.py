@@ -23,6 +23,7 @@ from anima.globals.general import (
     make_active,
     outer_product,
 )
+from anima.layout import Alignment, Direction, _place_next_to
 from anima.materials.material import (
     get_material_color,
     get_material_opacity,
@@ -299,6 +300,24 @@ class Object(ABC):
             ebpy.apply_location(ref=self.object)
 
     @property
+    def location(self) -> Vector:
+        """Get the object's location.
+
+        Returns:
+            Vector: A 3D vector representing the location in x, y, z dimensions.
+        """
+        return self._bl_object.location
+
+    @location.setter
+    def location(self, loc: tuple[float, float, float] | list[float]) -> None:
+        """Set the object's location.
+
+        Args:
+            loc (tuple or list): A tuple or list of 3 floats representing the location in x, y, z dimensions.
+        """
+        self.set_location(*loc)
+
+    @property
     def layer(self) -> int:
         """Get the object's stacking layer.
 
@@ -321,23 +340,30 @@ class Object(ABC):
         delta = self._bl_object.delta_location
         self._bl_object.delta_location = (delta.x, delta.y, value * LAYER_SPACING)
 
-    @property
-    def location(self) -> Vector:
-        """Get the object's location.
+    def next_to(
+        self,
+        reference: Object,
+        *,
+        direction: Direction = "right",
+        gap: float = 0.5,
+        align: Alignment = "origin",
+    ) -> None:
+        """Position this object next to another without changing either parent.
 
-        Returns:
-            Vector: A 3D vector representing the location in x, y, z dimensions.
-        """
-        return self._bl_object.location
-
-    @location.setter
-    def location(self, loc: tuple[float, float, float] | list[float]) -> None:
-        """Set the object's location.
+        Positions are measured in the shared parent frame. This is a one-time
+        operation; call it again after changing the reference or its geometry.
 
         Args:
-            loc (tuple or list): A tuple or list of 3 floats representing the location in x, y, z dimensions.
+            reference: Object whose measured bounds determine the placement.
+            direction: Direction from the reference to this object.
+            gap: Distance between bounding boxes, in scene units.
+            align: Origin, center, or edge alignment on the cross axis.
+
+        Raises:
+            TypeError: If the reference is not an Object.
+            ValueError: If the objects, geometry, direction, alignment, or gap are unsupported.
         """
-        self.set_location(*loc)
+        _place_next_to(self, reference, direction, gap, align)
 
     # Rotation-related methods ----------------------------------------------------------------------------- #
 

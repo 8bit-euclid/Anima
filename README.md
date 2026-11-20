@@ -247,6 +247,63 @@ including ligatures spanning parts, HarfBuzz-rendered fonts, unsupported SVG sha
 that changes syntax or interferes with the internal attribute and shipout hooks is not supported. Use
 `from_tex_string()` for unrestricted TeX without part mapping.
 
+TeX can arrange lines within a single glyph group: use `aligned` or `array` for math, and a bounded `\parbox`
+for paragraph wrapping. For example:
+
+```python
+paragraph = GlyphGroup.from_tex_string(r"\parbox{3cm}{Alpha beta gamma delta epsilon zeta eta theta.}")
+equations = GlyphGroup.from_tex_string(r"$\begin{aligned}a&=b\\c&=d\end{aligned}$")
+```
+
+`\parbox` widths are TeX dimensions, not scene units; TeX controls line breaks and may report overfull boxes.
+Semantic parts must still respect the fragment boundary rules above.
+
+Position one object relative to another without parenting either object:
+
+```python
+proof.next_to(statement, direction="down", gap=0.5, align="left")
+# Equivalent short forms:
+proof.next_to(statement, direction="D", gap=0.5, align="L")
+```
+
+`next_to` moves only the target immediately. Directions are `"right"`, `"left"`, `"up"`, and `"down"`; the default
+is `"right"`. The gap between measured bounds defaults to 0.5 scene units. Cross-axis alignment defaults to `"origin"`;
+use `"center"`, `"top"`, or `"bottom"` for horizontal placement, or `"center"`, `"left"`, or `"right"` for vertical
+placement. The relationship is not retained: call `next_to` again after the reference or its geometry changes.
+
+To arrange independently animatable scene objects together, use a non-owning `Layout`:
+
+```python
+from anima.layout import Layout
+
+rows = Layout.grid([[label, equation], [other_label, other_equation]], column_gap=0.8, row_gap=0.5)
+page = Layout([title, rows]).tile(direction="down", gap=0.5, align="left")
+page.place_in_safe_area(anchor="top_left")
+```
+
+`tile` supports the same directions, gaps, and cross-axis alignments as `next_to`, but defaults to `"down"`.
+Grid columns and rows are sized to their contents; `align_x` defaults to `"left"` and `align_y` to `"origin"`.
+Horizontal alignment also supports `"right"`, `"center"`, and `"origin"`; vertical alignment supports `"top"`,
+`"bottom"`, `"center"`, and `"origin"`. Origins are not necessarily text baselines. Layouts can be nested and never
+reparent their objects. Placement is explicit: call `place` or `place_in_safe_area` again after changing content or
+geometry.
+
+`place(at=(x, y), anchor="center", bounds=(left, bottom, right, top))` aligns the chosen point on the layout's
+measured bounds with `at` in the common parent frame; omit `bounds` for an unbounded arrangement. Anchors are
+`"center"`, `"left"`, `"right"`, `"top"`, `"bottom"`, `"top_left"`, `"top_right"`, `"bottom_left"`, and
+`"bottom_right"`. The default anchor is `"top_left"`. `place_in_safe_area(anchor=...)` aligns the same anchor of the
+layout and the safe rectangle. It is for root-level objects, uses the active profile's centered frame, and raises if
+the content does not fit rather than scaling it. It assumes the profile camera's default framing.
+
+Direction, alignment, and anchor names are case-insensitive. Short forms can be used without imports: `"R"`, `"L"`,
+`"U"`, and `"D"` for directions; `"L"`, `"R"`, `"T"`, `"B"`, and `"C"` for edge or center alignment; and `"TL"`,
+`"TR"`, `"BL"`, `"BR"`, `"L"`, `"R"`, `"T"`, `"B"`, and `"C"` for anchors. `"origin"` has no short form.
+
+Both `Layout` and `next_to` measure conservative axis-aligned bounds of mesh and curve geometry, including hidden
+objects, in the common parent frame. They do not measure TeX whitespace or paragraph-box width. Objects must share a
+parent; empty geometry, unsupported object types, constraints, modifiers, and non-identity parent inverses on arranged
+objects are rejected. Layout does not wrap text or reflow automatically.
+
 Glyphs are border-free by default. Set `with_borders=True` on `GlyphGroup.from_tex_string()` when the outline is
 needed for display or `glyph_write_on()`. Each glyph border uses one shared material, so styling any one of its
 curves styles the whole border.
