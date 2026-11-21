@@ -519,6 +519,25 @@ class TestBezierSpline:
         spline = BezierSpline([(0, 0), (4, 0)])
         assert_setter_returns_self(spline, "set_width", 2.0)
 
+    @pytest.mark.parametrize(
+        ("bias", "expected_offset"),
+        [(0.0, 0.0), (0.5, -0.05), (-1.0, 0.1)],
+    )
+    def test_set_width_preserves_bias_offset(self, bias, expected_offset):
+        spline = Segment((0, 0), (2, 0), width=0.1, bias=bias)
+
+        spline.set_width(0.2)
+
+        assert spline.object.data.offset == pytest.approx(expected_offset)
+
+    def test_width_then_bias_uses_updated_width_for_offset(self):
+        spline = Segment((0, 0), (2, 0), width=0.1)
+
+        spline.set_width(0.2)
+        spline.set_bias(-1.0)
+
+        assert spline.object.data.offset == pytest.approx(0.1)
+
     def test_set_bias(self):
         """Test set_bias() method returns self for chaining."""
         spline = BezierSpline([(0, 0), (4, 0)])

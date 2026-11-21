@@ -128,11 +128,14 @@ class BezierSpline(Curve):
             self.object.data.bevel_object = line_obj
             line_obj.parent = self.object
 
+        self._update_profile_offset()
+
         # Set same width for all children that are curves.
         for c in self.children:
             if isinstance(c, Curve):
                 c.set_width(width)
 
+        self._update_profile_attachments()
         return self
 
     def set_bias(self, bias: float) -> BezierSpline:
@@ -145,13 +148,22 @@ class BezierSpline(Curve):
             This spline.
         """
         super().set_bias(bias)
-        self.object.data.offset = -bias * 0.5 * self._width
+        self._update_profile_offset()
 
         # Set the same bias for all children that are curves.
         for c in self.children:
             if isinstance(c, Curve):
                 c.set_bias(bias)
 
+        self._update_profile_attachments()
+        return self
+
+    def _update_profile_offset(self) -> None:
+        """Apply the current bias and width to the Blender curve offset."""
+        self.object.data.offset = -self._bias * 0.5 * self._width
+
+    def _update_profile_attachments(self) -> None:
+        """Refresh joint cutbacks and attached object transforms after a profile change."""
         update_params = (self._update_param_0, self._update_param_1)
         for i, att in enumerate(self._attachments()):
             if att is not None:
@@ -162,8 +174,6 @@ class BezierSpline(Curve):
 
         # If there is an end attachment, update its location and orientation.
         self._update_attachments()
-
-        return self
 
     def point(self, param: float) -> Vector:
         """Evaluate the spline at an approximate arc-length fraction.
