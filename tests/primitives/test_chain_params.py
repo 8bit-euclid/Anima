@@ -5,6 +5,7 @@ import random
 
 import bpy
 import pytest
+from svgpathtools import Line, Path
 
 from anima.primitives.chains import CurveChain, CurveLoop
 from anima.primitives.lines import Segment
@@ -17,6 +18,12 @@ def make_chain(create_joints: bool = False) -> CurveChain:
     """Build a 3-segment chain of unit-length segments."""
     curves = [Segment((0, 0), (1, 0)), Segment((1, 0), (1, 1)), Segment((1, 1), (2, 1))]
     return CurveChain(curves, create_joints=create_joints, width=0.1)
+
+
+def make_uneven_chain(width: float = 0.1, bias: float = 0.0, create_joints: bool = True) -> CurveChain:
+    """Build a 3-segment chain with lengths 1, 2 and 3."""
+    curves = [Segment((0, 0), (1, 0)), Segment((1, 0), (1, 2)), Segment((1, 2), (4, 2))]
+    return CurveChain(curves, width=width, bias=bias, create_joints=create_joints)
 
 
 def make_loop() -> CurveLoop:
@@ -98,6 +105,51 @@ class TestChainParamPropagation:
         chain.param_1 = 0.9
         assert bevel_factors(chain, 0) == pytest.approx(expected_unit_bevels(0.7), abs=TOL)
         assert bevel_factors(chain, 1) == pytest.approx(expected_unit_bevels(0.9), abs=TOL)
+
+    @pytest.mark.parametrize("create_joints", [False, True])
+    @pytest.mark.parametrize("bias", [-1.0, 0.0, 1.0])
+    @pytest.mark.parametrize("width_first", [False, True])
+    def test_length_is_canonical_across_width_and_bias(self, create_joints, bias, width_first):
+        chain = make_chain(create_joints)
+        canonical_length = sum(curve._length for curve in chain.curves)
+
+        if width_first:
+            chain.width = 0.2
+            chain.bias = bias
+        else:
+            chain.bias = bias
+            chain.width = 0.2
+
+        assert chain.length() == pytest.approx(canonical_length)
+        assert sum(chain._reveal_entity_lengths) == pytest.approx(canonical_length)
+
+    @pytest.mark.parametrize("bias", [-1.0, 0.0, 1.0])
+    def test_geometric_queries_match_unjoined_path(self, bias):
+        unjoined = make_uneven_chain(create_joints=False)
+        joined = make_uneven_chain(create_joints=True)
+        for chain in (unjoined, joined):
+            chain.width = 0.2
+            chain.bias = bias
+
+        for param in (0.0, 0.1, 1 / 6, 0.25, 0.5, 0.6, 0.8, 1.0):
+            assert tuple(joined.point(param)) == pytest.approx(tuple(unjoined.point(param)), abs=TOL)
+            assert tuple(joined.tangent(param)) == pytest.approx(tuple(unjoined.tangent(param)), abs=TOL)
+            assert tuple(joined.normal(param)) == pytest.approx(tuple(unjoined.normal(param)), abs=TOL)
+
+    def test_profile_updates_reapply_open_chain_reveal(self):
+        chain = make_uneven_chain()
+        chain.param_0 = 0.05
+        chain.param_1 = 0.1
+        chain.debug_on()
+        chain.width = 0.8
+        chain.bias = -1.0
+        chain.validate_param_state()
+
+        reference = make_uneven_chain(width=0.8, bias=-1.0)
+        reference.param_0 = 0.05
+        reference.param_1 = 0.1
+        assert child_params(chain, 0) == pytest.approx(child_params(reference, 0), abs=TOL)
+        assert child_params(chain, 1) == pytest.approx(child_params(reference, 1), abs=TOL)
 
     def test_inverted_params_are_not_validated(self):
         """`param_0 > param_1` is accepted silently; each end is propagated independently."""
@@ -215,6 +267,26 @@ class TestChainParamStateValidation:
 
 
 class TestLoopParamPropagation:
+    def test_biased_joint_loop_keeps_canonical_length_and_reveal(self):
+        points = [0 + 0j, 2 + 0j, 0.5 - 0.5j]
+        path = Path(*(Line(points[i], points[(i + 1) % len(points)]) for i in range(len(points))))
+        loop = CurveLoop.from_svg_path(path, create_joints=True)
+        canonical_length = sum(curve._length for curve in loop.curves)
+        loop.param_0 = 0.8
+        loop.param_1 = 1.2
+
+        visible_intervals = [(curve._param_0, curve._param_1) for curve in loop.curves]
+        visible_joints = [bool(joint.object.data.polygons) for joint in loop._joints]
+
+        loop.width = 0.2
+        loop.bias = -1.0
+
+        assert loop.length() == pytest.approx(canonical_length)
+        assert sum(loop._reveal_entity_lengths) == pytest.approx(canonical_length)
+        assert [(curve._param_0, curve._param_1) for curve in loop.curves] == pytest.approx(visible_intervals)
+        assert [bool(joint.object.data.polygons) for joint in loop._joints] == visible_joints
+        loop.validate_param_state()
+
     def test_loop_jumps_are_consistent(self):
         loop = CurveLoop.from_svg_path(create_rect_path(0, 0, 4, 2))
         loop.debug_on()
@@ -264,6 +336,19 @@ class TestLoopParamPropagation:
         loop.param_0 = 0.8
         loop.param_1 = 1.2
         loop.validate_param_state()
+
+    @pytest.mark.parametrize("bias", [-1.0, 0.0, 1.0])
+    def test_loop_geometric_queries_ignore_joints_and_profile(self, bias):
+        unjoined = make_loop()
+        joined = make_loop_with_joints()
+        for loop in (unjoined, joined):
+            loop.width = 0.2
+            loop.bias = bias
+
+        for param in (-0.2, 0.0, 0.1, 0.25, 0.5, 0.75, 1.0, 1.2):
+            assert tuple(joined.point(param)) == pytest.approx(tuple(unjoined.point(param)), abs=TOL)
+            assert tuple(joined.tangent(param)) == pytest.approx(tuple(unjoined.tangent(param)), abs=TOL)
+            assert tuple(joined.normal(param)) == pytest.approx(tuple(unjoined.normal(param)), abs=TOL)
 
     def test_joints_are_visible_only_when_the_segment_crosses_their_corner(self):
         loop = make_loop_with_joints()

@@ -30,7 +30,9 @@ class CurveChain(Curve):
             assert not isinstance(c, Joint), "The curves in a curve chain cannot be joints."
         self._curves: list[type[Curve]] = curves
         self._joints: list[type[Joint]] = []
-        self._cumu_lengths: list[float] = []
+        self._source_curve_cumu_lengths: list[float] = []
+        self._reveal_entity_cumu_lengths: list[float] = []
+        self._reveal_entity_lengths: list[float] = []
         self._curve_0_idx: int = None
         self._curve_1_idx: int = None
 
@@ -66,6 +68,7 @@ class CurveChain(Curve):
         for c in self._all_entities:
             c.set_width(width)
         self._update_length()
+        self._refresh_param_state()
 
     def set_bias(self, bias: float):
         """Set the bias of the curve chain.
@@ -76,50 +79,51 @@ class CurveChain(Curve):
         for c in self._all_entities:
             c.set_bias(bias)
         self._update_length()
+        self._refresh_param_state()
 
     def point(self, t: float) -> Vector:
-        """Compute the point on the curve chain associated to the paramater t.
+        """Compute the point at canonical arc-length fraction t along the curve chain.
 
         Args:
-            t: The parameter value.
+            t: The canonical arc-length fraction in [0, 1].
 
         Returns:
             The point on the curve chain associated to the paramater t.
         """
-        crv, _, t = self._compute_curve_info(t)
+        crv, _, t = self._compute_source_curve_info(t)
         return crv.point(t)
 
     def tangent(self, t: float, normalise=False) -> Vector:
-        """Compute the tangent of the curve chain associated to the paramater t.
+        """Compute the tangent at canonical arc-length fraction t.
 
         Args:
-            t: The parameter value.
+            t: The canonical arc-length fraction in [0, 1].
             normalise: Whether to normalise the tangent.
 
         Returns:
             The tangent of the curve chain associated to the paramater t.
         """
-        crv, _, t = self._compute_curve_info(t)
+        crv, _, t = self._compute_source_curve_info(t)
         return crv.tangent(t, normalise)
 
     def normal(self, t: float, normalise=False) -> Vector:
-        """Compute the normal of the curve chain associated to the paramater t.
+        """Compute the normal at canonical arc-length fraction t.
 
         Args:
-            t: The parameter value.
+            t: The canonical arc-length fraction in [0, 1].
             normalise: Whether to normalise the normal.
 
         Returns:
             The normal of the curve chain associated to the paramater t.
         """
-        crv, _, t = self._compute_curve_info(t)
+        crv, _, t = self._compute_source_curve_info(t)
         return crv.normal(t, normalise)
 
     def length(self, t: float = 1.0) -> float:
-        """Compute the length of the curve chain up to the paramater t.
+        """Compute canonical curve length up to fraction t, independent of joints and profile bias.
 
         Args:
-            t: The parameter value. Defaults to 1.0 (full length).
+            t: The canonical length fraction. Defaults to 1.0 (full length).
 
         Returns:
             The length of the curve chain up to the paramater t.
@@ -162,7 +166,7 @@ class CurveChain(Curve):
 
         crv_str = f"_curve_{end_idx}_idx"
         idx_ = getattr(self, crv_str)
-        crv, idx, t = self._compute_curve_info(param)
+        crv, idx, t = self._compute_reveal_entity_info(param)
         crv._set_param(t, end_idx)
         setattr(self, crv_str, idx)
 
@@ -196,7 +200,7 @@ class CurveChain(Curve):
         entities = self._all_entities
         for end_idx in (0, 1):
             param = getattr(self, f"_param_{end_idx}")
-            _, expected_idx, expected_t = self._compute_curve_info(param)
+            _, expected_idx, expected_t = self._compute_reveal_entity_info(param)
             idx = getattr(self, f"_curve_{end_idx}_idx")
             assert idx == expected_idx, (
                 f"{self.name}: stored curve index {idx} for end {end_idx} does not match the index "
@@ -211,6 +215,23 @@ class CurveChain(Curve):
                     f"{self.name}: child {i} has param_{end_idx}={actual}, expected {expected}."
                 )
 
+    def _refresh_param_state(self) -> None:
+        """Reapply the current reveal endpoints after canonical entity spans change."""
+        params = (self._param_0, self._param_1)
+        entities = self._all_entities
+        if not entities:
+            return
+        last_idx = len(entities) - 1
+
+        for end_idx, initial_param, initial_idx in ((0, 0.0, 0), (1, 1.0, last_idx)):
+            setattr(self, f"_param_{end_idx}", initial_param)
+            setattr(self, f"_curve_{end_idx}_idx", initial_idx)
+            for entity in entities:
+                entity._set_param(initial_param, end_idx)
+
+        self._set_param(params[0], 0)
+        self._set_param(params[1], 1)
+
     def _update_attachment(self, end_index: int):
         """Update the attachment at the specified end of the curve chain.
 
@@ -220,58 +241,87 @@ class CurveChain(Curve):
         # TODO: Implement attachment update for curve chains.
         super()._update_attachment(end_index)
 
-    def _compute_curve_info(self, param: float) -> tuple[type[Curve], int, float]:
-        """Compute the curve and parameter value associated to the paramater t.
+    def _compute_source_curve_info(self, param: float) -> tuple[type[Curve], int, float]:
+        """Map canonical chain distance to a source curve and its local parameter.
 
         Args:
             param: The parameter value.
 
         Returns:
-            A tuple containing the curve, its index, and the parameter value associated to the paramater t.
+            A tuple containing the source curve, its index, and its local arc-length fraction.
         """
-        cumu_lens = self._cumu_lengths
+        cumu_lens = self._source_curve_cumu_lengths
+        sz = len(cumu_lens)
+
+        arc_len = param * self._length
+        idx = bisect.bisect_left(cumu_lens, arc_len) - 1
+        idx = clip(idx, 0, sz - 1)
+        crv = self._curves[idx]
+        local_len = arc_len - cumu_lens[idx]
+        crv_param = clip(local_len * crv._length_inverse, 0, 1)
+        return crv, idx, crv_param
+
+    def _compute_reveal_entity_info(self, param: float) -> tuple[type[Curve], int, float]:
+        """Map canonical chain distance to a reveal entity and its local parameter."""
+        cumu_lens = self._reveal_entity_cumu_lengths
         sz = len(cumu_lens)
 
         arc_len = param * self._length
         idx = bisect.bisect_left(cumu_lens, arc_len) - 1
         idx = clip(idx, 0, sz - 1)
         crv = self._all_entities[idx]
+        local_len = arc_len - cumu_lens[idx]
+        entity_len = self._reveal_entity_lengths[idx]
 
-        end_offs = crv._compute_end_offset(0, is_distance=True)
-        crv_param = (arc_len + end_offs - cumu_lens[idx]) * crv._length_inverse
-        crv_param = clip(crv_param, 0, 1)
+        if isinstance(crv, Joint):
+            crv_param = local_len / entity_len if entity_len > 0 else 0.0
+        else:
+            start_offset = crv._compute_end_offset(0, is_distance=True)
+            end_offset = crv._compute_end_offset(1, is_distance=True)
+            visible_len = max(crv._length - start_offset - end_offset, 0.0)
+            source_len = start_offset
+            if entity_len > 0:
+                source_len += local_len * visible_len / entity_len
+            crv_param = clip(source_len * crv._length_inverse, 0, 1)
         return crv, idx, crv_param
 
     def _update_length(self):
-        """Update the length, cumulative lengths, and inverse length of the curve chain after a change in width or bias."""
+        """Update canonical chain length allocations after a width or bias change."""
 
-        # Compute and store curve lengths, cumulative lengths, and total length.
+        # Allocate each joint the source-curve distance removed at its two connections.
+        # This keeps chain progress and length independent of the joint path's rendered geometry.
         curves = self._all_entities
         sz = len(curves)
-        self._cumu_lengths = [0] * sz
-        true_len = 0
+        self._source_curve_cumu_lengths = [0] * len(self._curves)
+        self._reveal_entity_cumu_lengths = [0] * sz
+        self._reveal_entity_lengths = [0] * sz
+        joints = set(self._joints)
+        canonical_len = 0
         cumu_len = 0
+        curve_idx = 0
         for i, c in enumerate(curves):
-            # First update length of this curve.
             c._update_length()
 
-            # Update true length (i.e. without joints).
-            l = c._length
-            if not isinstance(c, Joint):
-                true_len += l
+            if isinstance(c, Joint):
+                curve_0, curve_1 = c.connections
+                l = curve_0._compute_end_offset(1, is_distance=True) + curve_1._compute_end_offset(0, is_distance=True)
+            else:
+                self._source_curve_cumu_lengths[curve_idx] = canonical_len
+                canonical_len += c._length
+                curve_idx += 1
+                l = c._length
+                for end_idx, attachment in enumerate(c._attachments()):
+                    if attachment in joints:
+                        l -= c._compute_end_offset(end_idx, is_distance=True)
 
-            # Subtract both end offset lengths from the curve length.
-            for j in range(2):
-                l -= c._compute_end_offset(j, is_distance=True)
-
-            # Update cumulative length.
-            self._cumu_lengths[i] = cumu_len
+            self._reveal_entity_cumu_lengths[i] = cumu_len
+            self._reveal_entity_lengths[i] = l
             cumu_len += l
 
         # Need to override super()._update_length() to avoid a cycle. This is because the latter invokes
         # self.length(), which requires self._length to have already been set.
-        assert math.isclose(cumu_len, true_len, abs_tol=1e-6), (
-            f"Inconsistent total length. Abs Error: {abs(cumu_len - true_len)}"
+        assert math.isclose(cumu_len, canonical_len, abs_tol=1e-6), (
+            f"Inconsistent canonical length. Abs Error: {abs(cumu_len - canonical_len)}"
         )
         self._length = cumu_len
         self._length_inverse = reciprocal(cumu_len)
@@ -359,11 +409,12 @@ class CurveLoop(CurveChain):
     def set_width(self, width: float):
         """Set loop width and restore joint visibility for the current parameter interval."""
         super().set_width(width)
-        self._apply_loop_params()
 
     def set_bias(self, bias: float):
         """Set loop bias and restore joint visibility for the current parameter interval."""
         super().set_bias(bias)
+
+    def _refresh_param_state(self) -> None:
         self._apply_loop_params()
 
     @property
@@ -376,15 +427,20 @@ class CurveLoop(CurveChain):
                 entities.append(self._joints[i])
         return entities
 
-    def _compute_curve_info(self, param: float) -> tuple[type[Curve], int, float]:
+    def _compute_source_curve_info(self, param: float) -> tuple[type[Curve], int, float]:
         """Map any parameter to a location on the closed loop, wrapping by one turn."""
         wrapped_param = param if 0.0 < param <= 1.0 else param % 1.0
-        return super()._compute_curve_info(wrapped_param)
+        return super()._compute_source_curve_info(wrapped_param)
+
+    def _compute_reveal_entity_info(self, param: float) -> tuple[type[Curve], int, float]:
+        """Map a reveal parameter to a loop entity, wrapping by one turn."""
+        wrapped_param = param if 0.0 < param <= 1.0 else param % 1.0
+        return super()._compute_reveal_entity_info(wrapped_param)
 
     def _set_param(self, param: float, end_idx: int):
         """Set an unwrapped endpoint and update the loop's visible curve segment."""
         Curve._set_param(self, param, end_idx)
-        _, idx, _ = self._compute_curve_info(param)
+        _, idx, _ = self._compute_reveal_entity_info(param)
         setattr(self, f"_curve_{end_idx}_idx", idx)
         self._apply_loop_params()
         if self.debug():

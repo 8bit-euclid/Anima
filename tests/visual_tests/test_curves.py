@@ -105,6 +105,7 @@ def test_curve_joints(duration: timedelta, color: str | None = None):
             sheen_weight=0.0,
             emission_strength=0.0,
         )
+    # chain.bias = -1
 
     # b = 1
     # j1.bias = b
