@@ -28,7 +28,7 @@ def create_background(
         FileNotFoundError: If the directory is missing or contains no recognized texture maps.
     """
     profile = get_profile()
-    textures = TextureSet.from_directory(texture_dir, physical_size=profile.texture_tile_size)
+    textures = TextureSet.from_directory(texture_dir, physical_size=profile.texture_tile_size, prefer_exr_height=True)
     if not textures.maps():
         raise FileNotFoundError(f"No background texture maps found in: {texture_dir}")
     background = Rectangle(*profile.background_size, name="Background")

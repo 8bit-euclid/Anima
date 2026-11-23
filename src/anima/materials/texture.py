@@ -13,7 +13,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, fields
-from functools import cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -23,13 +23,15 @@ import numpy as np
 from anima.materials.material import RGBA, to_rgba
 
 AlbedoMode = Literal["replace", "multiply", "modulate", "ignore"]
+TextureOption = str | float | bool | tuple[float, float] | None
 
 _MEAN_SAMPLE_SIZE = 64  # Side length of the downscaled copy used to estimate the albedo mean.
+_HEIGHT_SAMPLE_COUNT = 262_144
 
 NODE_PREFIX = "anima_texture_"
 NATIVE_COLOR_NODE = NODE_PREFIX + "native_color"
 TEXTURE_GROUP_NODE = NODE_PREFIX + "group"
-_GROUP_VERSION = 1
+_GROUP_VERSION = 2
 
 # Filename suffixes (case-insensitive, without extension) recognised by TextureSet.from_directory().
 _SUFFIXES = {
@@ -119,7 +121,7 @@ class TextureSet:
 class _PreparedTextureSet:
     textures: TextureSet
     used_maps: tuple[tuple[str, str], ...]
-    options: tuple[tuple[str, str | float | bool], ...]
+    options: tuple[tuple[str, TextureOption], ...]
     signature: str
     name: str
 
@@ -161,6 +163,8 @@ def apply_texture_set(
     bump_strength: float = 0.2,
     bump_distance: float = 0.01,
     normal_strength: float = 1.0,
+    height_reveal: tuple[float, float] | None = None,
+    ink_coverage: tuple[float, float] = (0.0, 1.0),
 ) -> None:
     """Apply a shared texture node group to a material, replacing any earlier texture graph.
 
@@ -182,13 +186,29 @@ def apply_texture_set(
         bump_strength: Strength of the height-map bump.
         bump_distance: Distance (scene units) a full-intensity height value represents for bump shading.
         normal_strength: Strength of the normal map.
+        height_reveal: Optional ordered pair of height-map percentiles in [0, 1]. Below the first threshold,
+            ink coverage is the first `ink_coverage` value; above the second, it is the second value.
+            Between distinct thresholds, coverage varies linearly with height. Equal percentiles give a step,
+            with the upper coverage at the threshold.
+        ink_coverage: Ink opacity at and beyond the low and high height thresholds, each in [0, 1].
+            This multiplies the material's own opacity and may be reversed.
+
+    Raises:
+        ValueError: If reveal settings are invalid, a height map is missing or has unsaved edits, distinct
+            percentiles resolve to the same height, or a custom Alpha link would be overwritten.
     """
+    _validate_reveal_options(textures, height_reveal, ink_coverage)
     tree = mat.node_tree
     if tree is None:
         return
     bsdf = tree.nodes.get("Principled BSDF")
     if bsdf is None:
         return
+    alpha = bsdf.inputs["Alpha"]
+    if height_reveal is not None and alpha.is_linked:
+        texture_group = tree.nodes.get(TEXTURE_GROUP_NODE)
+        if any(link.from_node != texture_group for link in alpha.links):
+            raise ValueError("height_reveal cannot replace an existing custom Alpha link.")
 
     options_tuple = (
         ("albedo_mode", albedo_mode),
@@ -200,6 +220,8 @@ def apply_texture_set(
         ("bump_strength", bump_strength),
         ("bump_distance", bump_distance),
         ("normal_strength", normal_strength),
+        ("height_reveal", height_reveal),
+        ("ink_coverage", ink_coverage),
     )
     application = _CURRENT_TEXTURE_APPLICATION.get()
     prepared = None
@@ -218,15 +240,20 @@ def apply_texture_set(
         for _, path in used_maps:
             if not Path(path).is_file():
                 raise FileNotFoundError(f"Texture map not found: {path}")
-        signature = json.dumps(
-            {
-                "version": _GROUP_VERSION,
-                "maps": dict(used_maps),
-                "size": textures.physical_size,
-                "options": dict(options_tuple),
-            },
-            sort_keys=True,
-        )
+        signature_data = {
+            "version": _GROUP_VERSION,
+            "maps": dict(used_maps),
+            "size": textures.physical_size,
+            "options": dict(options_tuple),
+        }
+        if height_reveal is not None:
+            if textures.height is None:
+                raise ValueError("height_reveal requires a height map.")
+            height_path = Path(textures.height).resolve()
+            stat = height_path.stat()
+            signature_data["height_file"] = (stat.st_mtime_ns, stat.st_size)
+            _height_thresholds(height_path, height_reveal)
+        signature = json.dumps(signature_data, sort_keys=True)
         name = "AnimaTexture_" + hashlib.sha256(signature.encode()).hexdigest()[:40]
         prepared = _PreparedTextureSet(textures, used_maps, options_tuple, signature, name)
         if application is not None:
@@ -257,11 +284,14 @@ def apply_texture_set(
             if not complete:
                 bpy.data.node_groups.remove(group)
 
+    opacity = alpha.default_value
     remove_texture_nodes(mat)
     node = tree.nodes.new("ShaderNodeGroup")
     node.name = node.label = TEXTURE_GROUP_NODE
     node.node_tree = group
     node.inputs["Native Color"].default_value = tuple(mat.diffuse_color)
+    if "Native Opacity" in node.inputs:
+        node.inputs["Native Opacity"].default_value = opacity
     for output in node.outputs:
         tree.links.new(output, bsdf.inputs[output.name])
 
@@ -279,6 +309,8 @@ def _build_texture_group(
     bump_strength: float,
     bump_distance: float,
     normal_strength: float,
+    height_reveal: tuple[float, float] | None,
+    ink_coverage: tuple[float, float],
 ) -> None:
     """Build a reusable texture graph with an independent native-color input."""
     tree.interface.new_socket(name="Native Color", in_out="INPUT", socket_type="NodeSocketColor")
@@ -399,6 +431,39 @@ def _build_texture_group(
         if normal_socket is not None:
             links.new(normal_socket, bump.inputs["Normal"])
         normal_socket = bump.outputs["Normal"]
+        if height_reveal is not None:
+            if textures.height is None:
+                raise ValueError("height_reveal requires a height map.")
+            low, high = _height_thresholds(textures.height, height_reveal)
+            if low == high:
+                below = new("ShaderNodeMath", "reveal_below", 400, -1500)
+                below.operation = "LESS_THAN"
+                below.inputs[1].default_value = low
+                links.new(height.outputs["Color"], below.inputs[0])
+                coverage = new("ShaderNodeMath", "reveal_coverage", 200, -1500)
+                coverage.operation = "MULTIPLY_ADD"
+                coverage.inputs[1].default_value = ink_coverage[0] - ink_coverage[1]
+                coverage.inputs[2].default_value = ink_coverage[1]
+                links.new(below.outputs["Value"], coverage.inputs[0])
+                coverage_socket = coverage.outputs["Value"]
+            else:
+                coverage = new("ShaderNodeMapRange", "reveal_coverage", 400, -1500)
+                coverage.clamp = True
+                coverage.inputs["From Min"].default_value = low
+                coverage.inputs["From Max"].default_value = high
+                coverage.inputs["To Min"].default_value = ink_coverage[0]
+                coverage.inputs["To Max"].default_value = ink_coverage[1]
+                links.new(height.outputs["Color"], coverage.inputs["Value"])
+                coverage_socket = coverage.outputs["Result"]
+            opacity_input = tree.interface.new_socket(
+                name="Native Opacity", in_out="INPUT", socket_type="NodeSocketFloat"
+            )
+            opacity_input.default_value = 1.0
+            opacity = new("ShaderNodeMath", "reveal_opacity", 0, -1500)
+            opacity.operation = "MULTIPLY"
+            links.new(coverage_socket, opacity.inputs[0])
+            links.new(group_input.outputs["Native Opacity"], opacity.inputs[1])
+            output("Alpha", opacity.outputs["Value"], "NodeSocketFloat")
     if normal_socket is not None:
         output("Normal", normal_socket, "NodeSocketVector")
     tree["anima_uses_native_color"] = group_input.outputs["Native Color"].is_linked
@@ -444,6 +509,74 @@ def set_native_color(mat: bpy.types.Material, color: RGBA) -> None:
     group = mat.node_tree.nodes.get(TEXTURE_GROUP_NODE)
     if group is not None:
         group.inputs["Native Color"].default_value = to_rgba(color)
+
+
+def set_texture_opacity(mat: bpy.types.Material, opacity: float) -> None:
+    """Update the independent opacity used by a height-reveal texture group."""
+    if mat.node_tree is None:
+        return
+    group = mat.node_tree.nodes.get(TEXTURE_GROUP_NODE)
+    if group is not None and "Native Opacity" in group.inputs:
+        group.inputs["Native Opacity"].default_value = opacity
+
+
+def _validate_reveal_options(
+    textures: TextureSet,
+    height_reveal: tuple[float, float] | None,
+    ink_coverage: tuple[float, float],
+) -> None:
+    def valid_pair(value: object) -> bool:
+        return (
+            isinstance(value, tuple)
+            and len(value) == 2
+            and all(
+                isinstance(v, int | float) and not isinstance(v, bool) and np.isfinite(v) and 0 <= v <= 1 for v in value
+            )
+        )
+
+    if not valid_pair(ink_coverage):
+        raise ValueError("ink_coverage must be a pair of finite values in [0, 1].")
+    if height_reveal is None:
+        return
+    if not valid_pair(height_reveal) or height_reveal[0] > height_reveal[1]:
+        raise ValueError("height_reveal must be an ordered pair of finite percentiles in [0, 1].")
+    if textures.height is None:
+        raise ValueError("height_reveal requires a height map.")
+
+
+def _height_thresholds(path: Path, percentiles: tuple[float, float]) -> tuple[float, float]:
+    path = Path(path).resolve()
+    stat = path.stat()
+    image = _load_image(path, "Non-Color")
+    if image.is_dirty:
+        raise ValueError(f"Save or reload the modified height map before applying height_reveal: {path}")
+    samples = _height_samples(path, stat.st_mtime_ns, stat.st_size)
+    low, high = np.asarray(np.quantile(samples, percentiles), dtype=np.float32)
+    if percentiles[0] != percentiles[1] and low == high:
+        raise ValueError("Distinct height_reveal percentiles resolve to the same height; choose different percentiles.")
+    return float(low), float(high)
+
+
+@lru_cache(maxsize=8)
+def _height_samples(path: Path, modified_ns: int, file_size: int) -> np.ndarray:
+    """Sample height pixels uniformly without averaging away the map's distribution."""
+    image = _load_image(path, "Non-Color")
+    image.reload()
+    width, height = image.size
+    count = width * height
+    if count == 0:
+        raise ValueError(f"Height map has no pixels: {path}")
+    pixels = np.empty(count * 4, dtype=np.float32)
+    image.pixels.foreach_get(pixels)
+    pixels = pixels.reshape(count, 4)
+    if count > _HEIGHT_SAMPLE_COUNT:
+        indices = np.random.default_rng(0).choice(count, _HEIGHT_SAMPLE_COUNT, replace=False)
+        pixels = pixels[indices]
+    rgb = pixels[:, :3]
+    values = rgb[:, 0] * 0.2126 + rgb[:, 1] * 0.7152 + rgb[:, 2] * 0.0722
+    if not np.isfinite(values).all():
+        raise ValueError(f"Height map contains non-finite sampled values: {path}")
+    return values
 
 
 @cache

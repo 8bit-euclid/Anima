@@ -188,6 +188,11 @@ def set_material_properties(
     elif opacity is not None:
         mat.diffuse_color = (*mat.diffuse_color[:3], opacity)
 
+    if opacity is not None:
+        from anima.materials.texture import set_texture_opacity  # Deferred: texture imports this module.
+
+        set_texture_opacity(mat, opacity)
+
     bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree is not None else None
     if bsdf is None:
         return

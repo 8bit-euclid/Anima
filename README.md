@@ -169,6 +169,26 @@ its text and curves; creating a primitive elsewhere does not implicitly apply te
 Materials with the same texture maps and settings share a shader node group, while keeping their own color and
 opacity. Editing a shared node group in Blender affects every material using it.
 
+For ink over paper, height-based reveal is opt-in:
+
+```python
+text.inherit_textures_from(get_background(), height_reveal=(0.1, 0.9), ink_coverage=(0.2, 1.0))
+text.set_material_properties(specular_ior_level=0.5)
+```
+
+`height_reveal` is an ordered pair of percentiles from 0 to 1, estimated from uniformly sampled, non-color
+height-map pixels. The two `ink_coverage` values are the ink opacities below and above those thresholds;
+coverage varies linearly with height between them. They default to `(0, 1)` and may be reversed. Equal
+percentiles produce a hard step, with the upper coverage at the threshold. A missing height map, invalid values,
+or distinct percentiles that resolve to the same sampled height raise `ValueError`. A custom link to the
+material's Alpha input is also rejected rather than overwritten. Coverage multiplies the object's opacity,
+so fades still work. Revealed areas show whatever is behind the object, normally the paper;
+this is an opacity effect, not a physical ink-absorption simulation. Percentiles describe the whole texture,
+not necessarily the part covered by a particular glyph; filtering also affects the apparent result. The sample
+is cached per file and file modification metadata. Reapply textures after changing the file. Unsaved Blender
+image edits must be saved or reloaded before applying height reveal. Specular response is independent of reveal; a linked
+roughness map overrides a material's scalar roughness setting.
+
 `GlyphGroup.from_tex_string(text, font_size=...)` asks LaTeX to typeset at the given base font size in TeX points,
 defaulting to the profile's body size. LaTeX controls font selection, spacing, math styles, and inline size commands.
 Standard named commands such as `\large` use the document class's predefined sizes; they are not necessarily

@@ -80,7 +80,7 @@ def test_background_uses_active_profile(monkeypatch, tmp_path):
     set_profile(profile)
     try:
         background_module.create_background(tmp_path)
-        from_directory.assert_called_once_with(tmp_path, physical_size=7)
+        from_directory.assert_called_once_with(tmp_path, physical_size=7, prefer_exr_height=True)
         rectangle.assert_called_once_with(*profile.background_size, name="Background")
         rectangle.return_value.set_textures.assert_called_once_with(
             textures, bump_strength=0.3, bump_distance=profile.bump_distance

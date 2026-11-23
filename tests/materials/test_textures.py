@@ -7,6 +7,7 @@ import bpy
 import pytest
 
 import anima.materials.texture as texture_module
+from anima.animation.effects import Fade
 from anima.materials.texture import (
     NODE_PREFIX,
     TEXTURE_GROUP_NODE,
@@ -375,6 +376,204 @@ def test_inherit_defaults_to_modulate(texture_dir):
     rect = Rectangle(1, 1, name="pytest_a")
     rect.inherit_textures_from(paper)
     assert rect._texture_options["albedo_mode"] == "modulate"
+
+
+@pytest.fixture
+def height_map(tmp_path):
+    image = bpy.data.images.new("pytest_height", 4, 1)
+    image.colorspace_settings.name = "Non-Color"
+    image.pixels = [channel for value in (0.0, 0.25, 0.75, 1.0) for channel in (value, value, value, 1.0)]
+    image.filepath_raw = str(tmp_path / "height.png")
+    image.file_format = "PNG"
+    image.save()
+    bpy.data.images.remove(image)
+    path = tmp_path / "height.png"
+    yield path
+    for loaded in list(bpy.data.images):
+        if bpy.path.abspath(loaded.filepath) == str(path):
+            bpy.data.images.remove(loaded, do_unlink=True)
+    texture_module._height_samples.cache_clear()
+
+
+def test_height_percentiles_use_map_distribution_and_cache(height_map):
+    texture_module._height_samples.cache_clear()
+    low, high = texture_module._height_thresholds(height_map, (0.25, 0.75))
+    assert (low, high) == pytest.approx((0.1875, 0.8125), abs=0.002)
+    assert texture_module._height_thresholds(height_map, (0.0, 1.0)) == pytest.approx((0, 1))
+    assert texture_module._height_samples.cache_info().hits == 1
+
+
+def test_height_percentiles_refresh_when_file_changes(height_map):
+    rect = Rectangle(1, 1, name="pytest_reveal_refresh")
+    textures = TextureSet(height=height_map)
+    rect.set_textures(textures, height_reveal=(0.0, 1.0))
+    old_group = _texture_group(rect.object.data.materials[0]).node_tree
+    image = bpy.data.images.new("pytest_height_replacement", 4, 1)
+    image.colorspace_settings.name = "Non-Color"
+    image.pixels = [channel for value in (0.25, 0.4, 0.6, 0.75) for channel in (value, value, value, 1.0)]
+    image.filepath_raw = str(height_map)
+    image.file_format = "PNG"
+    image.save()
+    bpy.data.images.remove(image)
+
+    rect.set_textures(textures, height_reveal=(0.0, 1.0))
+    group = _texture_group(rect.object.data.materials[0]).node_tree
+    assert group != old_group
+    coverage = group.nodes[NODE_PREFIX + "reveal_coverage"]
+    assert coverage.inputs["From Min"].default_value == pytest.approx(0.25, abs=0.005)
+    assert coverage.inputs["From Max"].default_value == pytest.approx(0.75, abs=0.005)
+
+
+def test_height_reveal_rejects_unsaved_pixel_edits(height_map):
+    rect = Rectangle(1, 1, name="pytest_reveal_dirty")
+    textures = TextureSet(height=height_map)
+    rect.set_textures(textures, height_reveal=(0.25, 0.75))
+    group = _texture_group(rect.object.data.materials[0])
+    image = group.node_tree.nodes[NODE_PREFIX + "height"].image
+    image.pixels[0] = 0.5
+    assert image.is_dirty
+    with pytest.raises(ValueError, match="Save or reload"):
+        rect.set_textures(textures, height_reveal=(0.25, 0.75))
+    assert _texture_group(rect.object.data.materials[0]) == group
+
+
+@pytest.mark.parametrize(
+    ("percentiles", "coverage"),
+    [
+        ((-0.1, 0.5), (0.0, 1.0)),
+        ((0.8, 0.2), (0.0, 1.0)),
+        ((0.0, float("nan")), (0.0, 1.0)),
+        ((0.0, 1.0), (0.0, 1.1)),
+        ((0.0, 1.0), (float("inf"), 1.0)),
+    ],
+)
+def test_invalid_height_reveal_options_raise(height_map, percentiles, coverage):
+    rect = Rectangle(1, 1, name="pytest_reveal_invalid")
+    with pytest.raises(ValueError):
+        rect.set_textures(TextureSet(height=height_map), height_reveal=percentiles, ink_coverage=coverage)
+
+
+def test_height_reveal_requires_height_and_rejects_collapsed_gradient(grey_albedo):
+    rect = Rectangle(1, 1, name="pytest_reveal_invalid")
+    with pytest.raises(ValueError, match="requires a height map"):
+        rect.set_textures(TextureSet(albedo=grey_albedo), height_reveal=(0.2, 0.8))
+    with pytest.raises(ValueError, match="same height"):
+        rect.set_textures(TextureSet(height=grey_albedo), height_reveal=(0.2, 0.8))
+    rect.set_textures(TextureSet(height=grey_albedo), height_reveal=(0.5, 0.5))
+
+
+def test_failed_height_reveal_preserves_inheritable_texture_options(height_map, grey_albedo):
+    rect = Rectangle(1, 1, name="pytest_reveal_source")
+    original = TextureSet(height=height_map)
+    rect.set_textures(original, height_reveal=(0.25, 0.75))
+    with pytest.raises(ValueError, match="requires a height map"):
+        rect.set_textures(TextureSet(albedo=grey_albedo), height_reveal=(0.25, 0.75))
+    target = Rectangle(1, 1, name="pytest_reveal_target")
+    target.inherit_textures_from(rect)
+    assert target._texture_set is original
+    assert target._texture_options["height_reveal"] == (0.25, 0.75)
+
+
+def test_height_reveal_does_not_replace_custom_alpha_link(height_map):
+    rect = Rectangle(1, 1, name="pytest_reveal_custom_alpha")
+    rect.set_opacity(0.7)
+    mat = rect.object.data.materials[0]
+    tree = mat.node_tree
+    custom = tree.nodes.new("ShaderNodeValue")
+    alpha = tree.nodes["Principled BSDF"].inputs["Alpha"]
+    tree.links.new(custom.outputs[0], alpha)
+    with pytest.raises(ValueError, match="custom Alpha"):
+        rect.set_textures(TextureSet(height=height_map), height_reveal=(0.25, 0.75))
+    assert alpha.links[0].from_node == custom
+
+
+def test_height_reveal_preserves_independent_opacity_and_fades(height_map):
+    textures = TextureSet(height=height_map)
+    a = Rectangle(1, 1, name="pytest_reveal_a")
+    b = Rectangle(1, 1, name="pytest_reveal_b")
+    a.set_color((0.0, 0.0, 0.0, 0.7))
+    b.set_opacity(0.9)
+    a.set_textures(textures, height_reveal=(0.25, 0.75))
+    b.set_textures(textures, height_reveal=(0.25, 0.75))
+    mat_a, mat_b = a.object.data.materials[0], b.object.data.materials[0]
+    group_a, group_b = _texture_group(mat_a), _texture_group(mat_b)
+    assert group_a.node_tree == group_b.node_tree
+    assert group_a.inputs["Native Opacity"].default_value == pytest.approx(0.7)
+    assert group_b.inputs["Native Opacity"].default_value == pytest.approx(0.9)
+    assert _linked_from(mat_a, "Alpha") == group_a
+
+    Fade(a).apply(0.3)
+    assert a.opacity == pytest.approx(0.3)
+    assert group_a.inputs["Native Opacity"].default_value == pytest.approx(0.3)
+    assert group_b.inputs["Native Opacity"].default_value == pytest.approx(0.9)
+    a.set_color((0.2, 0.3, 0.4))
+    assert a.color == pytest.approx((0.2, 0.3, 0.4, 0.3))
+    a.set_textures(textures, height_reveal=(0.5, 0.5))
+    assert _texture_group(mat_a).inputs["Native Opacity"].default_value == pytest.approx(0.3)
+    remove_texture_nodes(mat_a)
+    assert _linked_from(mat_a, "Alpha") is None
+    assert a.opacity == pytest.approx(0.3)
+
+
+@pytest.mark.parametrize(
+    ("percentiles", "coverage", "relative_heights", "expected"),
+    [
+        ((0.25, 0.75), (0.2, 0.8), (-0.1, 0.0, 0.5, 1.0, 1.1), (0.2, 0.2, 0.5, 0.8, 0.8)),
+        ((0.25, 0.75), (0.8, 0.2), (-0.1, 0.5, 1.1), (0.8, 0.5, 0.2)),
+        ((0.5, 0.5), (0.2, 0.8), (-0.1, 0.0, 0.1), (0.2, 0.8, 0.8)),
+    ],
+)
+def test_height_reveal_shader_output(height_map, tmp_path, percentiles, coverage, relative_heights, expected):
+    rect = Rectangle(1, 1, name="pytest_reveal_shader")
+    rect.set_opacity(0.5)
+    rect.set_textures(TextureSet(height=height_map), height_reveal=percentiles, ink_coverage=coverage)
+    mat = rect.object.data.materials[0]
+    group = _texture_group(mat)
+    nodes, links = group.node_tree.nodes, group.node_tree.links
+    source = nodes.new("ShaderNodeValue")
+    target = nodes.get(NODE_PREFIX + "reveal_below") or nodes[NODE_PREFIX + "reveal_coverage"]
+    assert target.inputs[0].links[0].from_node == nodes[NODE_PREFIX + "height"]
+    links.new(source.outputs[0], target.inputs[0])
+
+    tree = mat.node_tree
+    emission = tree.nodes.new("ShaderNodeEmission")
+    tree.links.new(group.outputs["Alpha"], emission.inputs["Color"])
+    tree.links.new(emission.outputs["Emission"], tree.nodes["Material Output"].inputs["Surface"])
+    scene = bpy.data.scenes.new("pytest_reveal_render")
+    camera_data = bpy.data.cameras.new("pytest_reveal_camera")
+    camera = bpy.data.objects.new("pytest_reveal_camera", camera_data)
+    scene.collection.objects.link(camera)
+    scene.collection.objects.link(rect.object)
+    camera.location = (0, 0, 5)
+    camera_data.type = "ORTHO"
+    camera_data.ortho_scale = 0.5
+    scene.camera = camera
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = 4
+    scene.cycles.use_denoising = False
+    scene.render.threads_mode = "FIXED"
+    scene.render.threads = 2
+    scene.render.resolution_x = scene.render.resolution_y = 4
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.dither_intensity = 0
+    scene.view_settings.view_transform = "Standard"
+    low, high = texture_module._height_thresholds(height_map, percentiles)
+    try:
+        for index, (relative, desired) in enumerate(zip(relative_heights, expected)):
+            source.outputs[0].default_value = low + relative * (high - low if high != low else 1)
+            path = tmp_path / f"result_{index}.png"
+            scene.render.filepath = str(path)
+            bpy.ops.render.render(scene=scene.name, write_still=True)
+            image = bpy.data.images.load(str(path))
+            encoded = image.pixels[0]
+            bpy.data.images.remove(image)
+            linear = encoded / 12.92 if encoded <= 0.04045 else ((encoded + 0.055) / 1.055) ** 2.4
+            assert linear == pytest.approx(desired * 0.5, abs=0.005)
+    finally:
+        bpy.data.scenes.remove(scene)
+        bpy.data.objects.remove(camera, do_unlink=True)
+        bpy.data.cameras.remove(camera_data)
 
 
 def test_reapply_and_remove_are_clean(texture_dir):

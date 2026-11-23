@@ -138,12 +138,12 @@ class GlyphBorder(Object):
             This border.
         """
         with _texture_application():
-            for node in self._hierarchy_objects():
-                node._texture_set = textures
-                node._texture_options = {"albedo_mode": albedo_mode, **options}
             material = self._ensure_shared_material()
             if material is not None:
                 apply_texture_set(material, textures, albedo_mode=albedo_mode, **options)
+            for node in self._hierarchy_objects():
+                node._texture_set = textures
+                node._texture_options = {"albedo_mode": albedo_mode, **options}
         return self
 
     def _hierarchy_objects(self) -> Iterator[Object]:

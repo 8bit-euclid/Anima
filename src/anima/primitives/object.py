@@ -702,14 +702,13 @@ class Object(ABC):
         Args:
             textures: The texture maps to apply.
             albedo_mode: "replace", "multiply", "modulate" or "ignore"; see `apply_texture_set`.
-            **options: Further keyword arguments for `apply_texture_set` (e.g. `bump_strength`).
+            **options: Further keyword arguments for `apply_texture_set` (e.g. `bump_strength` or
+                `height_reveal` and `ink_coverage`).
 
         Returns:
             Object: This object.
         """
         with _texture_application():
-            self._texture_set = textures
-            self._texture_options = {"albedo_mode": albedo_mode, **options}
             if self._has_data():
                 materials = self._bl_object.data.materials
                 if not materials:
@@ -717,6 +716,8 @@ class Object(ABC):
                 apply_texture_set(materials[0], textures, albedo_mode=albedo_mode, **options)
             for child in self.children:
                 child.set_textures(textures, albedo_mode=albedo_mode, **options)
+            self._texture_set = textures
+            self._texture_options = {"albedo_mode": albedo_mode, **options}
         return self
 
     def inherit_textures_from(self, other: Object, *, albedo_mode: AlbedoMode = "modulate", **options: Any) -> Object:
