@@ -206,8 +206,11 @@ def apply_texture_set(
         return
     alpha = bsdf.inputs["Alpha"]
     if height_reveal is not None and alpha.is_linked:
+        from anima.materials.curve_profile import PROFILE_ALPHA
+
         texture_group = tree.nodes.get(TEXTURE_GROUP_NODE)
-        if any(link.from_node != texture_group for link in alpha.links):
+        profile_alpha = tree.nodes.get(PROFILE_ALPHA)
+        if any(link.from_node not in (texture_group, profile_alpha) for link in alpha.links):
             raise ValueError("height_reveal cannot replace an existing custom Alpha link.")
 
     options_tuple = (
@@ -294,6 +297,9 @@ def apply_texture_set(
         node.inputs["Native Opacity"].default_value = opacity
     for output in node.outputs:
         tree.links.new(output, bsdf.inputs[output.name])
+    from anima.materials.curve_profile import refresh_curve_profile
+
+    refresh_curve_profile(mat)
 
 
 def _build_texture_group(
@@ -470,7 +476,7 @@ def _build_texture_group(
 
 
 def remove_texture_nodes(mat: bpy.types.Material) -> None:
-    """Remove every node created by apply_texture_set() and restore the plain Principled BSDF links.
+    """Remove texture nodes, retaining any curve-width profile links.
 
     Args:
         mat: The material from which to remove texture nodes.
@@ -492,6 +498,9 @@ def remove_texture_nodes(mat: bpy.types.Material) -> None:
             bsdf.inputs["Base Color"].default_value = tuple(color)
     for node in [n for n in nodes if n.name.startswith(NODE_PREFIX)]:
         nodes.remove(node)
+    from anima.materials.curve_profile import refresh_curve_profile
+
+    refresh_curve_profile(mat)
 
 
 def set_native_color(mat: bpy.types.Material, color: RGBA) -> None:

@@ -236,7 +236,8 @@ class Object(ABC):
 
         Materials and their animation actions are copied independently from the original,
         preserving material sharing within the copied hierarchy. Referenced shader node groups
-        and images remain shared.
+        and images remain shared. Curve profile dependencies are remapped to
+        copied materials so subsequent profile changes remain independent.
 
         Returns:
             Object: A deep copy of this object.

@@ -134,6 +134,11 @@ class BezierSpline(Curve):
         for c in self.children:
             if isinstance(c, Curve):
                 c.set_width(width)
+            elif isinstance(c, Endcap):
+                materials = self.object.data.materials
+                cap_materials = c.object.data.materials
+                shared = bool(materials and cap_materials and materials[0] == cap_materials[0])
+                c._update_profile_uv(width, is_start=c is self.attachment_0, shared_material=shared)
 
         self._update_profile_attachments()
         return self

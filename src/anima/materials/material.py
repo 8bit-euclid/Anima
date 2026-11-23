@@ -107,22 +107,18 @@ def create_color_material(
     return mat
 
 
-def get_or_create_material(name: str) -> bpy.types.Material:
-    """Get the named material, or create a matte, nonmetallic, non-emissive one if it doesn't exist.
+def create_material(name: str) -> bpy.types.Material:
+    """Create a matte, nonmetallic, non-emissive material.
 
     Args:
         name: The name of the material.
 
     Returns:
-        The node-based material with the given name.
+        A new node-based material. Blender resolves any name collision.
     """
-    mat = bpy.data.materials.get(name)
-    is_new = mat is None
-    if mat is None:
-        mat = bpy.data.materials.new(name)
-
+    mat = bpy.data.materials.new(name)
     bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree is not None else None
-    if is_new and bsdf is not None:
+    if bsdf is not None:
         defaults = {
             "Base Color": mat.diffuse_color,
             "Emission Color": mat.diffuse_color,
@@ -139,6 +135,19 @@ def get_or_create_material(name: str) -> bpy.types.Material:
             if socket_name in bsdf.inputs:
                 bsdf.inputs[socket_name].default_value = value
     return mat
+
+
+def get_or_create_material(name: str) -> bpy.types.Material:
+    """Get the named material or create a default material if it does not exist.
+
+    Args:
+        name: The name of the material.
+
+    Returns:
+        The node-based material with the given name.
+    """
+    mat = bpy.data.materials.get(name)
+    return mat if mat is not None else create_material(name)
 
 
 def set_material_properties(
@@ -168,7 +177,8 @@ def set_material_properties(
         coat_roughness: Clear coat roughness, from 0.0 to 1.0.
         sheen_weight: Sheen strength, from 0.0 to 1.0.
         emission_strength: Strength of the (color-matched) emission.
-        opacity: Opacity of the surface, from 0.0 (transparent) to 1.0 (opaque). Do not pass with RGBA color.
+        opacity: Overall surface opacity, from 0.0 (transparent) to 1.0 (opaque). Multiplies any curve-width
+            opacity profile or texture-based ink coverage. Do not pass with RGBA color.
     """
     has_color_alpha = isinstance(color, tuple) and len(color) == 4
     if has_color_alpha and opacity is not None:
@@ -192,6 +202,9 @@ def set_material_properties(
         from anima.materials.texture import set_texture_opacity  # Deferred: texture imports this module.
 
         set_texture_opacity(mat, opacity)
+        from anima.materials.curve_profile import set_curve_profile_opacity
+
+        set_curve_profile_opacity(mat, opacity)
 
     bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree is not None else None
     if bsdf is None:

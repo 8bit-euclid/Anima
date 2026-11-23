@@ -2,11 +2,14 @@ import bisect
 import math
 from enum import Enum
 
+import bpy
+
 from anima.globals.general import Euler, UnitZ, Vector, are_vectors_close
 from anima.primitives.mesh import Mesh
 
 from .attachments import Attachment
 from .bezier_spline import BezierSpline
+from .curve_profile import profile_image
 from .curves import DEFAULT_LINE_WIDTH, Curve
 
 DEFAULT_FILLET_FACTOR = 0.0
@@ -128,6 +131,10 @@ class Joint(Attachment, Curve, Mesh):
     def offset_distance(self):
         return self._offset_distance
 
+    def _apply_width_profile(self, image: bpy.types.Image) -> None:
+        super()._apply_width_profile(image)
+        self._update_profile_uv()
+
     # Private methods -------------------------------------------------------------------------------------- #
 
     def _update_geometry(self):
@@ -208,6 +215,8 @@ class Joint(Attachment, Curve, Mesh):
             curve_0.set_attachment_1(self)
             curve_1.set_attachment_0(self)
             self._initialised = True
+        if profile_image(self) is not None:
+            self._update_profile_uv()
 
         # Update joint path
         hw = 0.5 * w
@@ -332,6 +341,20 @@ class Joint(Attachment, Curve, Mesh):
             self.update_mesh(verts, faces)
         else:
             self.set_mesh(verts, faces)
+        if profile_image(self) is not None:
+            self._update_profile_uv()
+
+    def _update_profile_uv(self) -> None:
+        """Map the joint fan from its inner corner to its outer edge.
+
+        Vertex zero is the inner corner; turn orientation determines whether it
+        matches the left or right edge of the adjoining curves.
+        """
+        mesh = self.object.data
+        layer = mesh.uv_layers.get("UVMap") or mesh.uv_layers.new(name="UVMap")
+        inner = 1.0 if self._orientation > 0 else 0.0
+        for loop in mesh.loops:
+            layer.data[loop.index].uv = (0.0, inner if loop.vertex_index == 0 else 1.0 - inner)
 
     def _update_attachment(self, end_index: int):
         return  # Joints have no attachments to update

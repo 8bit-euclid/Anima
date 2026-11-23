@@ -145,11 +145,16 @@ def deepcopy_object(obj, name=None, *, memo: dict[int, Any] | None = None):
 
     def copy_material(material: bpy.types.Material) -> bpy.types.Material:
         if material not in material_copies:
+            from anima.materials.curve_profile import PROFILE_SOURCE
+
             copied = material.copy()
+            material_copies[material] = copied
             copy_animation_actions(copied)
             if copied.node_tree is not None:
                 copy_animation_actions(copied.node_tree)
-            material_copies[material] = copied
+            source = material.get(PROFILE_SOURCE)
+            if isinstance(source, bpy.types.Material):
+                copied[PROFILE_SOURCE] = copy_material(source)
         return material_copies[material]
 
     new_obj = obj.copy()

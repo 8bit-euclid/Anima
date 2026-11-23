@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from collections.abc import Callable
+
+import bpy
 
 from anima.globals.general import Vector, reciprocal
 
@@ -124,6 +127,63 @@ class Curve(Object):
             offset=offset,
             name=f"{self.name}_dashed",
         )
+
+    def set_width_profile(
+        self,
+        *,
+        height: Callable[[float], float] | None = None,
+        opacity: Callable[[float], float] | None = None,
+        samples: int = 256,
+    ) -> Curve:
+        """Apply sampled height and opacity functions across the curve's width.
+
+        The input runs from 0 at the left edge to 1 at the right edge, looking
+        along the curve. Width and bias changes preserve this normalized coordinate.
+        Height is a signed bump height in scene units, not displaced geometry.
+        Opacity multiplies the object's opacity and any texture-based coverage.
+        Functions are linearly interpolated between uniformly spaced samples.
+        Profiles propagate to descendant curves and endcaps. Materials shared
+        with other objects retain that sharing and therefore share the profile,
+        including changes made through another curve using the same material.
+
+        Args:
+            height: Height function, or None for zero height.
+            opacity: Opacity function in [0, 1], or None for full opacity.
+            samples: Number of uniformly spaced samples, including both edges;
+                must be at least two.
+
+        Returns:
+            This curve.
+
+        Raises:
+            ValueError: If both functions are None, the sample count is invalid,
+                a sample is non-finite, an opacity sample is outside [0, 1], or a
+                material lacks a Principled BSDF or has an incompatible custom
+                Alpha or Normal link.
+        """
+        from .curve_profile import set_width_profile
+
+        set_width_profile(self, height, opacity, samples)
+        return self
+
+    def clear_width_profile(self) -> Curve:
+        """Remove this curve's and its descendants' width profiles.
+
+        Material and texture settings remain in place. Removing a profile from a
+        shared material also affects other objects using that material.
+
+        Returns:
+            This curve.
+        """
+        from .curve_profile import clear_width_profile
+
+        clear_width_profile(self)
+        return self
+
+    def _apply_width_profile(self, image: bpy.types.Image) -> None:
+        from .curve_profile import apply_profile_material
+
+        apply_profile_material(self, image)
 
     @abstractmethod
     def set_width(self, width: float):
@@ -380,6 +440,10 @@ class Curve(Object):
         # A joint belongs to the pair of curves, so it is parented to their common parent instead (see Joint).
         if not isinstance(attmnt, Joint):
             self.add_child(attmnt)
+            if isinstance(attmnt, Endcap):
+                from .curve_profile import apply_endcap_profile
+
+                apply_endcap_profile(self, attmnt)
         return self
 
     @abstractmethod

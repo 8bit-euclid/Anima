@@ -3,6 +3,7 @@ import math
 import bpy
 
 from anima.globals.general import Vector, add_object, create_mesh
+from anima.materials.curve_profile import PROFILE_UV
 from anima.primitives.mesh import Mesh
 
 from .attachments import Attachment
@@ -22,7 +23,22 @@ class Endcap(Attachment):
     pattern as Joint(Attachment, Curve, Mesh).
     """
 
-    pass
+    def _update_profile_uv(self, width: float, *, is_start: bool, shared_material: bool = False) -> None:
+        """Project the curve-width coordinate onto this endcap's local X axis.
+
+        A zero-width curve uses the profile midpoint. Coordinates outside the
+        curve's width are clamped to the nearest edge by the profile texture.
+        A material shared with the curve uses its existing ``UVMap`` layer.
+        """
+        mesh = self.object.data
+        name = "UVMap" if shared_material else PROFILE_UV
+        layer = mesh.uv_layers.get(name) or mesh.uv_layers.new(name=name)
+        # Start and end caps face opposite directions; reverse X to keep left and right consistent.
+        direction = -1 if is_start else 1
+        for loop in mesh.loops:
+            x = mesh.vertices[loop.vertex_index].co.x
+            u = 0.5 + direction * x / width if width else 0.5
+            layer.data[loop.index].uv = (0.0, u)
 
 
 class PointEndcap(Endcap, Mesh):

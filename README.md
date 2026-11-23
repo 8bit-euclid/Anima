@@ -404,6 +404,41 @@ depend on texture filtering, lighting, denoising, downsampling and compression. 
 integration test can be run with `uv run pytest -o addopts= tests/visual_tests/test_dimensions.py` when LuaLaTeX, dvisvgm and
 the configured fonts are installed.
 
+## Curve width profiles
+
+Curves can have independent opacity and bump-height profiles across their width:
+
+```python
+import math
+
+curve.set_width_profile(
+    opacity=lambda u: u,
+    height=lambda u: 0.02 * math.sin(math.pi * u),
+    samples=256,
+)
+curve.clear_width_profile()
+```
+
+`u` runs from the left edge (0) to the right edge (1), looking along the curve. Width and bias do not change this
+normalized coordinate. Functions are sampled uniformly and linearly interpolated; increase `samples` for fine
+detail. Opacity must be finite and in [0, 1], and multiplies both object opacity and texture-based ink coverage.
+Height is a finite signed value in scene units, used for bump shading rather than geometric displacement. The bump
+composes with existing paper texture normals. `Fade` continues to control the overall opacity.
+
+Profiles propagate to chains, joints, dashes, and endcaps. Endcaps use the curve's width to project the profile
+across their local width; shapes wider than the curve use the nearest edge value outside that width. Existing
+custom Alpha or Normal shader links cannot be replaced. Curves sharing a material share its profile, and their
+existing endcaps follow changes and removal. Copied curves and their endcaps remain independent of the original.
+The profile is stored in a packed floating-point image so it is retained in saved Blender scenes.
+Endcaps with separate materials use a dedicated UV layer; an endcap sharing its curve's material uses and
+overwrites its `UVMap` layer.
+
+To render a gallery with Cycles on the GPU:
+
+```bash
+uv run python -m tests.visual_tests.test_curve_profiles out/curve_profiles.png
+```
+
 ## Logging
 
 Anima includes a built-in logging system powered by [loguru](https://loguru.readthedocs.io/) that provides structured, colorized output for debugging and monitoring.
