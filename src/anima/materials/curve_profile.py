@@ -16,6 +16,7 @@ PROFILE_ALPHA = PROFILE_PREFIX + "alpha"
 PROFILE_BUMP = PROFILE_PREFIX + "bump"
 PROFILE_SOURCE = PROFILE_PREFIX + "source"
 PROFILE_UV = "AnimaCurveProfile"
+PROFILE_FRACTION = PROFILE_PREFIX + "fraction"
 
 ProfileSamples = tuple[tuple[float, float], ...]
 
@@ -54,7 +55,7 @@ def sample_profile(
     return tuple(values)
 
 
-def create_profile_image(samples: ProfileSamples) -> bpy.types.Image:
+def create_profile_image(samples: ProfileSamples, *, width_fraction: float = 1.0) -> bpy.types.Image:
     """Pack sampled height and opacity into a floating-point image.
 
     The red and green channels hold height and opacity respectively. Packing the
@@ -62,6 +63,8 @@ def create_profile_image(samples: ProfileSamples) -> bpy.types.Image:
 
     Args:
         samples: Height and opacity pairs in width order.
+        width_fraction: Fraction of the curve width occupied by the samples,
+            ending at the right edge. The first sample extends to the left edge.
 
     Returns:
         The packed one-row image.
@@ -72,6 +75,7 @@ def create_profile_image(samples: ProfileSamples) -> bpy.types.Image:
     image.file_format = "OPEN_EXR"
     image.pack()
     image[PROFILE_PREFIX + "owned"] = True
+    image[PROFILE_FRACTION] = width_fraction
     return image
 
 
@@ -101,6 +105,14 @@ def _release_image(image: bpy.types.Image | None) -> None:
         bpy.data.images.remove(image)
 
 
+def _set_profile_coordinates(scale: bpy.types.ShaderNodeMath, image: bpy.types.Image) -> None:
+    width = image.size[0]
+    fraction = image.get(PROFILE_FRACTION, 1.0)
+    multiplier = (width - 1) / width / fraction
+    scale.inputs[1].default_value = multiplier
+    scale.inputs[2].default_value = 1.0 - 0.5 / width - multiplier
+
+
 def apply_curve_profile(mat: bpy.types.Material, image: bpy.types.Image) -> None:
     """Apply a width profile to a material's Principled BSDF.
 
@@ -126,9 +138,7 @@ def apply_curve_profile(mat: bpy.types.Material, image: bpy.types.Image) -> None
         old_image.image = image
         _release_image(previous)
         nodes[PROFILE_PREFIX + "uv"].uv_map = PROFILE_UV if mat.get(PROFILE_SOURCE) else "UVMap"
-        scale = nodes[PROFILE_PREFIX + "scale"]
-        scale.inputs[1].default_value = (image.size[0] - 1) / image.size[0]
-        scale.inputs[2].default_value = 0.5 / image.size[0]
+        _set_profile_coordinates(nodes[PROFILE_PREFIX + "scale"], image)
         return
 
     uv = nodes.new("ShaderNodeUVMap")
@@ -142,8 +152,7 @@ def apply_curve_profile(mat: bpy.types.Material, image: bpy.types.Image) -> None
     scale = nodes.new("ShaderNodeMath")
     scale.name = PROFILE_PREFIX + "scale"
     scale.operation = "MULTIPLY_ADD"
-    scale.inputs[1].default_value = (image.size[0] - 1) / image.size[0]
-    scale.inputs[2].default_value = 0.5 / image.size[0]
+    _set_profile_coordinates(scale, image)
     links.new(separate.outputs["Y"], scale.inputs[0])
     coords = nodes.new("ShaderNodeCombineXYZ")
     coords.name = PROFILE_PREFIX + "image_coordinate"

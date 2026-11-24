@@ -94,8 +94,10 @@ def set_width_profile(
     height: Callable[[float], float] | None,
     opacity: Callable[[float], float] | None,
     samples: int,
+    *,
+    width_fraction: float = 1.0,
 ) -> None:
-    """Validate and apply one sampled profile across a curve hierarchy."""
+    """Apply a sampled profile over the rightmost fraction of a curve hierarchy."""
     values = sample_profile(height, opacity, samples)
     parts = list(_parts(curve))
     materials = _related_materials(
@@ -104,7 +106,7 @@ def set_width_profile(
     for material in materials:
         validate_curve_profile(material)
 
-    image = create_profile_image(values)
+    image = create_profile_image(values, width_fraction=width_fraction)
     for part, owner in parts:
         if isinstance(part, Curve):
             part._apply_width_profile(image)

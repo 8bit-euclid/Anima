@@ -65,6 +65,7 @@ class CurveChain(Curve):
         Args:
             width: The width of the curve chain.
         """
+        super().set_width(width)
         for c in self._all_entities:
             c.set_width(width)
         self._update_length()
@@ -76,6 +77,7 @@ class CurveChain(Curve):
         Args:
             bias: The bias of the curve chain.
         """
+        super().set_bias(bias)
         for c in self._all_entities:
             c.set_bias(bias)
         self._update_length()

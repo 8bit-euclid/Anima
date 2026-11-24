@@ -783,38 +783,24 @@ class TestCurveChain:
         assert_death(self.chain.length, 1.01)
 
     def test_set_width(self):
-        """Test set_width() propagates to all curves.
-
-        Note: CurveChain.set_width() currently:
-        1. Does NOT return self for chaining (returns None)
-        2. Does NOT update chain.width property (only propagates to child curves)
-        This documents the current behavior.
-        """
+        """Test set_width() updates the chain and all curves."""
         seg1 = Segment((0, 0), (1, 0))
         seg2 = Segment((1, 0), (2, 0))
         chain = CurveChain([seg1, seg2])
         result = chain.set_width(2.0)
-        # CurveChain.set_width() returns None (not self)
         assert result is None
-        # Width is propagated to child curves
+        assert chain.width == 2.0
         assert seg1.width == 2.0
         assert seg2.width == 2.0
 
     def test_set_bias(self):
-        """Test set_bias() propagates to all curves.
-
-        Note: CurveChain.set_bias() currently:
-        1. Does NOT return self for chaining (returns None)
-        2. Does NOT update chain.bias property (only propagates to child curves)
-        This documents the current behavior.
-        """
+        """Test set_bias() updates the chain and all curves."""
         seg1 = Segment((0, 0), (1, 0))
         seg2 = Segment((1, 0), (2, 0))
         chain = CurveChain([seg1, seg2])
         result = chain.set_bias(0.5)
-        # CurveChain.set_bias() returns None (not self)
         assert result is None
-        # Bias is propagated to child curves
+        assert chain.bias == 0.5
         assert seg1.bias == 0.5
         assert seg2.bias == 0.5
         assert chain._joints[0].length() == pytest.approx(0.0)

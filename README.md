@@ -439,6 +439,41 @@ To render a gallery with Cycles on the GPU:
 uv run python -m tests.visual_tests.test_curve_profiles out/curve_profiles.png
 ```
 
+### Approximate boundary bleed
+
+Apply an opacity fade to a closed curve boundary in place:
+
+```python
+from anima.primitives.curve_bleed import apply_bleed
+
+apply_bleed(boundary, width=0.1, bias=0.99)
+boundary.layer = -1
+```
+
+The filled interior must be to the left of each contour: outer contours are counterclockwise and holes
+clockwise in Blender coordinates. For glyphs, create them with `with_border=True` and apply the function to
+each loop in `glyph.border.subpaths`. Contours with the opposite winding must be reversed before use.
+Style the boundary to match the fill. Winding and planarity are not checked.
+
+`width` is the outward fade distance in boundary-local units. `bias` is configurable in (-1, 1] and defaults
+to 0.99, giving a small inward overlap; 0 gives equal inward and outward widths, and 1 gives no inward
+overlap. The total curve width is `2 * width / (1 + bias)`. Opacity is constant over the interior portion
+and fades linearly to 0 over the outward distance, multiplied by material opacity and texture coverage.
+Scaling can change the world-space width.
+
+This replaces the loop's width, bias, and width profile and disables shadow casting on its curve parts and
+endcaps. The loop retains its parent, transforms, and reveal behavior. Profile changes affect all objects
+sharing its materials; loops sharing a material should use the same bias and be styled consistently. Place the boundary below the
+body and any background on a still lower layer to avoid coplanar overlap. The inward overlap can hide small
+discrepancies between the boundary and fill but cannot fix every mismatch. Separate curve segments can leave
+gaps at corners or overlap and darken; this is not a nearest-distance effect.
+
+To render a glyph and polygon comparison with Cycles on the GPU:
+
+```bash
+uv run python -m tests.visual_tests.test_curve_bleed out/curve_bleed.png
+```
+
 ## Logging
 
 Anima includes a built-in logging system powered by [loguru](https://loguru.readthedocs.io/) that provides structured, colorized output for debugging and monitoring.
