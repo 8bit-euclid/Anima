@@ -474,6 +474,44 @@ To render a glyph and polygon comparison with Cycles on the GPU:
 uv run python -m tests.visual_tests.test_curve_bleed out/curve_bleed.png
 ```
 
+### Approximate boundary emboss
+
+Apply an inward bump profile to any closed boundary in place:
+
+```python
+from anima.primitives.curve_emboss import apply_emboss
+
+apply_emboss(boundary, width=0.1, height=lambda t: -0.03 * t * t * (3 - 2 * t))
+boundary.layer = 1
+```
+
+The interior must lie to the left of the contour: outer contours are counterclockwise and holes clockwise in
+Blender coordinates. For a glyph created with `with_border=True`, apply the function to each loop in
+`glyph.border.subpaths`. Winding and planarity are not checked.
+
+`width` is the inward band width in boundary-local units. The function sets the curve width to `width` and
+its bias to -1. `height(t)` gives a signed bump height in scene units, with `t=0` at the boundary and `t=1`
+at the inner edge. The example uses a smooth recessed profile; change its sign for a raised appearance.
+The profile is sampled at 256 points. For a seamless transition, use a height of zero at the boundary and
+smooth slopes at both edges.
+
+Use independent materials for the band, fill, and background, with matching surface colors and texture
+settings. Shared materials also share the profile, so do not share the band's material with the fill or
+background. Place the band above the fill and the fill above the background; disable cast shadows on the
+fill if its small layer offset produces artifacts. The function replaces the loop's width, bias, and width
+profile and disables cast shadows on its curve parts and endcaps. It preserves the loop's parent, transforms,
+and reveal behavior. Corners can have gaps or overlaps, and mismatched fill and boundary geometry can show
+seams. Bump shading does not displace the geometry: the flat interior is only *visually* at constant depth.
+
+To render a textured glyph and polygon comparison, with and without round joints, using Cycles on the GPU:
+Glyph borders normally omit joints; the gallery builds separate jointed loops from the same outline.
+
+```bash
+uv run python -m tests.visual_tests.test_curve_emboss out/curve_emboss.png
+uv run python -m tests.visual_tests.test_curve_emboss out/curve_emboss_half.png --width 0.09
+uv run python -m tests.visual_tests.test_curve_emboss out/curve_emboss_quarter.png --width 0.045
+```
+
 ## Logging
 
 Anima includes a built-in logging system powered by [loguru](https://loguru.readthedocs.io/) that provides structured, colorized output for debugging and monitoring.

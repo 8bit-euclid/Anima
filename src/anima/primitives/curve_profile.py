@@ -31,6 +31,16 @@ def _parts(curve: Curve) -> Iterator[tuple[Curve | Endcap, Curve]]:
             yield child, curve
 
 
+def _disable_curve_shadows(curve: Curve) -> None:
+    """Disable cast shadows on curve parts and endcaps in the hierarchy."""
+    pending: list[Object] = [curve]
+    while pending:
+        part = pending.pop()
+        if isinstance(part, (Curve, Endcap)):
+            part.object.visible_shadow = False
+        pending.extend(part.children)
+
+
 def profile_image(obj: Object) -> bpy.types.Image | None:
     """Return the profile image currently assigned to the object's material."""
     if not obj._has_data() or not obj.object.data.materials:

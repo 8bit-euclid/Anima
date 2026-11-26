@@ -3,9 +3,7 @@
 import math
 
 from anima.primitives.chains import CurveLoop
-from anima.primitives.curve_profile import set_width_profile
-from anima.primitives.curves import Curve
-from anima.primitives.endcaps import Endcap
+from anima.primitives.curve_profile import _disable_curve_shadows, set_width_profile
 
 
 def apply_bleed(boundary: CurveLoop, *, width: float, bias: float = 0.99) -> CurveLoop:
@@ -46,10 +44,5 @@ def apply_bleed(boundary: CurveLoop, *, width: float, bias: float = 0.99) -> Cur
     set_width_profile(boundary, None, lambda u: 1.0 - u, 2, width_fraction=fraction)
     boundary.set_width(width / fraction)
     boundary.set_bias(bias)
-    pending = [boundary]
-    while pending:
-        part = pending.pop()
-        if isinstance(part, (Curve, Endcap)):
-            part.object.visible_shadow = False
-        pending.extend(part.children)
+    _disable_curve_shadows(boundary)
     return boundary
